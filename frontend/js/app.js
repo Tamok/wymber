@@ -151,9 +151,13 @@ class TrauMappdApp {
         try {
             this.showError('', false); // Clear previous errors
             
+            // Clear any existing token to ensure clean login
+            api.clearToken();
+            
             // Try login first
             try {
                 const token = await this.authManager.login(username, password);
+                localStorage.setItem('token', token); // Store token in localStorage
                 api.setToken(token);
                 this.currentUser = username;
                 await this.showMainApp();
@@ -164,6 +168,7 @@ class TrauMappdApp {
                     await this.authManager.setup(username, password);
                     // Now try login again
                     const token = await this.authManager.login(username, password);
+                    localStorage.setItem('token', token); // Store token in localStorage
                     api.setToken(token);
                     this.currentUser = username;
                     await this.showMainApp();
@@ -187,7 +192,9 @@ class TrauMappdApp {
             console.error('Logout error:', error);
         }
         
+        // Complete cleanup of authentication state
         api.clearToken();
+        localStorage.removeItem('token');
         this.currentUser = null;
         this.showLoginScreen();
     }
@@ -195,6 +202,10 @@ class TrauMappdApp {
     showLoginScreen() {
         document.getElementById('main-app').style.display = 'none';
         document.getElementById('login-screen').style.display = 'block';
+        
+        // Complete cleanup on login screen
+        api.clearToken();
+        localStorage.removeItem('token');
         
         // Clear form
         document.getElementById('username').value = '';
