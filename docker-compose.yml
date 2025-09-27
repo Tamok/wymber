@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  traumappd:
+    build: .
+    container_name: traumappd
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+    environment:
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-here}
+    restart: unless-stopped
