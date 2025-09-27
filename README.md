@@ -32,7 +32,7 @@ cd traumappd
 docker-compose up -d
 ```
 
-3. Open your browser to: http://localhost:8000
+3. Open your browser to: http://localhost:8080
 
 4. Create your account (first-time setup only)
 
@@ -42,7 +42,7 @@ docker-compose up -d
 
 ### Creating Your First Account
 
-1. Navigate to http://localhost:8000
+1. Navigate to http://localhost:8080
 2. Enter a username and password
 3. Click "Login" - this will create your account on first use
 4. Your password encrypts all your data - keep it secure!
@@ -101,7 +101,7 @@ If you're in crisis, please reach out for immediate help:
 
 ### Container won't start
 - Check Docker is running: `docker info`
-- Check ports: Ensure 8000 isn't in use
+- Check ports: Ensure 8080 isn't in use
 - Check logs: `docker logs traumappd`
 
 ### Can't login

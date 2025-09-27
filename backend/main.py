@@ -12,8 +12,8 @@ import secrets
 from typing import Optional, List
 import json
 
-from database import SessionLocal, User, Node, Edge, ChatMessage, pwd_context, encrypt_field, decrypt_field, create_tables
-from config import NODE_TYPES, MESSAGES
+from backend.database import SessionLocal, User, Node, Edge, ChatMessage, pwd_context, encrypt_field, decrypt_field, create_tables
+from backend.config import NODE_TYPES, MESSAGES
 
 # JWT Configuration
 SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_urlsafe(32))
@@ -32,7 +32,7 @@ app = FastAPI(
 # CORS for local development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8000"],
+    allow_origins=["http://localhost:8080"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
