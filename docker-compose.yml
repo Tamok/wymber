@@ -9,5 +9,8 @@ services:
     volumes:
       - ./data:/app/data
     environment:
-      - SECRET_KEY=${SECRET_KEY:-your-secret-key-here}
+      - APP_ENV=production
+      # Required: set JWT_SECRET_KEY in a .env file (see .env.example). Compose errors if unset.
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in a .env file (see .env.example)}
+      - AUTO_CREATE_TEST_USER=false
     restart: unless-stopped
