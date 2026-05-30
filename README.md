@@ -23,10 +23,16 @@ docker-compose up -d
 ### Direct (no Docker)
 
 ```bash
-pip install -r requirements.txt
+# Use a virtual environment + the lockfile for a reproducible install
+python -m venv .venv
+# Windows: .venv\Scripts\activate    |    macOS/Linux: source .venv/bin/activate
+pip install -r requirements.lock
 python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
 # Open http://localhost:8000
 ```
+
+> `requirements.lock` pins exact, tested versions (including transitive deps) so the
+> app builds the same everywhere. `requirements.txt` lists the top-level deps you edit.
 
 On first visit, enter a username and password to create your account. Your password encrypts all sensitive data — there is no recovery if you forget it.
 
