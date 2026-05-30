@@ -32,3 +32,18 @@ Thumbs.db
 .env
 *.key
 *.pem
+
+# Testing
+test_credentials.py
+test-results/
+playwright-report/
+.pytest_cache/
+
+# Node
+node_modules/
+
+# MCP / tooling scratch output
+.playwright-mcp/
+
+# Python virtual env (project-local)
+.venv/

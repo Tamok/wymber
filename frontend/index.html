@@ -5,12 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TrauMapp'd - Private Trauma Mapping</title>
     <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/libs/mind-elixir.css">
 </head>
 <body>
-    <!-- Crisis Resources Bar (optional) -->
+    <!-- Crisis Resources Bar -->
     <div id="crisis-bar" class="crisis-bar" style="display:none;">
         <span>Need immediate help? Call 988 (Crisis Lifeline) or 911</span>
-        <button id="hide-crisis-bar" aria-label="Hide crisis resources">×</button>
+        <button id="hide-crisis-bar" aria-label="Hide crisis resources">&times;</button>
     </div>
 
     <!-- Login Screen -->
@@ -19,31 +20,31 @@
             <div class="login-box">
                 <h1>TrauMapp'd</h1>
                 <p class="tagline">Your private space for healing</p>
-                
+
                 <form id="login-form">
                     <div class="form-group">
                         <label for="username">Username</label>
                         <input type="text" id="username" name="username" required autocomplete="username">
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="password">Password</label>
                         <input type="password" id="password" name="password" required autocomplete="current-password">
                     </div>
-                    
+
                     <button type="submit" class="btn btn-primary">Login</button>
-                    
+
                     <p id="setup-prompt" class="setup-prompt" style="display:none;">
                         First time? Create your account with the form above.
                     </p>
-                    
+
                     <div id="error-message" class="error-message" style="display:none;"></div>
                 </form>
-                
+
                 <div class="privacy-notice">
-                    <p>🔒 All data stays on your device</p>
-                    <p>🔒 No internet connection required after setup</p>
-                    <p>🔒 You control your data</p>
+                    <p>All data stays on your device</p>
+                    <p>No internet connection required after setup</p>
+                    <p>You control your data</p>
                 </div>
             </div>
         </div>
@@ -56,59 +57,97 @@
                 <h1>TrauMapp'd</h1>
                 <span id="save-indicator" class="save-indicator">All changes saved</span>
             </div>
-            
+
             <nav class="header-nav">
                 <button id="add-node-btn" class="btn btn-primary">
                     <span class="icon">+</span> Add Node
                 </button>
                 <button id="analyze-btn" class="btn">
-                    <span class="icon">🔍</span> Analyze Map
+                    <span class="icon">?</span> Analyze Map
                 </button>
                 <button id="export-btn" class="btn">
-                    <span class="icon">📥</span> Export
+                    <span class="icon">&darr;</span> Export
                 </button>
                 <button id="settings-btn" class="btn">
-                    <span class="icon">⚙️</span> Settings
+                    <span class="icon">&cog;</span> Settings
                 </button>
                 <button id="logout-btn" class="btn btn-secondary">Logout</button>
             </nav>
         </header>
-        
+
         <main class="app-main">
-            <div id="mindmap-container" class="mindmap-container">
-                <div class="mindmap-placeholder">
+            <!-- Mind Map Toolbar -->
+            <div id="mindmap-toolbar" class="mindmap-toolbar">
+                <div class="toolbar-section">
+                    <h3>Mind Map Actions</h3>
+                    <p class="toolbar-help">Select a node first, then choose an action</p>
+                </div>
+                <div class="toolbar-buttons">
+                    <button id="select-mode-btn" class="btn btn-toolbar active" title="Click to select nodes">
+                        <span class="icon">&rarr;</span> Select
+                    </button>
+                    <button id="link-mode-btn" class="btn btn-toolbar" title="Connect two nodes">
+                        <span class="icon">&harr;</span> Link Nodes
+                    </button>
+                    <button id="edit-selected-btn" class="btn btn-toolbar" disabled title="Edit selected node">
+                        <span class="icon">&#9998;</span> Edit
+                    </button>
+                    <button id="delete-selected-btn" class="btn btn-toolbar" disabled title="Delete selected node">
+                        <span class="icon">&times;</span> Delete
+                    </button>
+                </div>
+                <div class="toolbar-status">
+                    <span id="selection-status">No node selected</span>
+                </div>
+            </div>
+
+            <div id="mindmap-container" class="mindmap-container"
+                 role="application"
+                 aria-label="Interactive trauma mapping workspace"
+                 tabindex="0">
+                <div id="mindmap" class="mindmap"></div>
+                <div id="mindmap-placeholder" class="mindmap-placeholder" style="display:none;">
                     <h2>Welcome to Your Trauma Map</h2>
                     <p>This is your private space for mapping and understanding your experiences.</p>
-                    <p>Click "Add Node" above to start creating your map.</p>
+                    <div class="mindmap-help">
+                        <h3>How to use your map:</h3>
+                        <ul>
+                            <li><strong>Add Node:</strong> Click "+ Add Node" button above to create entries</li>
+                            <li><strong>Select:</strong> Click any node to select it</li>
+                            <li><strong>Link:</strong> Use "Link Nodes" to connect related experiences</li>
+                            <li><strong>Edit:</strong> Select a node, then click "Edit" to modify it</li>
+                            <li><strong>Navigate:</strong> Use Tab key to move between nodes</li>
+                        </ul>
+                        <p class="mindmap-help-note">
+                            <strong>Remember:</strong> This is your safe space. Go at your own pace,
+                            and you can always delete or modify anything you create.
+                        </p>
+                    </div>
                     <div class="node-type-preview">
                         <div class="node-type-item">
-                            <div class="node-preview trauma-event"></div>
-                            <span>Traumatic Events</span>
+                            <div class="node-preview event"></div>
+                            <span>Events</span>
                         </div>
                         <div class="node-type-item">
-                            <div class="node-preview trigger"></div>
-                            <span>Triggers</span>
+                            <div class="node-preview emotion"></div>
+                            <span>Emotions</span>
                         </div>
                         <div class="node-type-item">
                             <div class="node-preview coping"></div>
-                            <span>Coping Mechanisms</span>
+                            <span>Coping</span>
                         </div>
                         <div class="node-type-item">
-                            <div class="node-preview support"></div>
-                            <span>Support Systems</span>
+                            <div class="node-preview growth"></div>
+                            <span>Growth</span>
                         </div>
                     </div>
                 </div>
             </div>
-            
-            <div id="chat-panel" class="chat-panel" style="display:none;">
-                <!-- Chat interface will be inserted here -->
-            </div>
         </main>
-        
+
         <footer class="app-footer">
             <div class="keyboard-hints">
-                <span>Keyboard: <kbd>Ctrl+N</kbd> New Node | <kbd>Delete</kbd> Remove | <kbd>Shift+Enter</kbd> Explore</span>
+                <span>Keyboard: <kbd>Ctrl+N</kbd> New Node | <kbd>Delete</kbd> Remove | <kbd>Tab</kbd> Navigate</span>
             </div>
         </footer>
     </div>
@@ -120,36 +159,36 @@
                 <h3 id="modal-title">Add to Your Map</h3>
                 <button class="close-btn" id="close-modal">&times;</button>
             </div>
-            
+
             <div class="modal-body">
                 <div class="form-group">
                     <label for="node-type">Type of Entry</label>
                     <select id="node-type" class="node-type-select">
                         <option value="">Choose a type...</option>
-                        <option value="trauma_event">🔴 Traumatic Event</option>
-                        <option value="trigger">🟠 Trigger</option>
-                        <option value="response">🟡 Response</option>
-                        <option value="symptom">🟣 Symptom/Issue</option>
-                        <option value="emotion">🔵 Emotion/Feeling</option>
-                        <option value="belief">🟤 Belief/Thought</option>
-                        <option value="coping">🟢 Coping Mechanism</option>
-                        <option value="support">🟢 Support/Resource</option>
+                        <option value="event">Event</option>
+                        <option value="emotion">Emotion</option>
+                        <option value="person">Person</option>
+                        <option value="place">Place</option>
+                        <option value="trigger">Trigger</option>
+                        <option value="coping">Coping</option>
+                        <option value="insight">Insight</option>
+                        <option value="growth">Growth</option>
                     </select>
                     <div id="type-description" class="type-description"></div>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="node-title">Title</label>
                     <input type="text" id="node-title" placeholder="Brief label for this entry" required>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="node-description">Description (Optional)</label>
-                    <textarea id="node-description" rows="4" 
+                    <textarea id="node-description" rows="4"
                              placeholder="Add more details if you'd like. This is encrypted and private to you."></textarea>
                 </div>
             </div>
-            
+
             <div class="modal-footer">
                 <button id="save-node" class="btn btn-primary">Save</button>
                 <button id="cancel-node" class="btn btn-secondary">Cancel</button>
@@ -164,11 +203,11 @@
                 <h2>Settings</h2>
                 <button class="close-btn" id="close-settings">&times;</button>
             </div>
-            
+
             <div class="modal-body" id="settings-content">
-                <!-- Settings will be inserted here -->
+                <!-- Settings will be populated by JS -->
             </div>
-            
+
             <div class="modal-footer">
                 <button id="save-settings" class="btn btn-primary">Save Settings</button>
                 <button id="cancel-settings" class="btn btn-secondary">Cancel</button>
@@ -176,10 +215,41 @@
         </div>
     </div>
 
+    <!-- Analyze Modal -->
+    <div id="analyze-modal" class="modal" style="display:none;">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2>Map Analysis</h2>
+                <button class="close-btn" id="close-analyze">&times;</button>
+            </div>
+            <div class="modal-body" id="analyze-content">
+                <!-- Analysis results populated by JS -->
+            </div>
+            <div class="modal-footer">
+                <button id="close-analyze-btn" class="btn btn-secondary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div id="export-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Export Your Map</h2>
+                <button class="close-btn" id="close-export">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Choose a format to export your map data:</p>
+                <div class="export-options">
+                    <button id="export-json" class="btn btn-primary">Export as JSON</button>
+                    <button id="export-text" class="btn">Export as Text</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Load scripts -->
-    <script src="/static/js/config.js"></script>
-    <script src="/static/js/api.js"></script>
-    <script src="/static/js/auth.js"></script>
-    <script src="/static/js/app.js"></script>
+    <script src="/static/libs/mind-elixir.min.js"></script>
+    <script type="module" src="/static/js/app.js"></script>
 </body>
 </html>

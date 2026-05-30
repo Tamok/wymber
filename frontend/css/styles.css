@@ -331,6 +331,74 @@ kbd {
     margin: var(--spacing-md);
     position: relative;
     overflow: hidden;
+    min-height: 400px;
+}
+
+.mindmap {
+    width: 100%;
+    height: 100%;
+    min-height: 400px;
+}
+
+/* MindElixir overrides for trauma-informed design */
+.mind-elixir {
+    font-family: inherit !important;
+}
+
+.mind-elixir svg text {
+    font-family: inherit !important;
+    fill: var(--text-primary) !important;
+}
+
+.mind-elixir .node {
+    transition: all 0.3s ease !important;
+}
+
+.mind-elixir .node:focus,
+.mind-elixir .node.selected {
+    outline: 2px solid var(--focus) !important;
+    outline-offset: 2px !important;
+}
+
+/* Gentle node colors override */
+.mind-elixir .node[data-nodeid*="event"] { 
+    background-color: #C8E6C9 !important; 
+    border-color: #A5D6A7 !important;
+}
+
+.mind-elixir .node[data-nodeid*="emotion"] { 
+    background-color: #BBDEFB !important;
+    border-color: #90CAF9 !important;
+}
+
+.mind-elixir .node[data-nodeid*="person"] { 
+    background-color: #F8BBD9 !important;
+    border-color: #F48FB1 !important;
+}
+
+.mind-elixir .node[data-nodeid*="place"] { 
+    background-color: #D7CCC8 !important;
+    border-color: #BCAAA4 !important;
+}
+
+.mind-elixir .node[data-nodeid*="trigger"] { 
+    background-color: #FFE0B2 !important;
+    border-color: #FFCC80 !important;
+}
+
+.mind-elixir .node[data-nodeid*="coping"] { 
+    background-color: #A5D6A7 !important;
+    border-color: #81C784 !important;
+}
+
+.mind-elixir .node[data-nodeid*="insight"] { 
+    background-color: #E1BEE7 !important;
+    border-color: #CE93D8 !important;
+}
+
+.mind-elixir .node[data-nodeid*="growth"] { 
+    background-color: #C8F7C5 !important;
+    border-color: #A5E6A8 !important;
 }
 
 .mindmap-placeholder {
@@ -365,9 +433,14 @@ kbd {
     justify-content: center;
 }
 
-.node-preview.trauma-event { background: var(--trauma-color); }
-.node-preview.trigger { background: var(--trigger-color); }
-.node-preview.coping { background: var(--coping-color); }
+.node-preview.event { background: #C8E6C9; }
+.node-preview.emotion { background: #BBDEFB; }
+.node-preview.person { background: #F8BBD9; }
+.node-preview.place { background: #D7CCC8; }
+.node-preview.trigger { background: #FFE0B2; }
+.node-preview.coping { background: #A5D6A7; }
+.node-preview.insight { background: #E1BEE7; }
+.node-preview.growth { background: #C8F7C5; }
 .node-preview.support { background: var(--support-color); }
 
 /* Modals */
@@ -461,17 +534,21 @@ kbd {
     font-style: italic;
 }
 
-/* Chat panel */
-.chat-panel {
-    position: fixed;
-    right: var(--spacing-md);
-    bottom: var(--spacing-md);
-    width: 400px;
-    height: 500px;
-    background: var(--bg-secondary);
-    border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-    z-index: 100;
+/* Export options */
+.export-options {
+    display: flex;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-lg);
+}
+
+/* Crisis resources in settings */
+.crisis-resources ul {
+    padding-left: var(--spacing-lg);
+    margin-top: var(--spacing-sm);
+}
+
+.crisis-resources li {
+    margin-bottom: var(--spacing-sm);
 }
 
 /* Notifications */
@@ -587,4 +664,156 @@ kbd {
 
 @keyframes spin {
     to { transform: rotate(360deg); }
+}
+
+/* ===== MIND MAP TOOLBAR ===== */
+.mindmap-toolbar {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.mindmap-toolbar .toolbar-section {
+    margin-bottom: var(--spacing-sm);
+}
+
+.mindmap-toolbar h3 {
+    margin: 0 0 var(--spacing-xs) 0;
+    font-size: 1rem;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.mindmap-toolbar .toolbar-help {
+    margin: 0 0 var(--spacing-md) 0;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.toolbar-buttons {
+    display: flex;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+    margin-bottom: var(--spacing-sm);
+}
+
+.btn-toolbar {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: 4px;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.btn-toolbar:hover:not(:disabled) {
+    background: var(--focus);
+    color: white;
+    border-color: var(--focus);
+}
+
+.btn-toolbar.active {
+    background: var(--focus);
+    color: white;
+    border-color: var(--focus);
+}
+
+.btn-toolbar:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: var(--bg-secondary);
+}
+
+.toolbar-status {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    padding: var(--spacing-xs) 0;
+    border-top: 1px solid var(--border);
+    margin-top: var(--spacing-sm);
+    padding-top: var(--spacing-sm);
+}
+
+#selection-status {
+    font-weight: 500;
+}
+
+/* Node selection feedback */
+.node-selected {
+    box-shadow: 0 0 0 3px var(--focus) !important;
+    z-index: 1000;
+}
+
+.node-connecting {
+    box-shadow: 0 0 0 3px #4caf50 !important;
+    z-index: 1000;
+}
+
+/* ===== MIND MAP HELP SYSTEM ===== */
+.mindmap-help {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: var(--spacing-lg);
+    margin-top: var(--spacing-lg);
+    max-width: 500px;
+}
+
+.mindmap-help h3 {
+    margin: 0 0 var(--spacing-md) 0;
+    color: var(--text-primary);
+    font-size: 1.1rem;
+}
+
+.mindmap-help ul {
+    margin: 0 0 var(--spacing-md) 0;
+    padding-left: var(--spacing-lg);
+}
+
+.mindmap-help li {
+    margin-bottom: var(--spacing-sm);
+    line-height: 1.5;
+}
+
+.mindmap-help li strong {
+    color: var(--focus);
+}
+
+.mindmap-help-note {
+    background: rgba(33, 150, 243, 0.1);
+    border-left: 4px solid var(--focus);
+    padding: var(--spacing-md);
+    margin: var(--spacing-md) 0 0 0;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+/* Improve node type selector styling */
+.node-type-select {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    padding: var(--spacing-sm);
+    border-radius: 4px;
+    font-size: 1rem;
+    width: 100%;
+}
+
+.node-type-select option {
+    padding: var(--spacing-sm);
+}
+
+/* Better visual hierarchy for form labels */
+.form-group label {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-xs);
 }

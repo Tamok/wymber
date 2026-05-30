@@ -1,18 +1,25 @@
+import { NODE_TYPES } from './config.js';
+import { api } from './api.js';
+import { AuthManager } from './auth.js';
+import { TrauMindMap } from './mindmap.js';
+import { validateNodeData } from './utils.js';
+import { analyzeMap, renderAnalysis } from './analyze.js';
+import { exportAsJSON, exportAsText } from './export.js';
+
 class TrauMappdApp {
     constructor() {
         this.currentUser = null;
         this.authManager = new AuthManager();
+        this.mindMap = null;
+        this.editingNode = null;
     }
-    
+
     async init() {
-        // Check if user is logged in
         const token = localStorage.getItem('token');
-        
+
         if (token) {
             api.setToken(token);
-            
             try {
-                // Verify token is still valid
                 const response = await api.get('/check');
                 if (response.authenticated) {
                     this.currentUser = response.username;
@@ -20,19 +27,19 @@ class TrauMappdApp {
                 } else {
                     this.showLoginScreen();
                 }
-            } catch (error) {
+            } catch {
                 this.showLoginScreen();
             }
         } else {
             this.showLoginScreen();
         }
-        
-        // Setup event listeners
+
         this.setupEventListeners();
     }
-    
+
+    // ===== AUTH =====
+
     setupEventListeners() {
-        // Login form
         const loginForm = document.getElementById('login-form');
         if (loginForm) {
             loginForm.addEventListener('submit', async (e) => {
@@ -40,223 +47,291 @@ class TrauMappdApp {
                 await this.handleLogin();
             });
         }
-        
-        // Logout button
+
         const logoutBtn = document.getElementById('logout-btn');
         if (logoutBtn) {
-            logoutBtn.addEventListener('click', async () => {
-                await this.handleLogout();
-            });
+            logoutBtn.addEventListener('click', () => this.handleLogout());
         }
-        
-        // Add node button
-        const addNodeBtn = document.getElementById('add-node-btn');
-        if (addNodeBtn) {
-            addNodeBtn.addEventListener('click', () => {
-                this.showNodeModal();
-            });
-        }
-        
-        // Settings button
-        const settingsBtn = document.getElementById('settings-btn');
-        if (settingsBtn) {
-            settingsBtn.addEventListener('click', () => {
-                this.showSettingsModal();
-            });
-        }
-        
-        // Modal close buttons
-        document.querySelectorAll('.close-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const modal = e.target.closest('.modal');
-                if (modal) {
-                    modal.style.display = 'none';
-                }
-            });
-        });
-        
-        // Save node button
-        const saveNodeBtn = document.getElementById('save-node');
-        if (saveNodeBtn) {
-            saveNodeBtn.addEventListener('click', async () => {
-                await this.saveNode();
-            });
-        }
-        
-        // Cancel node button
-        const cancelNodeBtn = document.getElementById('cancel-node');
-        if (cancelNodeBtn) {
-            cancelNodeBtn.addEventListener('click', () => {
-                document.getElementById('node-modal').style.display = 'none';
-            });
-        }
-        
-        // Node type selector
-        const nodeTypeSelect = document.getElementById('node-type');
-        if (nodeTypeSelect) {
-            nodeTypeSelect.addEventListener('change', (e) => {
-                this.updateNodeTypeDescription(e.target.value);
-            });
-        }
-        
-        // Close modals when clicking outside
+
+        // Close modals on outside click
         window.addEventListener('click', (e) => {
             if (e.target.classList.contains('modal')) {
                 e.target.style.display = 'none';
+                if (e.target.id === 'node-modal') this.editingNode = null;
             }
         });
-        
-        // Hide crisis bar
+
+        // Close all modals on Escape, Ctrl+N for new node
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal').forEach(m => {
+                    if (m.style.display === 'flex') {
+                        m.style.display = 'none';
+                        if (m.id === 'node-modal') this.editingNode = null;
+                    }
+                });
+            }
+
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'n' || e.key === 'N')) {
+                e.preventDefault();
+                this.showNodeModal();
+            }
+        });
+
+        // Crisis bar dismiss
         const hideCrisisBtn = document.getElementById('hide-crisis-bar');
         if (hideCrisisBtn) {
             hideCrisisBtn.addEventListener('click', () => {
                 document.getElementById('crisis-bar').style.display = 'none';
             });
         }
-        
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-            
-            switch(e.key) {
-                case 'n':
-                case 'N':
-                    if (e.ctrlKey || e.metaKey) {
-                        e.preventDefault();
-                        this.showNodeModal();
-                    }
-                    break;
-                case 'Escape':
-                    // Close any open modal
-                    document.querySelectorAll('.modal').forEach(modal => {
-                        if (modal.style.display === 'block' || modal.style.display === 'flex') {
-                            modal.style.display = 'none';
-                        }
-                    });
-                    break;
-            }
-        });
     }
-    
+
+    setupMainAppEventListeners() {
+        document.getElementById('add-node-btn')?.addEventListener('click', () => this.showNodeModal());
+        document.getElementById('settings-btn')?.addEventListener('click', () => this.showSettingsModal());
+        document.getElementById('analyze-btn')?.addEventListener('click', () => this.showAnalysis());
+        document.getElementById('export-btn')?.addEventListener('click', () => this.showExportModal());
+
+        // Modal close buttons
+        document.querySelectorAll('.close-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const modal = e.target.closest('.modal');
+                if (modal) modal.style.display = 'none';
+            });
+        });
+
+        // Node modal
+        document.getElementById('save-node')?.addEventListener('click', () => this.saveNode());
+        document.getElementById('cancel-node')?.addEventListener('click', () => {
+            document.getElementById('node-modal').style.display = 'none';
+            this.editingNode = null;
+        });
+
+        // Node type description updates
+        document.getElementById('node-type')?.addEventListener('change', (e) => {
+            this.updateNodeTypeDescription(e.target.value);
+        });
+
+        // Settings save
+        document.getElementById('save-settings')?.addEventListener('click', () => this.saveSettings());
+        document.getElementById('cancel-settings')?.addEventListener('click', () => {
+            document.getElementById('settings-modal').style.display = 'none';
+        });
+
+        // Analyze close
+        document.getElementById('close-analyze-btn')?.addEventListener('click', () => {
+            document.getElementById('analyze-modal').style.display = 'none';
+        });
+
+        // Export buttons
+        document.getElementById('export-json')?.addEventListener('click', () => this.doExport('json'));
+        document.getElementById('export-text')?.addEventListener('click', () => this.doExport('text'));
+    }
+
     async handleLogin() {
         const username = document.getElementById('username').value.trim();
         const password = document.getElementById('password').value;
-        const errorDiv = document.getElementById('error-message');
-        
+
         if (!username || !password) {
             this.showError('Please enter both username and password');
             return;
         }
-        
+
         try {
-            this.showError('', false); // Clear previous errors
-            
-            // Clear any existing token to ensure clean login
+            this.showError('', false);
             api.clearToken();
-            
-            // Try login first
+
+            let token;
             try {
-                const token = await this.authManager.login(username, password);
-                localStorage.setItem('token', token); // Store token in localStorage
-                api.setToken(token);
-                this.currentUser = username;
-                await this.showMainApp();
-                return;
-            } catch (loginError) {
-                // If login fails, try setup (first-time user)
-                try {
-                    await this.authManager.setup(username, password);
-                    // Now try login again
-                    const token = await this.authManager.login(username, password);
-                    localStorage.setItem('token', token); // Store token in localStorage
-                    api.setToken(token);
-                    this.currentUser = username;
-                    await this.showMainApp();
-                    return;
-                } catch (setupError) {
-                    throw loginError; // Use original login error
-                }
+                token = await this.authManager.login(username, password);
+            } catch {
+                await this.authManager.setup(username, password);
+                token = await this.authManager.login(username, password);
             }
-        } catch (error) {
-            console.error('Authentication error:', error);
+
+            api.setToken(token);
+            this.currentUser = username;
+            await this.showMainApp();
+        } catch {
             this.showError('Login failed. Please check your credentials and try again.');
         }
     }
-    
+
     async handleLogout() {
         try {
-            if (this.currentUser) {
-                await this.authManager.logout(api.token);
-            }
-        } catch (error) {
-            console.error('Logout error:', error);
+            if (this.currentUser) await this.authManager.logout(api.token);
+        } catch { /* ignore */ }
+
+        if (this.mindMap) {
+            this.mindMap.destroy();
+            this.mindMap = null;
         }
-        
-        // Complete cleanup of authentication state
+
         api.clearToken();
-        localStorage.removeItem('token');
         this.currentUser = null;
         this.showLoginScreen();
     }
-    
+
     showLoginScreen() {
         document.getElementById('main-app').style.display = 'none';
         document.getElementById('login-screen').style.display = 'block';
-        
-        // Complete cleanup on login screen
         api.clearToken();
-        localStorage.removeItem('token');
-        
-        // Clear form
+
         document.getElementById('username').value = '';
         document.getElementById('password').value = '';
         this.showError('', false);
-        
-        // Check if this is first run
         this.authManager.checkFirstRun();
-        
-        // Focus username field
         document.getElementById('username').focus();
     }
-    
+
     async showMainApp() {
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('main-app').style.display = 'block';
-        
-        // Load user's map
+
+        this.setupMainAppEventListeners();
+        await this.loadSettings();
+
         try {
-            const mapData = await api.get('/mindmap');
-            this.updateSaveIndicator('All changes saved');
-            // TODO: Render mind map when Phase 2 is implemented
+            await this.initMindMap();
         } catch (error) {
-            console.error('Error loading map:', error);
-            this.updateSaveIndicator('Error loading map', 'error');
+            console.error('Error initializing mind map:', error);
+            this.updateSaveIndicator('Error loading mind map', 'error');
         }
     }
-    
-    showNodeModal() {
+
+    // ===== MIND MAP =====
+
+    async initMindMap() {
+        const container = document.getElementById('mindmap');
+        const placeholder = document.getElementById('mindmap-placeholder');
+        if (!container) throw new Error('Mind map container not found');
+
+        this.mindMap = new TrauMindMap(container, api);
+        this.mindMap.onShowNodeModal = (nodeObj) => this.showNodeModal(nodeObj);
+
+        const success = await this.mindMap.init();
+        if (success) {
+            if (placeholder) placeholder.style.display = 'none';
+            container.style.display = 'block';
+            container.focus();
+            this.updateSaveIndicator('Mind map loaded');
+        } else {
+            if (placeholder) placeholder.style.display = 'block';
+            container.style.display = 'none';
+        }
+    }
+
+    // ===== NODE MODAL =====
+
+    showNodeModal(nodeObj = null) {
         const modal = document.getElementById('node-modal');
         const title = document.getElementById('modal-title');
-        
-        // Reset form
-        document.getElementById('node-type').value = '';
-        document.getElementById('node-title').value = '';
-        document.getElementById('node-description').value = '';
-        document.getElementById('type-description').innerHTML = '';
-        
-        title.textContent = 'Add to Your Map';
+        this.editingNode = nodeObj;
+
+        if (nodeObj) {
+            title.textContent = 'Edit Node';
+            this.populateNodeModal(nodeObj);
+        } else {
+            title.textContent = 'Add to Your Map';
+            document.getElementById('node-type').value = '';
+            document.getElementById('node-title').value = '';
+            document.getElementById('node-description').value = '';
+            document.getElementById('type-description').innerHTML = '';
+        }
+
         modal.style.display = 'flex';
-        
-        // Focus first input for accessibility
         setTimeout(() => {
-            document.getElementById('node-type').focus();
+            (nodeObj ? document.getElementById('node-title') : document.getElementById('node-type')).focus();
         }, 100);
     }
-    
+
+    async populateNodeModal(nodeObj) {
+        try {
+            const nodeId = typeof nodeObj === 'string' ? nodeObj : nodeObj?.id;
+            const mapData = await api.get('/mindmap');
+            const idNum = typeof nodeId === 'string' && nodeId.startsWith('node-')
+                ? parseInt(nodeId.replace('node-', ''), 10)
+                : nodeId;
+            const node = mapData.nodes.find(n => n.id === idNum);
+
+            if (node) {
+                document.getElementById('node-type').value = node.node_type;
+                document.getElementById('node-title').value = node.title;
+                document.getElementById('node-description').value = node.description || '';
+                this.updateNodeTypeDescription(node.node_type);
+            }
+        } catch (error) {
+            console.error('Error loading node data:', error);
+        }
+    }
+
+    updateNodeTypeDescription(nodeType) {
+        const el = document.getElementById('type-description');
+        if (nodeType && NODE_TYPES[nodeType]) {
+            const info = NODE_TYPES[nodeType];
+            el.innerHTML = `<div class="type-info"><p>${info.description}</p><small>${info.tooltip}</small></div>`;
+        } else {
+            el.innerHTML = '';
+        }
+    }
+
+    async saveNode() {
+        const nodeType = document.getElementById('node-type').value;
+        const title = document.getElementById('node-title').value.trim();
+        const description = document.getElementById('node-description').value.trim();
+
+        const validation = validateNodeData({ node_type: nodeType, title, description });
+        if (!validation.valid) {
+            this.showNotification(validation.error, 'error');
+            return;
+        }
+
+        try {
+            if (this.editingNode) {
+                const nodeId = typeof this.editingNode === 'string'
+                    ? this.editingNode.replace('node-', '')
+                    : this.editingNode?.id?.replace?.('node-', '') || this.editingNode;
+                await api.put(`/node/${nodeId}`, { title, description });
+
+                if (this.editingNode?.topic !== undefined) {
+                    this.editingNode.topic = title;
+                    this.mindMap?.mindElixir?.refresh();
+                }
+                this.showNotification('Node updated', 'success');
+            } else {
+                const nodeData = {
+                    node_type: nodeType,
+                    title,
+                    description,
+                    x: Math.random() * 300 + 50,
+                    y: Math.random() * 200 + 50
+                };
+                if (this.mindMap) {
+                    await this.mindMap.addNode(nodeData);
+                } else {
+                    await api.post('/node', nodeData);
+                }
+                this.showNotification('Added to your map', 'success');
+            }
+
+            document.getElementById('node-modal').style.display = 'none';
+            this.editingNode = null;
+        } catch (error) {
+            console.error('Error saving node:', error);
+            this.showNotification('Could not save entry', 'error');
+        }
+    }
+
+    // ===== SETTINGS =====
+
     showSettingsModal() {
-        const modal = document.getElementById('settings-modal');
         const content = document.getElementById('settings-content');
-        
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+        const currentFont = document.documentElement.getAttribute('data-font-size') || 'medium';
+
         content.innerHTML = `
             <div class="settings-panel">
                 <section>
@@ -264,33 +339,21 @@ class TrauMappdApp {
                     <div class="form-group">
                         <label for="theme-select">Theme</label>
                         <select id="theme-select">
-                            <option value="light">Light (Default)</option>
-                            <option value="dark">Dark</option>
-                            <option value="soft">Soft (Low Contrast)</option>
+                            <option value="light" ${currentTheme === 'light' ? 'selected' : ''}>Light (Default)</option>
+                            <option value="dark" ${currentTheme === 'dark' ? 'selected' : ''}>Dark</option>
+                            <option value="soft" ${currentTheme === 'soft' ? 'selected' : ''}>Soft (Low Contrast)</option>
                         </select>
                     </div>
-                    
                     <div class="form-group">
                         <label for="font-size">Font Size</label>
                         <select id="font-size">
-                            <option value="small">Small</option>
-                            <option value="medium" selected>Medium</option>
-                            <option value="large">Large</option>
-                            <option value="xlarge">Extra Large</option>
+                            <option value="small" ${currentFont === 'small' ? 'selected' : ''}>Small</option>
+                            <option value="medium" ${currentFont === 'medium' ? 'selected' : ''}>Medium</option>
+                            <option value="large" ${currentFont === 'large' ? 'selected' : ''}>Large</option>
+                            <option value="xlarge" ${currentFont === 'xlarge' ? 'selected' : ''}>Extra Large</option>
                         </select>
                     </div>
                 </section>
-                
-                <section>
-                    <h3>Privacy & Data</h3>
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" id="retain-chat" checked>
-                            Save chat conversations
-                        </label>
-                    </div>
-                </section>
-                
                 <section>
                     <h3>Safety</h3>
                     <div class="crisis-resources">
@@ -305,106 +368,111 @@ class TrauMappdApp {
                 </section>
             </div>
         `;
-        
-        modal.style.display = 'flex';
+
+        document.getElementById('settings-modal').style.display = 'flex';
     }
-    
-    updateNodeTypeDescription(nodeType) {
-        const description = document.getElementById('type-description');
-        
-        if (nodeType && NODE_TYPES[nodeType]) {
-            const typeInfo = NODE_TYPES[nodeType];
-            description.innerHTML = `
-                <div class="type-info">
-                    <p>${typeInfo.description}</p>
-                    <small>${typeInfo.tooltip}</small>
-                </div>
-            `;
-        } else {
-            description.innerHTML = '';
-        }
-    }
-    
-    async saveNode() {
-        const nodeType = document.getElementById('node-type').value;
-        const title = document.getElementById('node-title').value.trim();
-        const description = document.getElementById('node-description').value.trim();
-        
-        if (!nodeType || !title) {
-            this.showNotification('Please select a type and enter a title', 'error');
-            return;
-        }
-        
-        const nodeData = {
-            node_type: nodeType,
-            title: title,
-            description: description,
-            x: Math.random() * 300 + 50, // Random position for now
-            y: Math.random() * 200 + 50
-        };
-        
+
+    async saveSettings() {
+        const theme = document.getElementById('theme-select').value;
+        const fontSize = document.getElementById('font-size').value;
+
+        document.documentElement.setAttribute('data-theme', theme);
+        document.documentElement.setAttribute('data-font-size', fontSize);
+
         try {
-            const response = await api.post('/node', nodeData);
-            this.showNotification('Added to your map', 'success');
-            
-            // Close modal
-            document.getElementById('node-modal').style.display = 'none';
-            
-            // TODO: Update mind map display when Phase 2 is implemented
-            
+            await api.put('/settings', { theme, fontSize });
         } catch (error) {
-            console.error('Error saving node:', error);
-            this.showNotification('Could not save entry', 'error');
+            console.error('Error saving settings:', error);
+        }
+
+        document.getElementById('settings-modal').style.display = 'none';
+        this.showNotification('Settings saved', 'success');
+    }
+
+    async loadSettings() {
+        try {
+            const data = await api.get('/settings');
+            const settings = data.settings || {};
+            if (settings.theme) {
+                document.documentElement.setAttribute('data-theme', settings.theme);
+            }
+            if (settings.fontSize) {
+                document.documentElement.setAttribute('data-font-size', settings.fontSize);
+            }
+        } catch {
+            // Settings not available, use defaults
         }
     }
-    
-    showError(message, show = true) {
-        const errorDiv = document.getElementById('error-message');
-        if (errorDiv) {
-            if (show && message) {
-                errorDiv.textContent = message;
-                errorDiv.style.display = 'block';
+
+    // ===== ANALYZE =====
+
+    async showAnalysis() {
+        try {
+            const mapData = await api.get('/mindmap');
+            const analysis = analyzeMap(mapData.nodes || [], mapData.edges || []);
+            document.getElementById('analyze-content').innerHTML = renderAnalysis(analysis);
+            document.getElementById('analyze-modal').style.display = 'flex';
+        } catch (error) {
+            console.error('Error analyzing map:', error);
+            this.showNotification('Could not analyze map', 'error');
+        }
+    }
+
+    // ===== EXPORT =====
+
+    showExportModal() {
+        document.getElementById('export-modal').style.display = 'flex';
+    }
+
+    async doExport(format) {
+        try {
+            const mapData = await api.get('/mindmap');
+            if (format === 'json') {
+                exportAsJSON(mapData.nodes || [], mapData.edges || []);
             } else {
-                errorDiv.style.display = 'none';
+                exportAsText(mapData.nodes || [], mapData.edges || []);
             }
+            document.getElementById('export-modal').style.display = 'none';
+            this.showNotification('Export downloaded', 'success');
+        } catch (error) {
+            console.error('Error exporting:', error);
+            this.showNotification('Could not export map', 'error');
         }
     }
-    
+
+    // ===== UI HELPERS =====
+
+    showError(message, show = true) {
+        const el = document.getElementById('error-message');
+        if (!el) return;
+        if (show && message) {
+            el.textContent = message;
+            el.style.display = 'block';
+        } else {
+            el.style.display = 'none';
+        }
+    }
+
     updateSaveIndicator(message, type = 'success') {
-        const indicator = document.getElementById('save-indicator');
-        if (indicator) {
-            indicator.textContent = message;
-            indicator.className = 'save-indicator';
-            
-            if (type === 'saving') {
-                indicator.classList.add('saving');
-            } else if (type === 'error') {
-                indicator.classList.add('error');
-            }
-        }
+        const el = document.getElementById('save-indicator');
+        if (!el) return;
+        el.textContent = message;
+        el.className = 'save-indicator';
+        if (type === 'saving') el.classList.add('saving');
+        else if (type === 'error') el.classList.add('error');
     }
-    
+
     showNotification(message, type = 'info') {
-        // Create notification element
-        const notification = document.createElement('div');
-        notification.className = `notification notification-${type}`;
-        notification.textContent = message;
-        notification.setAttribute('role', 'status');
-        notification.setAttribute('aria-live', 'polite');
-        
-        document.body.appendChild(notification);
-        
-        // Animate in
+        const el = document.createElement('div');
+        el.className = `notification notification-${type}`;
+        el.textContent = message;
+        el.setAttribute('role', 'status');
+        el.setAttribute('aria-live', 'polite');
+        document.body.appendChild(el);
+        setTimeout(() => el.classList.add('show'), 10);
         setTimeout(() => {
-            notification.classList.add('show');
-        }, 10);
-        
-        // Remove after 3 seconds
-        setTimeout(() => {
-            notification.classList.remove('show');
-            setTimeout(() => {
-                notification.remove();
-            }, 300);
+            el.classList.remove('show');
+            setTimeout(() => el.remove(), 300);
         }, 3000);
     }
 }

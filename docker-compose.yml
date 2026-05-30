@@ -8,7 +8,6 @@ services:
       - "127.0.0.1:8080:8000"
     volumes:
       - ./data:/app/data
-      - ./models:/app/models
     environment:
       - SECRET_KEY=${SECRET_KEY:-your-secret-key-here}
     restart: unless-stopped
