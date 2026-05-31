@@ -74,3 +74,34 @@ def test_node_description_encrypted(auth_client):
     mindmap = auth_client.get("/api/mindmap").json()
     node = next(n for n in mindmap["nodes"] if n["id"] == node_id)
     assert node["description"] == "This should be encrypted"
+
+
+def test_create_node_with_parent(auth_client):
+    parent = auth_client.post("/api/node", json={"node_type": "event", "title": "Parent"})
+    parent_id = parent.json()["id"]
+
+    child = auth_client.post("/api/node", json={
+        "node_type": "emotion", "title": "Child", "parent_id": parent_id
+    })
+    assert child.status_code == 200
+    child_id = child.json()["id"]
+
+    mindmap = auth_client.get("/api/mindmap").json()
+    node = next(n for n in mindmap["nodes"] if n["id"] == child_id)
+    assert node["parent_id"] == parent_id
+
+
+def test_create_node_invalid_parent(auth_client):
+    resp = auth_client.post("/api/node", json={
+        "node_type": "event", "title": "Orphan", "parent_id": 9999
+    })
+    assert resp.status_code == 404
+
+
+def test_node_parent_id_defaults_none(auth_client):
+    resp = auth_client.post("/api/node", json={"node_type": "event", "title": "Top level"})
+    node_id = resp.json()["id"]
+
+    mindmap = auth_client.get("/api/mindmap").json()
+    node = next(n for n in mindmap["nodes"] if n["id"] == node_id)
+    assert node["parent_id"] is None

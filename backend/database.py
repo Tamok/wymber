@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, LargeBinary, Float, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, LargeBinary, Float, ForeignKey, inspect, text
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 from passlib.context import CryptContext
@@ -52,6 +52,7 @@ class Node(Base):
     y = Column(Float, default=0)
     color = Column(String)
     icon = Column(String)
+    parent_id = Column(Integer, ForeignKey("nodes.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -68,6 +69,7 @@ class Node(Base):
             "y": self.y,
             "color": self.color,
             "icon": self.icon,
+            "parent_id": self.parent_id,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None
         }
@@ -110,3 +112,18 @@ def encrypt_field(data: str, key: bytes) -> bytes:
 
 def decrypt_field(encrypted_data: bytes, key: bytes) -> str:
     return Fernet(key).decrypt(encrypted_data).decode()
+
+
+def run_lightweight_migrations():
+    """Add columns introduced after the initial release to existing SQLite tables.
+
+    The app uses Base.metadata.create_all (no migration framework), which does not
+    ALTER existing tables. This adds new nullable columns idempotently so existing
+    databases pick up schema additions without data loss.
+    """
+    inspector = inspect(engine)
+    if "nodes" in inspector.get_table_names():
+        columns = {c["name"] for c in inspector.get_columns("nodes")}
+        if "parent_id" not in columns:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE nodes ADD COLUMN parent_id INTEGER"))
