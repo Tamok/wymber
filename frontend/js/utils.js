@@ -132,3 +132,20 @@ export function walkNodes(node, callback) {
         }
     }
 }
+
+/**
+ * Lightweight password-strength heuristic (0-4) for the account-creation meter.
+ * @param {string} password
+ * @returns {{ score: number, label: string }}
+ */
+export function passwordStrength(password) {
+    const pw = password || '';
+    let score = 0;
+    if (pw.length >= 8) score++;
+    if (pw.length >= 12) score++;
+    if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++;
+    if (/\d/.test(pw) && /[^A-Za-z0-9]/.test(pw)) score++;
+    score = Math.min(score, 4);
+    const labels = ['Very weak', 'Weak', 'Fair', 'Good', 'Strong'];
+    return { score, label: labels[score] };
+}

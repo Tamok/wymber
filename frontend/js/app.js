@@ -2,7 +2,7 @@ import { NODE_TYPES } from './config.js';
 import { api } from './api.js';
 import { AuthManager } from './auth.js';
 import { TrauMindMap } from './mindmap.js';
-import { validateNodeData } from './utils.js';
+import { validateNodeData, passwordStrength } from './utils.js';
 import { analyzeMap, renderAnalysis } from './analyze.js';
 import { exportAsJSON, exportAsText } from './export.js';
 
@@ -12,6 +12,7 @@ class TrauMappdApp {
         this.authManager = new AuthManager();
         this.mindMap = null;
         this.editingNode = null;
+        this.authMode = 'login';
     }
 
     async init() {
@@ -46,6 +47,11 @@ class TrauMappdApp {
                 e.preventDefault();
                 await this.handleLogin();
             });
+        }
+
+        const passwordInput = document.getElementById('password');
+        if (passwordInput) {
+            passwordInput.addEventListener('input', () => this.updateStrengthMeter());
         }
 
         const logoutBtn = document.getElementById('logout-btn');
@@ -188,7 +194,7 @@ class TrauMappdApp {
         const password = document.getElementById('password').value;
 
         if (!username || !password) {
-            this.showError('Please enter both username and password');
+            this.showError('Please enter both your username and password');
             return;
         }
 
@@ -196,19 +202,32 @@ class TrauMappdApp {
             this.showError('', false);
             api.clearToken();
 
-            let token;
-            try {
-                token = await this.authManager.login(username, password);
-            } catch {
+            if (this.authMode === 'create') {
+                const confirmPw = document.getElementById('confirm-password').value;
+                const acknowledged = document.getElementById('ack-no-recovery').checked;
+                if (password.length < 8) {
+                    this.showError('Please choose a password with at least 8 characters.');
+                    return;
+                }
+                if (password !== confirmPw) {
+                    this.showError("The passwords don't match. Please re-enter them.");
+                    return;
+                }
+                if (!acknowledged) {
+                    this.showError('Please confirm you understand there is no password recovery.');
+                    return;
+                }
                 await this.authManager.setup(username, password);
-                token = await this.authManager.login(username, password);
             }
 
+            const token = await this.authManager.login(username, password);
             api.setToken(token);
             this.currentUser = username;
             await this.showMainApp();
         } catch {
-            this.showError('Login failed. Please check your credentials and try again.');
+            this.showError(this.authMode === 'create'
+                ? 'Could not create your account. That username may be taken — please try another.'
+                : 'Login failed. Please check your credentials and try again.');
         }
     }
 
@@ -234,9 +253,65 @@ class TrauMappdApp {
 
         document.getElementById('username').value = '';
         document.getElementById('password').value = '';
+        const confirmPw = document.getElementById('confirm-password');
+        if (confirmPw) confirmPw.value = '';
+        const ack = document.getElementById('ack-no-recovery');
+        if (ack) ack.checked = false;
         this.showError('', false);
-        this.authManager.checkFirstRun();
+        this.applyAuthMode();
+        this.updateStrengthMeter();
         document.getElementById('username').focus();
+    }
+
+    async applyAuthMode() {
+        let hasUser = true;
+        try {
+            const res = await fetch('/api/status');
+            if (res.ok) hasUser = (await res.json()).has_user;
+        } catch {
+            hasUser = true;
+        }
+        this.authMode = hasUser ? 'login' : 'create';
+        const createMode = this.authMode === 'create';
+
+        const toggle = (id, show) => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = show ? 'block' : 'none';
+        };
+        toggle('confirm-group', createMode);
+        toggle('password-strength', createMode);
+        toggle('ack-group', createMode);
+
+        const submit = document.getElementById('auth-submit');
+        if (submit) submit.textContent = createMode ? 'Create account' : 'Log in';
+
+        const note = document.getElementById('setup-prompt');
+        if (note) {
+            note.style.display = createMode ? 'block' : 'none';
+            if (createMode) {
+                note.innerHTML = "<p><strong>Welcome.</strong> Create your private account below. " +
+                    "Your password encrypts everything and is the only key — there's no recovery, " +
+                    "so choose something you'll remember.</p>";
+            }
+        }
+        this.updateStrengthMeter();
+    }
+
+    updateStrengthMeter() {
+        const pwInput = document.getElementById('password');
+        const fill = document.getElementById('strength-fill');
+        const label = document.getElementById('strength-label');
+        if (!pwInput || !fill || !label) return;
+        if (this.authMode !== 'create') {
+            fill.style.width = '0';
+            label.textContent = '';
+            return;
+        }
+        const pw = pwInput.value;
+        const { score, label: text } = passwordStrength(pw);
+        fill.style.width = `${(score / 4) * 100}%`;
+        fill.className = `strength-fill strength-${score}`;
+        label.textContent = pw ? text : '';
     }
 
     async showMainApp() {

@@ -47,3 +47,17 @@ def test_username_validation(client):
 
     resp = client.post("/api/setup", json={"username": "a" * 51, "password": "Pass1234!"})
     assert resp.status_code == 422
+
+
+def test_setup_rejects_short_password(client):
+    resp = client.post("/api/setup", json={"username": "shorty", "password": "abc"})
+    assert resp.status_code == 422
+
+
+def test_status_reports_no_user_then_user(client):
+    resp = client.get("/api/status")
+    assert resp.status_code == 200
+    assert resp.json()["has_user"] is False
+
+    client.post("/api/setup", json={"username": "someone", "password": "GoodPass1!"})
+    assert client.get("/api/status").json()["has_user"] is True

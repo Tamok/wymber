@@ -42,7 +42,24 @@
                         <input type="password" id="password" name="password" required autocomplete="current-password">
                     </div>
 
-                    <button type="submit" class="btn btn-primary">Login</button>
+                    <div id="password-strength" class="password-strength" style="display:none;" aria-live="polite">
+                        <div class="strength-bar"><div id="strength-fill" class="strength-fill"></div></div>
+                        <span id="strength-label" class="strength-label"></span>
+                    </div>
+
+                    <div class="form-group" id="confirm-group" style="display:none;">
+                        <label for="confirm-password">Confirm password</label>
+                        <input type="password" id="confirm-password" autocomplete="new-password">
+                    </div>
+
+                    <div class="form-group ack-group" id="ack-group" style="display:none;">
+                        <label class="ack-label">
+                            <input type="checkbox" id="ack-no-recovery">
+                            <span>I understand my password is the only key to my data. If I lose it, my encrypted entries <strong>cannot be recovered</strong> &mdash; there is no reset.</span>
+                        </label>
+                    </div>
+
+                    <button type="submit" id="auth-submit" class="btn btn-primary">Log in</button>
 
                     <p id="setup-prompt" class="setup-prompt" style="display:none;">
                         First time? Create your account with the form above.
