@@ -6,12 +6,13 @@ import { NODE_TYPES } from './config.js';
 export function exportAsJSON(nodes, edges) {
     const data = {
         exportedAt: new Date().toISOString(),
-        version: '2.0',
+        version: '2.1',
         nodes: nodes.map(n => ({
             id: n.id,
             type: n.node_type,
             title: n.title,
             description: n.description || '',
+            parent_id: n.parent_id ?? null,
             createdAt: n.created_at,
             updatedAt: n.updated_at
         })),
@@ -72,6 +73,48 @@ export function exportAsText(nodes, edges) {
 
     const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
     downloadBlob(blob, `traumappd-export-${dateStamp()}.txt`);
+}
+
+/**
+ * Recreate a map from a previously exported JSON object, adding it to the current map.
+ * Remaps old node ids to the new ones the server assigns. DOM-free for testability.
+ * @returns {Promise<{nodeCount: number, edgeCount: number}>}
+ */
+export async function importMap(data, api) {
+    if (!data || !Array.isArray(data.nodes)) {
+        throw new Error('This file does not look like a valid map export.');
+    }
+    const idMap = new Map(); // old id -> new id
+
+    // 1. Create nodes (without parents first, so every parent exists before we link).
+    for (const node of data.nodes) {
+        const res = await api.post('/node', {
+            node_type: node.type || node.node_type,
+            title: node.title,
+            description: node.description || ''
+        });
+        idMap.set(node.id, res.id);
+    }
+
+    // 2. Restore parent/child links.
+    for (const node of data.nodes) {
+        const parentOld = node.parent_id;
+        if (parentOld != null && idMap.has(parentOld)) {
+            await api.put(`/node/${idMap.get(node.id)}`, { parent_id: idMap.get(parentOld) });
+        }
+    }
+
+    // 3. Restore explicit edges.
+    const edges = Array.isArray(data.edges) ? data.edges : [];
+    for (const edge of edges) {
+        const from = idMap.get(edge.from);
+        const to = idMap.get(edge.to);
+        if (from && to) {
+            await api.post('/edge', { from_node_id: from, to_node_id: to, label: edge.label || '' });
+        }
+    }
+
+    return { nodeCount: idMap.size, edgeCount: edges.length };
 }
 
 function downloadBlob(blob, filename) {
