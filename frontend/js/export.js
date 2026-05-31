@@ -24,7 +24,7 @@ export function exportAsJSON(nodes, edges) {
     };
 
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    downloadBlob(blob, `traumappd-export-${dateStamp()}.json`);
+    downloadBlob(blob, `wymber-export-${dateStamp()}.json`);
 }
 
 /**
@@ -32,7 +32,7 @@ export function exportAsJSON(nodes, edges) {
  */
 export function exportAsText(nodes, edges) {
     const lines = [];
-    lines.push('TrauMapp\'d - Map Export');
+    lines.push('Wymber - Map Export');
     lines.push(`Exported: ${new Date().toLocaleString()}`);
     lines.push(`Total nodes: ${nodes.length}`);
     lines.push(`Total connections: ${edges.length}`);
@@ -72,7 +72,7 @@ export function exportAsText(nodes, edges) {
     }
 
     const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
-    downloadBlob(blob, `traumappd-export-${dateStamp()}.txt`);
+    downloadBlob(blob, `wymber-export-${dateStamp()}.txt`);
 }
 
 /**
