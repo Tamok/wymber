@@ -56,6 +56,16 @@ test.describe('Settings Feature', () => {
         await expect(page.locator('#font-size')).toBeVisible();
     });
 
+    test('settings show data-location transparency and a delete option', async ({ page }) => {
+        await login(page);
+
+        await page.click('#settings-btn');
+        await expect(page.locator('#settings-modal')).toBeVisible({ timeout: 5000 });
+        await expect(page.locator('#settings-content')).toContainText('locally on this device');
+        // Present and reachable (we don't click it — it's destructive).
+        await expect(page.locator('#delete-account-btn')).toBeVisible();
+    });
+
     test('changing theme applies to page', async ({ page }) => {
         await login(page);
 
