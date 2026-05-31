@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { extractNodeId, validateNodeData, countNodes, walkNodes, convertToMindElixirFormat } from '../js/utils.js';
+import { extractNodeId, validateNodeData, countNodes, walkNodes, convertToMindElixirFormat, passwordStrength } from '../js/utils.js';
 
 describe('extractNodeId', () => {
     it('extracts numeric id from node-123 format', () => {
@@ -168,5 +168,24 @@ describe('convertToMindElixirFormat', () => {
         const me = convertToMindElixirFormat(mapData);
         expect(me.linkData['link-5'].from).toBe('node-1');
         expect(me.linkData['link-5'].to).toBe('node-2');
+    });
+});
+
+describe('passwordStrength', () => {
+    it('scores empty/short passwords as very weak', () => {
+        expect(passwordStrength('').score).toBe(0);
+        expect(passwordStrength('abc').score).toBe(0);
+    });
+
+    it('rewards length and character variety', () => {
+        expect(passwordStrength('abcdefgh').score).toBeGreaterThanOrEqual(1);
+        expect(passwordStrength('Str0ng!Passphrase').score).toBe(4);
+        expect(passwordStrength('Str0ng!Passphrase').label).toBe('Strong');
+    });
+
+    it('caps the score at 4 and returns a label', () => {
+        const result = passwordStrength('aB3$aB3$aB3$aB3$');
+        expect(result.score).toBeLessThanOrEqual(4);
+        expect(typeof result.label).toBe('string');
     });
 });

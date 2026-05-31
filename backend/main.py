@@ -87,6 +87,13 @@ class UserCreate(BaseModel):
             raise ValueError('Username must be alphanumeric (underscores and hyphens allowed)')
         return v
 
+    @field_validator('password')
+    @classmethod
+    def validate_password(cls, v):
+        if len(v) < 8:
+            raise ValueError('Password must be at least 8 characters')
+        return v
+
 class NodeCreate(BaseModel):
     node_type: str
     title: str
@@ -270,6 +277,11 @@ async def logout(current_user: User = Depends(get_current_user)):
 @app.get("/api/check")
 async def check_auth(current_user: User = Depends(get_current_user)):
     return {"authenticated": True, "username": current_user.username}
+
+@app.get("/api/status")
+async def account_status(db: Session = Depends(get_db)):
+    """Unauthenticated: whether an account exists yet (drives create-vs-login UI)."""
+    return {"has_user": db.query(User).first() is not None}
 
 @app.get("/api/mindmap")
 async def get_mindmap(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
