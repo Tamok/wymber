@@ -49,22 +49,17 @@ export function convertToMindElixirFormat(mapData) {
         }
     }
 
-    // MindElixir needs a single root. One top-level node becomes the root;
-    // multiple are gathered under a synthetic "My Healing Journey" root.
-    let nodeData;
-    if (topLevel.length === 1) {
-        nodeData = topLevel[0];
-        nodeData.root = true;
-    } else {
-        nodeData = {
-            id: 'root',
-            topic: 'My Healing Journey',
-            root: true,
-            style: { background: '#E8F5E8', color: '#2E3440' },
-            expanded: true,
-            children: topLevel
-        };
-    }
+    // MindElixir needs a single root. We use a stable, dedicated "My Healing Journey"
+    // root that always holds the user's top-level nodes, so the structure is
+    // deterministic across reloads regardless of how many top-level nodes there are.
+    const nodeData = {
+        id: 'root',
+        topic: 'My Healing Journey',
+        root: true,
+        style: { background: '#E8F5E8', color: '#2E3440' },
+        expanded: true,
+        children: topLevel
+    };
 
     const data = { nodeData, linkData: {} };
 

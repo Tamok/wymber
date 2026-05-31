@@ -17,20 +17,30 @@ export function analyzeMap(nodes, edges) {
         }
     }
 
-    // Find isolated nodes (no edges)
+    // Connections come from explicit edges AND parent/child hierarchy, so a node
+    // nested under another isn't wrongly reported as "isolated".
     const connectedIds = new Set();
+    const connectionCount = {};
+    const link = (aId, bId) => {
+        connectedIds.add(aId);
+        connectedIds.add(bId);
+        connectionCount[aId] = (connectionCount[aId] || 0) + 1;
+        connectionCount[bId] = (connectionCount[bId] || 0) + 1;
+    };
     for (const edge of edges) {
-        connectedIds.add(edge.from_node_id);
-        connectedIds.add(edge.to_node_id);
+        link(edge.from_node_id, edge.to_node_id);
+    }
+    const nodeIds = new Set(nodes.map(n => n.id));
+    let hierarchyLinks = 0;
+    for (const node of nodes) {
+        if (node.parent_id != null && nodeIds.has(node.parent_id)) {
+            link(node.id, node.parent_id);
+            hierarchyLinks++;
+        }
     }
     const isolatedNodes = nodes.filter(n => !connectedIds.has(n.id));
 
     // Find most-connected node
-    const connectionCount = {};
-    for (const edge of edges) {
-        connectionCount[edge.from_node_id] = (connectionCount[edge.from_node_id] || 0) + 1;
-        connectionCount[edge.to_node_id] = (connectionCount[edge.to_node_id] || 0) + 1;
-    }
     let mostConnected = null;
     let maxConnections = 0;
     for (const [nodeId, count] of Object.entries(connectionCount)) {
@@ -52,6 +62,7 @@ export function analyzeMap(nodes, edges) {
     return {
         totalNodes: nodes.length,
         totalEdges: edges.length,
+        totalConnections: edges.length + hierarchyLinks,
         typeCounts,
         isolatedNodes,
         mostConnected,
@@ -102,7 +113,7 @@ export function renderAnalysis(analysis) {
         <div class="settings-panel">
             <section>
                 <h3>Overview</h3>
-                <p><strong>${analysis.totalNodes}</strong> nodes and <strong>${analysis.totalEdges}</strong> connections in your map.</p>
+                <p><strong>${analysis.totalNodes}</strong> nodes and <strong>${analysis.totalConnections}</strong> connections in your map.</p>
                 ${mostConnectedNote}
             </section>
             <section>
