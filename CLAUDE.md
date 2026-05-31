@@ -12,9 +12,10 @@ TrauMapp'd is a privacy-first, self-hosted trauma mapping tool. Users visualize 
 # Docker
 docker-compose up -d          # Start (serves on localhost:8080)
 
-# Direct development (no Docker)
-pip install -r requirements.txt
-python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
+# Direct development (no Docker) — use a venv + the lockfile (reproducible)
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements.lock
+.venv\Scripts\python.exe -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
 
 # Tests
 python -m pytest tests/ -v              # Backend (23 tests)
