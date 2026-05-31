@@ -58,6 +58,7 @@ class TrauMappdApp {
             if (e.target.classList.contains('modal')) {
                 e.target.style.display = 'none';
                 if (e.target.id === 'node-modal') this.editingNode = null;
+                if (e.target.id === 'grounding-modal') this.stopBreathing();
             }
         });
 
@@ -72,6 +73,7 @@ class TrauMappdApp {
                         if (m.id === 'node-modal') this.editingNode = null;
                     }
                 });
+                this.stopBreathing();
             }
 
             if ((e.ctrlKey || e.metaKey) && (e.key === 'n' || e.key === 'N')) {
@@ -86,6 +88,56 @@ class TrauMappdApp {
             hideCrisisBtn.addEventListener('click', () => {
                 document.getElementById('crisis-bar').style.display = 'none';
             });
+        }
+
+        // Safety affordances — available on both the login and main screens.
+        document.getElementById('grounding-btn')?.addEventListener('click', () => this.openGrounding());
+        document.getElementById('crisis-btn')?.addEventListener('click', () => this.openSafetyModal('crisis-modal'));
+        document.getElementById('close-crisis')?.addEventListener('click', () => this.closeSafetyModal('crisis-modal'));
+        document.getElementById('close-crisis-btn')?.addEventListener('click', () => this.closeSafetyModal('crisis-modal'));
+        document.getElementById('close-grounding')?.addEventListener('click', () => this.closeGrounding());
+        document.getElementById('close-grounding-btn')?.addEventListener('click', () => this.closeGrounding());
+    }
+
+    // ===== SAFETY AFFORDANCES =====
+
+    openSafetyModal(id) {
+        const modal = document.getElementById(id);
+        if (modal) modal.style.display = 'flex';
+    }
+
+    closeSafetyModal(id) {
+        const modal = document.getElementById(id);
+        if (modal) modal.style.display = 'none';
+    }
+
+    openGrounding() {
+        this.openSafetyModal('grounding-modal');
+        this.startBreathing();
+    }
+
+    closeGrounding() {
+        this.stopBreathing();
+        this.closeSafetyModal('grounding-modal');
+    }
+
+    startBreathing() {
+        const el = document.getElementById('breathing-guide');
+        if (!el) return;
+        this.stopBreathing();
+        const phases = ['Breathe in…', 'Hold…', 'Breathe out…'];
+        let i = 0;
+        el.textContent = phases[0];
+        this.breathingInterval = setInterval(() => {
+            i = (i + 1) % phases.length;
+            el.textContent = phases[i];
+        }, 4000);
+    }
+
+    stopBreathing() {
+        if (this.breathingInterval) {
+            clearInterval(this.breathingInterval);
+            this.breathingInterval = null;
         }
     }
 

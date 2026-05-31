@@ -15,6 +15,15 @@
         <button id="hide-crisis-bar" aria-label="Hide crisis resources">&times;</button>
     </div>
 
+    <!-- Persistent safety bar (always available, both screens) -->
+    <div id="safety-bar" class="safety-bar" role="region" aria-label="Safety">
+        <span class="safety-disclaimer">A private wellness &amp; reflection tool &mdash; not therapy or a crisis service.</span>
+        <div class="safety-actions">
+            <button id="grounding-btn" class="btn btn-safety" type="button">Grounding</button>
+            <button id="crisis-btn" class="btn btn-safety" type="button">Crisis support</button>
+        </div>
+    </div>
+
     <!-- Login Screen -->
     <div id="login-screen" class="screen">
         <div class="login-container">
@@ -245,6 +254,60 @@
                     <button id="export-json" class="btn btn-primary">Export as JSON</button>
                     <button id="export-text" class="btn">Export as Text</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Crisis Support Modal -->
+    <div id="crisis-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>You're not alone</h2>
+                <button class="close-btn" id="close-crisis" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>If you're in crisis or thinking about harming yourself, please reach out &mdash; help is available right now.</p>
+                <ul class="crisis-list">
+                    <li><strong>988</strong> &mdash; Suicide &amp; Crisis Lifeline (US): call or text, 24/7</li>
+                    <li><strong>Text HOME to 741741</strong> &mdash; Crisis Text Line</li>
+                    <li><strong>911</strong> &mdash; Emergency services (US)</li>
+                    <li><a href="https://findahelpline.com" target="_blank" rel="noopener">Find a helpline in your country</a> &mdash; 175+ countries (needs internet)</li>
+                </ul>
+                <p class="safety-disclaimer">TrauMapp'd can't contact anyone for you &mdash; these are external services.</p>
+            </div>
+            <div class="modal-footer">
+                <button id="close-crisis-btn" class="btn btn-secondary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grounding Modal -->
+    <div id="grounding-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Take a moment to ground</h2>
+                <button class="close-btn" id="close-grounding" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>If things feel overwhelming, you can pause here. Go at your own pace &mdash; there's no wrong way to do this.</p>
+                <section class="grounding-section">
+                    <h3>Breathe</h3>
+                    <div id="breathing-guide" class="breathing-guide" aria-live="polite">Breathe in&hellip;</div>
+                    <p class="grounding-hint">In for 4, hold for 4, out for 6. Keep your eyes open if that feels safer.</p>
+                </section>
+                <section class="grounding-section">
+                    <h3>5-4-3-2-1 &mdash; notice what's around you</h3>
+                    <ul class="grounding-list">
+                        <li><strong>5</strong> things you can see</li>
+                        <li><strong>4</strong> things you can feel</li>
+                        <li><strong>3</strong> things you can hear</li>
+                        <li><strong>2</strong> things you can smell</li>
+                        <li><strong>1</strong> thing you can taste</li>
+                    </ul>
+                </section>
+            </div>
+            <div class="modal-footer">
+                <button id="close-grounding-btn" class="btn btn-primary">I'm okay for now</button>
             </div>
         </div>
     </div>
