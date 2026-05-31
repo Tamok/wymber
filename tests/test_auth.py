@@ -61,3 +61,16 @@ def test_status_reports_no_user_then_user(client):
 
     client.post("/api/setup", json={"username": "someone", "password": "GoodPass1!"})
     assert client.get("/api/status").json()["has_user"] is True
+
+
+def test_delete_account_requires_auth(client):
+    resp = client.delete("/api/account")
+    assert resp.status_code == 401
+
+
+def test_delete_account_removes_user_and_data(auth_client):
+    auth_client.post("/api/node", json={"node_type": "event", "title": "Gone soon"})
+    resp = auth_client.delete("/api/account")
+    assert resp.status_code == 200
+    # The only user is gone, so /api/status reports no account exists.
+    assert auth_client.get("/api/status").json()["has_user"] is False

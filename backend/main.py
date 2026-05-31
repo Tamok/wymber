@@ -431,6 +431,14 @@ async def update_settings(
     db.commit()
     return {"message": "Settings updated"}
 
+@app.delete("/api/account")
+async def delete_account(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Permanently delete the current user and all their data (nodes/edges cascade)."""
+    session_keys.pop(current_user.username, None)
+    db.delete(current_user)
+    db.commit()
+    return {"message": "Your account and all your data were permanently deleted from this device."}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -493,10 +493,37 @@ class TrauMappdApp {
                         </ul>
                     </div>
                 </section>
+                <section>
+                    <h3>Your data</h3>
+                    <p class="settings-note">Everything you write is stored <strong>locally on this device</strong>, encrypted with your password. Nothing is sent anywhere.</p>
+                    <button id="delete-account-btn" class="btn btn-danger" type="button">Delete everything</button>
+                    <p class="settings-note">Permanently removes your account and all entries from this device. This can't be undone, and there's no backup unless you exported one.</p>
+                </section>
             </div>
         `;
 
+        document.getElementById('delete-account-btn')?.addEventListener('click', () => this.deleteAccount());
         document.getElementById('settings-modal').style.display = 'flex';
+    }
+
+    async deleteAccount() {
+        const confirmed = confirm(
+            'Permanently delete your account and ALL your entries from this device?\n\n' +
+            "This cannot be undone, and there's no backup unless you exported one."
+        );
+        if (!confirmed) return;
+        try {
+            await api.delete('/account');
+            if (this.mindMap) { this.mindMap.destroy(); this.mindMap = null; }
+            api.clearToken();
+            this.currentUser = null;
+            document.getElementById('settings-modal').style.display = 'none';
+            this.showLoginScreen();
+            this.showNotification('Your account and data were permanently deleted.', 'success');
+        } catch (error) {
+            console.error('Error deleting account:', error);
+            this.showNotification('Could not delete your data. Please try again.', 'error');
+        }
     }
 
     async saveSettings() {

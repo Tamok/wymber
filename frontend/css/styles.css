@@ -149,6 +149,22 @@ h3 { font-size: 1.25rem; }
     color: var(--text-secondary);
 }
 
+.btn-danger {
+    background: var(--bg-secondary);
+    color: #c62828;
+    border-color: #e0a3a3;
+}
+
+.btn-danger:hover:not(:disabled) {
+    background: #ffebee;
+}
+
+.settings-note {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin: var(--spacing-xs) 0 var(--spacing-sm);
+}
+
 /* Forms */
 .form-group {
     margin-bottom: var(--spacing-md);
