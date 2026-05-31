@@ -4,7 +4,7 @@ import { AuthManager } from './auth.js';
 import { TrauMindMap } from './mindmap.js';
 import { validateNodeData, passwordStrength } from './utils.js';
 import { analyzeMap, renderAnalysis } from './analyze.js';
-import { exportAsJSON, exportAsText } from './export.js';
+import { exportAsJSON, exportAsText, importMap } from './export.js';
 
 class TrauMappdApp {
     constructor() {
@@ -187,6 +187,7 @@ class TrauMappdApp {
         // Export buttons
         document.getElementById('export-json')?.addEventListener('click', () => this.doExport('json'));
         document.getElementById('export-text')?.addEventListener('click', () => this.doExport('text'));
+        document.getElementById('import-file')?.addEventListener('change', (e) => this.doImport(e));
     }
 
     async handleLogin() {
@@ -591,6 +592,23 @@ class TrauMappdApp {
         } catch (error) {
             console.error('Error exporting:', error);
             this.showNotification('Could not export map', 'error');
+        }
+    }
+
+    async doImport(event) {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        try {
+            const data = JSON.parse(await file.text());
+            const result = await importMap(data, api);
+            event.target.value = '';
+            document.getElementById('export-modal').style.display = 'none';
+            this.showNotification(`Restored ${result.nodeCount} entries to your map.`, 'success');
+            if (this.mindMap) await this.mindMap.loadMap();
+        } catch (error) {
+            console.error('Import failed:', error);
+            event.target.value = '';
+            this.showNotification('Could not import that file. Make sure it is a valid map export.', 'error');
         }
     }
 
