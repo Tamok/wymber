@@ -7,6 +7,8 @@ async function login(page) {
     await page.fill('#password', 'SecureTest2025!');
     await page.click('button[type="submit"]');
     await expect(page.locator('#main-app')).toBeVisible({ timeout: 10000 });
+    // Pass the soft-start screen to reach the map.
+    await page.click('#open-map-btn');
 }
 
 test.describe('Mind Map Operations', () => {
@@ -81,8 +83,19 @@ test.describe('Mind Map Operations', () => {
         await page.waitForTimeout(1500);
         await page.reload();
         await expect(page.locator('#main-app')).toBeVisible({ timeout: 10000 });
+        await page.click('#open-map-btn');
 
         // The node's topic should still be rendered in the rebuilt map.
         await expect(page.locator('#mindmap')).toContainText(unique, { timeout: 10000 });
+    });
+
+    test('soft-start screen appears before the map', async ({ page }) => {
+        await page.goto('/');
+        await page.fill('#username', 'TestUser');
+        await page.fill('#password', 'SecureTest2025!');
+        await page.click('button[type="submit"]');
+        await expect(page.locator('#soft-start')).toBeVisible({ timeout: 10000 });
+        await page.click('#open-map-btn');
+        await expect(page.locator('#soft-start')).toBeHidden();
     });
 });

@@ -32,6 +32,7 @@ test.describe('Authentication', () => {
         await page.fill('#password', 'SecureTest2025!');
         await page.click('button[type="submit"]');
         await expect(page.locator('#main-app')).toBeVisible({ timeout: 10000 });
+        await page.click('#open-map-btn');
 
         await page.click('#logout-btn');
         await expect(page.locator('#login-screen')).toBeVisible({ timeout: 5000 });
