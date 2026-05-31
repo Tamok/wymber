@@ -188,6 +188,9 @@ class TrauMappdApp {
         document.getElementById('export-json')?.addEventListener('click', () => this.doExport('json'));
         document.getElementById('export-text')?.addEventListener('click', () => this.doExport('text'));
         document.getElementById('import-file')?.addEventListener('change', (e) => this.doImport(e));
+
+        document.getElementById('open-map-btn')?.addEventListener('click', () => this.openMapFromSoftStart());
+        document.getElementById('soft-start-grounding-btn')?.addEventListener('click', () => this.openGrounding());
     }
 
     async handleLogin() {
@@ -322,6 +325,18 @@ class TrauMappdApp {
         this.setupMainAppEventListeners();
         await this.loadSettings();
 
+        // A gentle "soft start" — the map renders only when the user chooses to open it.
+        this.showSoftStart();
+    }
+
+    showSoftStart() {
+        const ss = document.getElementById('soft-start');
+        if (ss) ss.style.display = 'flex';
+    }
+
+    async openMapFromSoftStart() {
+        const ss = document.getElementById('soft-start');
+        if (ss) ss.style.display = 'none';
         try {
             await this.initMindMap();
         } catch (error) {

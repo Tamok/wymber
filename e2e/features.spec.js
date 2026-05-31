@@ -6,6 +6,8 @@ async function login(page) {
     await page.fill('#password', 'SecureTest2025!');
     await page.click('button[type="submit"]');
     await expect(page.locator('#main-app')).toBeVisible({ timeout: 10000 });
+    // Pass the soft-start screen to reach the map.
+    await page.click('#open-map-btn');
 }
 
 test.describe('Analyze Feature', () => {
