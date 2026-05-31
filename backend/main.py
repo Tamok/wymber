@@ -116,6 +116,7 @@ class NodeUpdate(BaseModel):
     description: Optional[str] = None
     x: Optional[float] = None
     y: Optional[float] = None
+    parent_id: Optional[int] = None
 
     @field_validator('title')
     @classmethod
@@ -198,6 +199,25 @@ def require_session_key(username: str) -> bytes:
     if not key:
         raise HTTPException(status_code=401, detail="Session expired")
     return key
+
+def set_node_parent(db: Session, node: Node, parent_id: int, user_id: int):
+    """Reparent `node` under `parent_id`, rejecting self-parenting and cycles."""
+    if parent_id == node.id:
+        raise HTTPException(status_code=400, detail="A node cannot be its own parent")
+    parent = db.query(Node).filter(Node.id == parent_id, Node.user_id == user_id).first()
+    if not parent:
+        raise HTTPException(status_code=404, detail="Parent node not found")
+    # Walk up from the prospective parent; reject if we reach `node` (would create a cycle).
+    ancestor = parent
+    seen = set()
+    while ancestor is not None:
+        if ancestor.id == node.id:
+            raise HTTPException(status_code=400, detail="Cannot reparent a node under its own descendant")
+        if ancestor.id in seen or ancestor.parent_id is None:
+            break
+        seen.add(ancestor.id)
+        ancestor = db.query(Node).filter(Node.id == ancestor.parent_id).first()
+    node.parent_id = parent_id
 
 # ===== Routes =====
 
@@ -323,6 +343,8 @@ async def update_node(
         node.x = node_data.x
     if node_data.y is not None:
         node.y = node_data.y
+    if node_data.parent_id is not None:
+        set_node_parent(db, node, node_data.parent_id, current_user.id)
 
     node.updated_at = datetime.utcnow()
     db.commit()

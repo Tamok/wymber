@@ -21,36 +21,52 @@ export function convertToMindElixirFormat(mapData) {
         return null;
     }
 
-    const rootNode = mapData.nodes[0];
-    const rootType = NODE_TYPES[rootNode.node_type];
-
-    const data = {
-        nodeData: {
-            id: `node-${rootNode.id}`,
-            topic: rootNode.title,
-            root: true,
-            style: {
-                background: rootType?.color || '#E8F5E8',
-                color: '#2E3440'
-            },
-            children: []
-        },
-        linkData: {}
-    };
-
-    for (let i = 1; i < mapData.nodes.length; i++) {
-        const node = mapData.nodes[i];
+    // Build a MindElixir node for each backend node, keyed by db id.
+    const meById = new Map();
+    for (const node of mapData.nodes) {
         const typeInfo = NODE_TYPES[node.node_type];
-        data.nodeData.children.push({
+        meById.set(node.id, {
             id: `node-${node.id}`,
             topic: node.title,
             style: {
                 background: typeInfo?.color || '#E8F5E8',
                 color: '#2E3440'
             },
-            expanded: true
+            expanded: true,
+            children: []
         });
     }
+
+    // Attach each node to its parent; collect those with no resolvable parent.
+    const topLevel = [];
+    for (const node of mapData.nodes) {
+        const me = meById.get(node.id);
+        const parent = node.parent_id != null ? meById.get(node.parent_id) : null;
+        if (parent) {
+            parent.children.push(me);
+        } else {
+            topLevel.push(me);
+        }
+    }
+
+    // MindElixir needs a single root. One top-level node becomes the root;
+    // multiple are gathered under a synthetic "My Healing Journey" root.
+    let nodeData;
+    if (topLevel.length === 1) {
+        nodeData = topLevel[0];
+        nodeData.root = true;
+    } else {
+        nodeData = {
+            id: 'root',
+            topic: 'My Healing Journey',
+            root: true,
+            style: { background: '#E8F5E8', color: '#2E3440' },
+            expanded: true,
+            children: topLevel
+        };
+    }
+
+    const data = { nodeData, linkData: {} };
 
     // Convert edges to MindElixir link data
     if (mapData.edges && mapData.edges.length > 0) {

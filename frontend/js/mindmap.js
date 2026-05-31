@@ -122,17 +122,20 @@ export class TrauMindMap {
         const mapData = this.mindElixir.getData();
         const updates = [];
 
-        walkNodes(mapData.nodeData, (node) => {
+        // Walk the tree tracking each node's parent so reparents persist, not just positions.
+        const sync = (node, parentDbId) => {
             const dbId = extractNodeId(node.id);
             if (dbId) {
-                updates.push(
-                    this.api.put(`/node/${dbId}`, {
-                        x: node.cx || 0,
-                        y: node.cy || 0
-                    })
-                );
+                const body = { x: node.cx || 0, y: node.cy || 0 };
+                if (parentDbId) body.parent_id = parentDbId;
+                updates.push(this.api.put(`/node/${dbId}`, body));
             }
-        });
+            const childParentId = dbId || parentDbId;
+            if (node.children) {
+                node.children.forEach((child) => sync(child, childParentId));
+            }
+        };
+        sync(mapData.nodeData, null);
 
         await Promise.allSettled(updates);
     }
@@ -159,7 +162,11 @@ export class TrauMindMap {
             throw new Error('Invalid node data');
         }
 
-        const response = await this.api.post('/node', nodeData);
+        const parentNode = this.selectedNode || this.mindElixir.nodeData;
+        const parentDbId = extractNodeId(parentNode?.id);
+        const payload = parentDbId ? { ...nodeData, parent_id: parentDbId } : nodeData;
+
+        const response = await this.api.post('/node', payload);
         const typeInfo = NODE_TYPES[nodeData.node_type];
 
         const newNode = {
@@ -171,7 +178,6 @@ export class TrauMindMap {
             }
         };
 
-        const parentNode = this.selectedNode || this.mindElixir.nodeData;
         this.mindElixir.addChild(parentNode, newNode);
         this.updateNodeReferences();
         this.announceToScreenReader(`Added ${nodeData.title} to your map`);

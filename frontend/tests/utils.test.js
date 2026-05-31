@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { extractNodeId, validateNodeData, countNodes, walkNodes } from '../js/utils.js';
+import { extractNodeId, validateNodeData, countNodes, walkNodes, convertToMindElixirFormat } from '../js/utils.js';
 
 describe('extractNodeId', () => {
     it('extracts numeric id from node-123 format', () => {
@@ -118,5 +118,54 @@ describe('walkNodes', () => {
         const visited = [];
         walkNodes(null, (node) => visited.push(node));
         expect(visited).toEqual([]);
+    });
+});
+
+describe('convertToMindElixirFormat', () => {
+    it('returns null for an empty map', () => {
+        expect(convertToMindElixirFormat({ nodes: [], edges: [] })).toBeNull();
+    });
+
+    it('rebuilds a nested tree from parent_id', () => {
+        const mapData = {
+            nodes: [
+                { id: 1, node_type: 'event', title: 'Root', parent_id: null },
+                { id: 2, node_type: 'emotion', title: 'Child', parent_id: 1 },
+                { id: 3, node_type: 'coping', title: 'Grandchild', parent_id: 2 }
+            ],
+            edges: []
+        };
+        const me = convertToMindElixirFormat(mapData);
+        expect(me.nodeData.id).toBe('node-1');
+        expect(me.nodeData.root).toBe(true);
+        expect(me.nodeData.children).toHaveLength(1);
+        expect(me.nodeData.children[0].id).toBe('node-2');
+        expect(me.nodeData.children[0].children[0].id).toBe('node-3');
+    });
+
+    it('wraps multiple top-level nodes under a synthetic root', () => {
+        const mapData = {
+            nodes: [
+                { id: 1, node_type: 'event', title: 'A', parent_id: null },
+                { id: 2, node_type: 'emotion', title: 'B', parent_id: null }
+            ],
+            edges: []
+        };
+        const me = convertToMindElixirFormat(mapData);
+        expect(me.nodeData.id).toBe('root');
+        expect(me.nodeData.children.map((c) => c.id).sort()).toEqual(['node-1', 'node-2']);
+    });
+
+    it('converts edges to link data', () => {
+        const mapData = {
+            nodes: [
+                { id: 1, node_type: 'event', title: 'A', parent_id: null },
+                { id: 2, node_type: 'emotion', title: 'B', parent_id: 1 }
+            ],
+            edges: [{ id: 5, from_node_id: 1, to_node_id: 2, label: 'rel' }]
+        };
+        const me = convertToMindElixirFormat(mapData);
+        expect(me.linkData['link-5'].from).toBe('node-1');
+        expect(me.linkData['link-5'].to).toBe('node-2');
     });
 });
