@@ -18,6 +18,9 @@ from backend.database import (
 from backend.config import NODE_TYPES
 from backend.env_config import config
 
+# Fail fast on insecure production config (e.g. default/empty JWT secret); warns in dev.
+config.validate()
+
 # JWT Configuration
 SECRET_KEY = config.JWT_SECRET_KEY
 ALGORITHM = "HS256"

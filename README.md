@@ -16,6 +16,7 @@ A self-hosted, privacy-first application for mapping trauma experiences through 
 ### Docker
 
 ```bash
+cp .env.example .env       # then set JWT_SECRET_KEY (see the file for how to generate one)
 docker-compose up -d
 # Open http://localhost:8080
 ```
