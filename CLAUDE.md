@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Summary
 
-TrauMapp'd is a privacy-first, self-hosted trauma mapping tool. Users visualize trauma experiences as an interactive mind map. All data stays local and encrypted. The app follows trauma-informed design principles: gentle language, soft colors, predictable UI, no jarring animations.
+Wymber is a privacy-first, self-hosted trauma mapping tool. Users visualize trauma experiences as an interactive mind map. All data stays local and encrypted. The app follows trauma-informed design principles: gentle language, soft colors, predictable UI, no jarring animations.
 
 ## Build & Run Commands
 

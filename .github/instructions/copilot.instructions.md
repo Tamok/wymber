@@ -1,8 +1,8 @@
-# TrauMapp'd - Development Instructions
+# Wymber - Development Instructions
 
 ## Project Overview
 
-**TrauMapp'd** is a privacy-first trauma mapping tool that helps users visualize trauma experiences through an interactive mind map. All data is encrypted at rest and processed locally.
+**Wymber** is a privacy-first trauma mapping tool that helps users visualize trauma experiences through an interactive mind map. All data is encrypted at rest and processed locally.
 
 ### Core Principles
 

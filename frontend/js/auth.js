@@ -20,7 +20,7 @@ export class AuthManager {
         if (prompt) {
             prompt.style.display = 'block';
             prompt.innerHTML = `
-                <p><strong>Welcome to TrauMapp'd!</strong></p>
+                <p><strong>Welcome to Wymber!</strong></p>
                 <p>Create your account above to get started.</p>
                 <p>Your data will be encrypted and stored locally.</p>
             `;

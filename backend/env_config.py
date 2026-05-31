@@ -1,5 +1,5 @@
 """
-Environment configuration for TrauMapp'd
+Environment configuration for Wymber
 Handles loading of environment variables and configuration settings
 """
 import os
@@ -35,7 +35,7 @@ class Config:
     AUTO_CREATE_TEST_USER: bool = os.getenv('AUTO_CREATE_TEST_USER', 'true').lower() == 'true'
 
     # App settings
-    APP_NAME: str = "TrauMapp'd"
+    APP_NAME: str = "Wymber"
     APP_VERSION: str = "2.0.0"
 
     @property

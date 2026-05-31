@@ -59,7 +59,7 @@ export const NODE_TYPES = {
 
 export const MESSAGES = {
     welcome: "Welcome back to your safe space for reflection and healing.",
-    first_time: "Welcome to TrauMapp'd. This is your private space for mapping and understanding your experiences.",
+    first_time: "Welcome to Wymber. This is your private space for mapping and understanding your experiences.",
     session_expired: "Your session has expired for security. Please log in again.",
     save_success: "Your map has been safely saved.",
     delete_confirm: "This will remove this node and its connections. You can always recreate it later if needed.",

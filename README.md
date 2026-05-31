@@ -1,4 +1,4 @@
-# TrauMapp'd - Private Trauma Mapping Tool
+# Wymber - Private Trauma Mapping Tool
 
 A self-hosted, privacy-first application for mapping trauma experiences through interactive mind maps.
 
@@ -94,4 +94,4 @@ If you're in crisis, please reach out:
 
 ## Disclaimer
 
-TrauMapp'd is a self-help tool, not a replacement for professional therapy.
+Wymber is a self-help tool, not a replacement for professional therapy.
