@@ -72,4 +72,16 @@ describe('analyzeMap', () => {
         expect(result.isolatedNodes).toEqual([]);
         expect(result.mostConnected).toBeNull();
     });
+
+    it('treats parent/child hierarchy as connections', () => {
+        const nodes = [
+            { id: 1, node_type: 'event', title: 'Parent', parent_id: null },
+            { id: 2, node_type: 'emotion', title: 'Child', parent_id: 1 },
+            { id: 3, node_type: 'event', title: 'Lonely', parent_id: null }
+        ];
+        const result = analyzeMap(nodes, []);
+        // 1 and 2 are linked by hierarchy; 3 has no parent/child/edge -> isolated.
+        expect(result.isolatedNodes.map(n => n.id)).toEqual([3]);
+        expect(result.totalConnections).toBe(1);
+    });
 });

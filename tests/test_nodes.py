@@ -105,3 +105,31 @@ def test_node_parent_id_defaults_none(auth_client):
     mindmap = auth_client.get("/api/mindmap").json()
     node = next(n for n in mindmap["nodes"] if n["id"] == node_id)
     assert node["parent_id"] is None
+
+
+def test_reparent_node_via_update(auth_client):
+    a = auth_client.post("/api/node", json={"node_type": "event", "title": "A"}).json()["id"]
+    b = auth_client.post("/api/node", json={"node_type": "emotion", "title": "B"}).json()["id"]
+
+    resp = auth_client.put(f"/api/node/{b}", json={"parent_id": a})
+    assert resp.status_code == 200
+
+    mindmap = auth_client.get("/api/mindmap").json()
+    node_b = next(n for n in mindmap["nodes"] if n["id"] == b)
+    assert node_b["parent_id"] == a
+
+
+def test_reparent_rejects_self_parent(auth_client):
+    a = auth_client.post("/api/node", json={"node_type": "event", "title": "A"}).json()["id"]
+    resp = auth_client.put(f"/api/node/{a}", json={"parent_id": a})
+    assert resp.status_code == 400
+
+
+def test_reparent_rejects_cycle(auth_client):
+    a = auth_client.post("/api/node", json={"node_type": "event", "title": "A"}).json()["id"]
+    b = auth_client.post("/api/node", json={
+        "node_type": "emotion", "title": "B", "parent_id": a
+    }).json()["id"]
+    # b is a child of a; making a a child of b would create a cycle.
+    resp = auth_client.put(f"/api/node/{a}", json={"parent_id": b})
+    assert resp.status_code == 400

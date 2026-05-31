@@ -65,4 +65,24 @@ test.describe('Mind Map Operations', () => {
         await expect(page.locator('#node-modal')).toBeVisible();
         await expect(page.locator('.notification-error')).toBeVisible({ timeout: 3000 });
     });
+
+    test('node persists across a page reload', async ({ page }) => {
+        await login(page);
+
+        const unique = 'Persist ' + Date.now();
+        await page.click('#add-node-btn');
+        await page.selectOption('#node-type', 'event');
+        await page.fill('#node-title', unique);
+        await page.click('#save-node');
+        await expect(page.locator('#node-modal')).toBeHidden({ timeout: 5000 });
+        await expect(page.locator('.notification-success')).toBeVisible({ timeout: 5000 });
+
+        // Let the debounced save flush, then reload from scratch.
+        await page.waitForTimeout(1500);
+        await page.reload();
+        await expect(page.locator('#main-app')).toBeVisible({ timeout: 10000 });
+
+        // The node's topic should still be rendered in the rebuilt map.
+        await expect(page.locator('#mindmap')).toContainText(unique, { timeout: 10000 });
+    });
 });
