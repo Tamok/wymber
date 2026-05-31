@@ -13,7 +13,8 @@ import json
 
 from backend.database import (
     SessionLocal, engine, Base,
-    User, Node, Edge, pwd_context, encrypt_field, decrypt_field
+    User, Node, Edge, pwd_context, encrypt_field, decrypt_field,
+    run_lightweight_migrations
 )
 from backend.config import NODE_TYPES
 from backend.env_config import config
@@ -28,6 +29,8 @@ ACCESS_TOKEN_EXPIRE_MINUTES = config.JWT_EXPIRES_HOURS * 60
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
+# Add columns introduced after the initial release to existing databases.
+run_lightweight_migrations()
 
 # Auto-create test user if enabled
 def create_test_user_if_needed():
@@ -90,6 +93,7 @@ class NodeCreate(BaseModel):
     description: Optional[str] = ""
     x: Optional[float] = 0
     y: Optional[float] = 0
+    parent_id: Optional[int] = None
 
     @field_validator('title')
     @classmethod
@@ -275,6 +279,13 @@ async def create_node(
     if node_data.node_type not in NODE_TYPES:
         raise HTTPException(status_code=400, detail="Invalid node type")
 
+    if node_data.parent_id is not None:
+        parent = db.query(Node).filter(
+            Node.id == node_data.parent_id, Node.user_id == current_user.id
+        ).first()
+        if not parent:
+            raise HTTPException(status_code=404, detail="Parent node not found")
+
     node = Node(
         user_id=current_user.id,
         node_type=node_data.node_type,
@@ -283,7 +294,8 @@ async def create_node(
         x=node_data.x,
         y=node_data.y,
         color=NODE_TYPES[node_data.node_type]["color"],
-        icon=NODE_TYPES[node_data.node_type]["icon"]
+        icon=NODE_TYPES[node_data.node_type]["icon"],
+        parent_id=node_data.parent_id
     )
     db.add(node)
     db.commit()
