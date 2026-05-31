@@ -58,7 +58,7 @@ def create_test_user_if_needed():
 
 create_test_user_if_needed()
 
-app = FastAPI(title="TrauMapp'd", version="2.0.0")
+app = FastAPI(title="Wymber", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,
