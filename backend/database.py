@@ -12,6 +12,10 @@ from datetime import datetime
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 Base = declarative_base()
 
+# Key-derivation cost. New accounts use the OWASP-recommended PBKDF2-SHA256 count;
+# existing accounts keep their stored (per-user) value so their data still decrypts.
+DEFAULT_KDF_ITERATIONS = 600000
+
 # Ensure the relative data dir exists (it's gitignored, so absent on fresh checkouts/CI).
 os.makedirs("data", exist_ok=True)
 DATABASE_URL = "sqlite:///./data/traumappd.db"
@@ -27,6 +31,7 @@ class User(Base):
     encryption_salt = Column(LargeBinary, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     settings = Column(String, default='{}')
+    kdf_iterations = Column(Integer, nullable=False, default=DEFAULT_KDF_ITERATIONS)
 
     nodes = relationship("Node", back_populates="user", cascade="all, delete-orphan")
     edges = relationship("Edge", back_populates="user", cascade="all, delete-orphan")
@@ -39,7 +44,7 @@ class User(Base):
             algorithm=hashes.SHA256(),
             length=32,
             salt=self.encryption_salt,
-            iterations=100000,
+            iterations=self.kdf_iterations or 100000,
         )
         return base64.urlsafe_b64encode(kdf.derive(password.encode()))
 
@@ -124,9 +129,18 @@ def run_lightweight_migrations():
     ALTER existing tables. This adds new nullable columns idempotently so existing
     databases pick up schema additions without data loss.
     """
-    inspector = inspect(engine)
-    if "nodes" in inspector.get_table_names():
-        columns = {c["name"] for c in inspector.get_columns("nodes")}
-        if "parent_id" not in columns:
-            with engine.begin() as conn:
-                conn.execute(text("ALTER TABLE nodes ADD COLUMN parent_id INTEGER"))
+    def add_column_if_missing(table, column, ddl):
+        insp = inspect(engine)
+        if table not in insp.get_table_names():
+            return
+        if column in {c["name"] for c in insp.get_columns(table)}:
+            return
+        with engine.begin() as conn:
+            conn.execute(text(ddl))
+
+    add_column_if_missing("nodes", "parent_id", "ALTER TABLE nodes ADD COLUMN parent_id INTEGER")
+    # Existing accounts used PBKDF2 @ 100k; preserve that so their encrypted data still decrypts.
+    add_column_if_missing(
+        "users", "kdf_iterations",
+        "ALTER TABLE users ADD COLUMN kdf_iterations INTEGER NOT NULL DEFAULT 100000"
+    )
