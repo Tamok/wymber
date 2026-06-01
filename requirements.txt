@@ -3,15 +3,15 @@
 #   pip install -r requirements.lock
 # Regenerate the lock after editing this file:
 #   pip install -r requirements.txt && pip freeze > requirements.lock
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-sqlalchemy==2.0.23
-python-jose[cryptography]==3.3.0
+fastapi==0.136.3
+uvicorn[standard]==0.48.0
+sqlalchemy==2.0.50
+python-jose[cryptography]==3.5.0
 passlib[argon2]==1.7.4
-python-multipart==0.0.6
-pydantic==2.4.2
-cryptography==41.0.5
-python-dotenv==1.0.0
-pytest==7.4.3
-pytest-asyncio==0.23.2
-httpx==0.25.2
+python-multipart==0.0.30
+pydantic==2.13.4
+cryptography==48.0.0
+python-dotenv==1.2.2
+pytest==9.0.3
+pytest-asyncio==1.4.0
+httpx==0.28.1
