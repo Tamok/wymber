@@ -4,9 +4,9 @@
     --bg-primary: #fafafa;
     --bg-secondary: #ffffff;
     --text-primary: #424242;
-    --text-secondary: #757575;
+    --text-secondary: #616161;
     --border: #e0e0e0;
-    --focus: #2196F3;
+    --focus: #1976D2;
     --focus-ring: 0 0 0 3px rgba(33, 150, 243, 0.3);
     
     /* Node type colors (slightly muted for comfort) */
@@ -44,9 +44,9 @@
     --bg-primary: #f5f2ed;
     --bg-secondary: #fffdf8;
     --text-primary: #5a524a;
-    --text-secondary: #8a7e72;
+    --text-secondary: #6b6054;
     --border: #d4cfc7;
-    --focus: #7a9a9f;
+    --focus: #3f6b73;
 }
 
 /* Reset and base styles */
@@ -66,6 +66,17 @@
 *:focus:not(:focus-visible) {
     outline: none;
     box-shadow: none;
+}
+
+/* Respect reduced-motion preferences (trauma-informed: no jarring motion) */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
 }
 
 /* Screen reader only content */
@@ -141,7 +152,7 @@ h3 { font-size: 1.25rem; }
 }
 
 .btn-primary:hover:not(:disabled) {
-    background: #1976D2;
+    background: #1565C0;
 }
 
 .btn-secondary {
@@ -374,7 +385,7 @@ textarea {
 
 .save-indicator {
     padding: var(--spacing-xs) var(--spacing-sm);
-    background: #4CAF50;
+    background: #2E7D32;
     color: white;
     border-radius: 4px;
     font-size: 0.85rem;
@@ -382,10 +393,11 @@ textarea {
 
 .save-indicator.saving {
     background: #FFC107;
+    color: #212121;
 }
 
 .save-indicator.error {
-    background: #F44336;
+    background: #c62828;
 }
 
 /* Main app content */
