@@ -1,0 +1,23 @@
+# Ruff config for Wymber's Python backend. No build step elsewhere; this is lint-only.
+target-version = "py311"
+line-length = 120
+
+[lint]
+# Pragmatic ruleset: pyflakes/pycodestyle errors, import sorting, bugbear,
+# pyupgrade, comprehension and simplification hints.
+select = ["E", "F", "I", "W", "B", "UP", "C4", "SIM"]
+
+[lint.flake8-bugbear]
+# FastAPI's dependency-injection markers are *meant* to be called in argument
+# defaults, so B008 (function-call-in-default-argument) is a false positive here.
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Path",
+    "fastapi.Body",
+    "fastapi.Form",
+    "fastapi.Header",
+    "fastapi.Cookie",
+    "fastapi.File",
+    "fastapi.Security",
+]

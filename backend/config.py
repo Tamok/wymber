@@ -64,5 +64,8 @@ MESSAGES = {
     "session_expired": "Your session has expired for security. Please log in again.",
     "save_success": "Your map has been safely saved.",
     "delete_confirm": "This will remove this node and its connections. You can always recreate it later if needed.",
-    "crisis_disclaimer": "If you're in crisis, please reach out for immediate help: Call 988 (Suicide & Crisis Lifeline) or 911."
+    "crisis_disclaimer": (
+        "If you're in crisis, please reach out for immediate help: "
+        "Call 988 (Suicide & Crisis Lifeline) or 911."
+    )
 }

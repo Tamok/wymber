@@ -1,7 +1,7 @@
 """Tests for production-safety validation in env_config."""
 import pytest
 
-from backend.env_config import Config, DEFAULT_JWT_SECRET
+from backend.env_config import DEFAULT_JWT_SECRET, Config
 
 
 def _config(**overrides):
