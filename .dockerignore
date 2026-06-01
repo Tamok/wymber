@@ -1,0 +1,37 @@
+# Keep build context small and never bake local state/secrets into the image.
+.git
+.github
+.gitignore
+
+# Local secrets & data (must NEVER end up in an image)
+.env
+.env.*
+.secrets/
+data/
+*.db
+
+# Python
+.venv/
+venv/
+ENV/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Node / frontend tooling
+node_modules/
+playwright-report/
+test-results/
+.playwright-mcp/
+
+# Tests & dev-only material (not needed at runtime)
+tests/
+e2e/
+playwright.config.js
+vitest.config.js
+
+# Docs & editor
+docs/
+*.md
+.vscode/
+.idea/
