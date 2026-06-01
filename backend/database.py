@@ -6,11 +6,14 @@ from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 import base64
+import os
 from datetime import datetime
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 Base = declarative_base()
 
+# Ensure the relative data dir exists (it's gitignored, so absent on fresh checkouts/CI).
+os.makedirs("data", exist_ok=True)
 DATABASE_URL = "sqlite:///./data/traumappd.db"
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

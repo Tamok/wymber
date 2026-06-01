@@ -1,3 +1,4 @@
+import os
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -6,6 +7,7 @@ from sqlalchemy.orm import sessionmaker
 from backend.database import Base
 from backend.main import app, get_db, session_keys
 
+os.makedirs("data", exist_ok=True)
 TEST_DB_URL = "sqlite:///./data/test_traumappd.db"
 
 engine = create_engine(TEST_DB_URL, connect_args={"check_same_thread": False})
