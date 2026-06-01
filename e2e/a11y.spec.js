@@ -52,4 +52,36 @@ test.describe('Accessibility (axe-core)', () => {
             .analyze();
         expect(reportSerious(results)).toEqual([]);
     });
+
+    test('soft-start screen has no serious a11y violations', async ({ page }) => {
+        await page.goto('/');
+        await page.fill('#username', 'TestUser');
+        await page.fill('#password', 'SecureTest2025!');
+        await page.click('button[type="submit"]');
+        await expect(page.locator('#soft-start')).toBeVisible({ timeout: 10000 });
+        const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
+        expect(reportSerious(results)).toEqual([]);
+    });
+
+    test('settings modal has no serious a11y violations', async ({ page }) => {
+        await login(page);
+        await page.click('#settings-btn');
+        await expect(page.locator('#settings-modal')).toBeVisible();
+        const results = await new AxeBuilder({ page })
+            .withTags(['wcag2a', 'wcag2aa'])
+            .exclude('#mindmap')
+            .analyze();
+        expect(reportSerious(results)).toEqual([]);
+    });
+
+    test('export modal has no serious a11y violations', async ({ page }) => {
+        await login(page);
+        await page.click('#export-btn');
+        await expect(page.locator('#export-modal')).toBeVisible();
+        const results = await new AxeBuilder({ page })
+            .withTags(['wcag2a', 'wcag2aa'])
+            .exclude('#mindmap')
+            .analyze();
+        expect(reportSerious(results)).toEqual([]);
+    });
 });
