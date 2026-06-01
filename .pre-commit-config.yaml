@@ -1,0 +1,8 @@
+# Pre-commit hooks. Install once with: pip install pre-commit && pre-commit install
+# Mirrors the CI "Lint (Ruff)" job so issues are caught before they reach CI.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.15
+    hooks:
+      - id: ruff
+        args: [--fix]

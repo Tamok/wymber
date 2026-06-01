@@ -1,6 +1,6 @@
 import os
 
-from backend.database import User, DEFAULT_KDF_ITERATIONS, encrypt_field, decrypt_field
+from backend.database import DEFAULT_KDF_ITERATIONS, User, decrypt_field, encrypt_field
 
 
 def _user(iterations):

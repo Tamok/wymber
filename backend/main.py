@@ -1,22 +1,28 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+import json
+import os
+from datetime import datetime, timedelta
+
+from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
-from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from pydantic import BaseModel, field_validator
-import os
-from typing import Optional
-import json
+from sqlalchemy.orm import Session
 
-from backend.database import (
-    SessionLocal, engine, Base,
-    User, Node, Edge, pwd_context, encrypt_field, decrypt_field,
-    run_lightweight_migrations
-)
 from backend.config import NODE_TYPES
+from backend.database import (
+    Base,
+    Edge,
+    Node,
+    SessionLocal,
+    User,
+    encrypt_field,
+    engine,
+    pwd_context,
+    run_lightweight_migrations,
+)
 from backend.env_config import config
 
 # Fail fast on insecure production config (e.g. default/empty JWT secret); warns in dev.
@@ -97,10 +103,10 @@ class UserCreate(BaseModel):
 class NodeCreate(BaseModel):
     node_type: str
     title: str
-    description: Optional[str] = ""
-    x: Optional[float] = 0
-    y: Optional[float] = 0
-    parent_id: Optional[int] = None
+    description: str | None = ""
+    x: float | None = 0
+    y: float | None = 0
+    parent_id: int | None = None
 
     @field_validator('title')
     @classmethod
@@ -119,11 +125,11 @@ class NodeCreate(BaseModel):
         return v
 
 class NodeUpdate(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    x: Optional[float] = None
-    y: Optional[float] = None
-    parent_id: Optional[int] = None
+    title: str | None = None
+    description: str | None = None
+    x: float | None = None
+    y: float | None = None
+    parent_id: int | None = None
 
     @field_validator('title')
     @classmethod
@@ -146,7 +152,7 @@ class NodeUpdate(BaseModel):
 class EdgeCreate(BaseModel):
     from_node_id: int
     to_node_id: int
-    label: Optional[str] = ""
+    label: str | None = ""
 
 class Token(BaseModel):
     access_token: str
@@ -171,12 +177,12 @@ def store_session_key(username: str, user: User, password: str):
     key = user.derive_key(password)
     session_keys[username] = key
 
-def get_session_key(username: str) -> Optional[bytes]:
+def get_session_key(username: str) -> bytes | None:
     return session_keys.get(username)
 
 # ===== Auth helpers =====
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=15))
     to_encode.update({"exp": expire})
@@ -194,7 +200,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         if username is None:
             raise credentials_exception
     except JWTError:
-        raise credentials_exception
+        raise credentials_exception from None
 
     user = db.query(User).filter(User.username == username).first()
     if user is None:
@@ -230,7 +236,7 @@ def set_node_parent(db: Session, node: Node, parent_id: int, user_id: int):
 
 @app.get("/")
 async def root():
-    with open("frontend/index.html", "r", encoding="utf-8") as f:
+    with open("frontend/index.html", encoding="utf-8") as f:
         return HTMLResponse(content=f.read())
 
 @app.post("/api/setup")
