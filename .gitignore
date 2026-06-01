@@ -32,6 +32,7 @@ Thumbs.db
 .env
 *.key
 *.pem
+.secrets/
 
 # Testing
 test_credentials.py
