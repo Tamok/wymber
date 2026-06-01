@@ -239,6 +239,11 @@ async def root():
     with open("frontend/index.html", encoding="utf-8") as f:
         return HTMLResponse(content=f.read())
 
+@app.get("/api/health")
+async def health():
+    """Unauthenticated liveness probe for container/uptime checks (no DB or session needed)."""
+    return {"status": "ok", "version": app.version}
+
 @app.post("/api/setup")
 async def setup_user(user_data: UserCreate, db: Session = Depends(get_db)):
     existing = db.query(User).first()

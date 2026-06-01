@@ -25,7 +25,7 @@ class Config:
     TEST_PASSWORD: str = os.getenv('TEST_PASSWORD', 'SecureTest2025!')
 
     # Database
-    DATABASE_PATH: str = os.getenv('DATABASE_PATH', '/app/data/traumappd.db')
+    DATABASE_PATH: str = os.getenv('DATABASE_PATH', './data/traumappd.db')
 
     # Security
     JWT_SECRET_KEY: str = os.getenv('JWT_SECRET_KEY', DEFAULT_JWT_SECRET)

@@ -16,9 +16,11 @@ Base = declarative_base()
 # existing accounts keep their stored (per-user) value so their data still decrypts.
 DEFAULT_KDF_ITERATIONS = 600000
 
-# Ensure the relative data dir exists (it's gitignored, so absent on fresh checkouts/CI).
-os.makedirs("data", exist_ok=True)
-DATABASE_URL = "sqlite:///./data/traumappd.db"
+# DB location is configurable so a container host can point it at a mounted volume.
+# Defaults to the gitignored ./data dir (relative to CWD) for local dev and tests.
+DB_PATH = os.getenv("DATABASE_PATH", "./data/traumappd.db")
+os.makedirs(os.path.dirname(DB_PATH) or ".", exist_ok=True)
+DATABASE_URL = f"sqlite:///{DB_PATH}"
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
