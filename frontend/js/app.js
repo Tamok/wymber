@@ -9,7 +9,7 @@ import { exportAsJSON, exportAsText, importMap } from './export.js';
 // same get/post/put/delete surface the rest of the app already uses.
 const api = new LocalRepo();
 
-class TrauMappdApp {
+class WymberApp {
     constructor() {
         this.currentUser = null;
         this.mindMap = null;
@@ -745,6 +745,6 @@ class TrauMappdApp {
 
 // Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    const app = new TrauMappdApp();
+    const app = new WymberApp();
     app.init();
 });

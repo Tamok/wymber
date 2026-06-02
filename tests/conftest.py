@@ -9,7 +9,7 @@ from backend.database import Base
 from backend.main import app, get_db, session_keys
 
 os.makedirs("data", exist_ok=True)
-TEST_DB_URL = "sqlite:///./data/test_traumappd.db"
+TEST_DB_URL = "sqlite:///./data/test_wymber.db"
 
 engine = create_engine(TEST_DB_URL, connect_args={"check_same_thread": False})
 TestSession = sessionmaker(autocommit=False, autoflush=False, bind=engine)
