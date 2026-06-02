@@ -1,4 +1,4 @@
-# TrauMapp'd — Android App Concept
+# Wymber — Android App Concept
 
 > **Honest framing:** these are **concepts and wireframes**, not production renders. High-fidelity mockups come after the mobile-stack ADR (issue #11) and the trauma-informed UX work (epic #32). Use these to align on direction and for early marketing visuals (clearly labeled "concept").
 
@@ -35,7 +35,7 @@ Theme (light/dark/soft), text size, **Sync** (paid, off by default, explained pl
 ```
   Map (home)                      Add node (bottom sheet)
  ┌───────────────────┐           ┌───────────────────┐
- │  TrauMapp'd    ⚙   │           │  ░░░░ (dimmed) ░░░ │
+ │  Wymber    ⚙   │           │  ░░░░ (dimmed) ░░░ │
  │                   │           │┌─────────────────┐│
  │      (emotion)    │           ││ Add to your map ✕││
  │        \          │           ││ Type:           ││

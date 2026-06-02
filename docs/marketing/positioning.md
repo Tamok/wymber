@@ -1,6 +1,6 @@
-# TrauMapp'd — Positioning & Messaging
+# Wymber — Positioning & Messaging
 
-> **Working name.** "TrauMapp'd" is provisional pending brand/name research (existence, trademark, app-store/domain collisions, and audience resonance). See the open research; alternatives and a recommendation will land here.
+> **Name.** "Wymber" is the chosen name (renamed from the prototype "TrauMapp'd"), provisional pending a final trademark check — see issue #77.
 
 > **Marketing guardrails (non-negotiable).** This is a **self-help / wellness** tool, **not therapy or a medical device**. No claims of treating, diagnosing, or curing trauma/PTSD. No outcome promises. Language stays gentle, validating, and non-triggering. Privacy claims must be literally true (they are: local-first; sync is end-to-end encrypted / zero-knowledge).
 
@@ -13,13 +13,13 @@
 ## Elevator pitches
 
 **15 seconds.**
-TrauMapp'd is a privacy-first app for mapping trauma experiences as a visual mind map. Everything stays on your device, encrypted; you own your story. It's the calm, safe middle ground between a journal and a whiteboard — built with trauma-informed design.
+Wymber is a privacy-first app for mapping trauma experiences as a visual mind map. Everything stays on your device, encrypted; you own your story. It's the calm, safe middle ground between a journal and a whiteboard — built with trauma-informed design.
 
 **30 seconds.**
-Survivors are often told to "connect the dots" — between triggers, emotions, people, and coping — but there's no safe, private tool to actually *see* those connections. TrauMapp'd lets you map your experiences as an interactive mind map: events, emotions, triggers, coping, growth, and how they relate. It's local-first and end-to-end encrypted, so your most sensitive reflections never leave your control. Free on your own device; pay only if you want encrypted sync across your phone, desktop, and the web.
+Survivors are often told to "connect the dots" — between triggers, emotions, people, and coping — but there's no safe, private tool to actually *see* those connections. Wymber lets you map your experiences as an interactive mind map: events, emotions, triggers, coping, growth, and how they relate. It's local-first and end-to-end encrypted, so your most sensitive reflections never leave your control. Free on your own device; pay only if you want encrypted sync across your phone, desktop, and the web.
 
 **60 seconds.**
-Healing from trauma is rarely linear, and the tools people reach for don't fit. Journals are a wall of text. Generic mind-mappers aren't safe or gentle. Mental-health apps often harvest the most intimate data imaginable. TrauMapp'd is different: a trauma-informed, privacy-first tool for *mapping* your experience — laying out events, emotions, people, places, triggers, coping strategies, insights, and growth as a living map you can rearrange and connect. It's designed to feel calm and predictable: soft colors, gentle language, no jarring motion, crisis resources always within reach. Your data is local-first and encrypted with a key only you hold; even our optional paid cloud sync is zero-knowledge, so we literally cannot read your map. Later, an optional **on-device** AI can gently help you notice patterns — never sending a word of your story to anyone. It's the tool we wished existed: yours, private, and quietly empowering.
+Healing from trauma is rarely linear, and the tools people reach for don't fit. Journals are a wall of text. Generic mind-mappers aren't safe or gentle. Mental-health apps often harvest the most intimate data imaginable. Wymber is different: a trauma-informed, privacy-first tool for *mapping* your experience — laying out events, emotions, people, places, triggers, coping strategies, insights, and growth as a living map you can rearrange and connect. It's designed to feel calm and predictable: soft colors, gentle language, no jarring motion, crisis resources always within reach. Your data is local-first and encrypted with a key only you hold; even our optional paid cloud sync is zero-knowledge, so we literally cannot read your map. Later, an optional **on-device** AI can gently help you notice patterns — never sending a word of your story to anyone. It's the tool we wished existed: yours, private, and quietly empowering.
 
 ---
 

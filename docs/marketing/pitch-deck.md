@@ -1,4 +1,4 @@
-# TrauMapp'd — Pitch Deck (content)
+# Wymber — Pitch Deck (content)
 
 Slide-by-slide copy + speaker notes. Render this in Slides/Pitch/Marp later; this file is the source of truth for the narrative. Keep visuals soft (pastel palette, generous whitespace, no harsh imagery).
 
@@ -7,7 +7,7 @@ Slide-by-slide copy + speaker notes. Render this in Slides/Pitch/Marp later; thi
 ---
 
 ### 1 — Title
-**TrauMapp'd**
+**Wymber**
 *See your healing take shape.*
 > Soft hero visual (the map screenshot, dimmed). Tagline only. Calm.
 
