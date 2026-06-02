@@ -6,7 +6,7 @@ import { validateNodeData, passwordStrength } from './utils.js';
 import { analyzeMap, renderAnalysis } from './analyze.js';
 import { exportAsJSON, exportAsText, importMap } from './export.js';
 
-class TrauMappdApp {
+class WymberApp {
     constructor() {
         this.currentUser = null;
         this.authManager = new AuthManager();
@@ -666,6 +666,6 @@ class TrauMappdApp {
 
 // Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    const app = new TrauMappdApp();
+    const app = new WymberApp();
     app.init();
 });

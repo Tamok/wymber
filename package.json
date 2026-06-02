@@ -1,5 +1,5 @@
 {
-  "name": "traumappd",
+  "name": "wymber",
   "private": true,
   "scripts": {
     "test": "vitest run",

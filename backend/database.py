@@ -18,7 +18,7 @@ DEFAULT_KDF_ITERATIONS = 600000
 
 # Ensure the relative data dir exists (it's gitignored, so absent on fresh checkouts/CI).
 os.makedirs("data", exist_ok=True)
-DATABASE_URL = "sqlite:///./data/traumappd.db"
+DATABASE_URL = "sqlite:///./data/wymber.db"
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

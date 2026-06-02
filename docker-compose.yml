@@ -1,9 +1,9 @@
 version: '3.8'
 
 services:
-  traumappd:
+  wymber:
     build: .
-    container_name: traumappd
+    container_name: wymber
     ports:
       - "127.0.0.1:8080:8000"
     volumes:
