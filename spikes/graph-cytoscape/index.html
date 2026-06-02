@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wymber spike — graph + discovery (Cytoscape)</title>
+<style>
+  :root {
+    --bg: #faf7f2;          /* warm, calm */
+    --panel: #fffdf9;
+    --ink: #4a4540;
+    --ink-soft: #8a8178;
+    --line: #e7e0d6;
+    --accent: #9b8bbd;      /* soft muted purple = "suggested / discovery" */
+    --accent-ink: #6f5f96;
+    --radius: 16px;
+    --shadow: 0 2px 14px rgba(80, 70, 60, 0.08);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Segoe UI Rounded', 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    line-height: 1.5;
+  }
+  header { padding: 20px 28px 8px; }
+  header h1 { font-size: 1.35rem; margin: 0 0 4px; font-weight: 700; }
+  header p { margin: 0; color: var(--ink-soft); font-size: 0.92rem; max-width: 70ch; }
+  .questions { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0 4px; }
+  .questions span {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+    padding: 4px 12px; font-size: 0.8rem; color: var(--accent-ink); box-shadow: var(--shadow);
+  }
+  .legend { display: flex; gap: 18px; align-items: center; padding: 10px 28px; font-size: 0.85rem; color: var(--ink-soft); }
+  .legend i { display: inline-block; width: 26px; vertical-align: middle; margin-right: 6px; }
+  .swatch-real { border-top: 3px solid #c9c1b6; }
+  .swatch-suggested { border-top: 3px dashed var(--accent); }
+
+  main { display: grid; grid-template-columns: 1fr 360px; gap: 18px; padding: 8px 28px 28px; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+
+  #cy {
+    height: 560px; background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+  }
+
+  aside {
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 16px; overflow-y: auto; max-height: 560px;
+  }
+  aside h2 { font-size: 1rem; margin: 0 0 4px; }
+  aside .sub { color: var(--ink-soft); font-size: 0.82rem; margin: 0 0 14px; }
+  .node-card {
+    border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 10px;
+  }
+  .node-card h3 { font-size: 0.92rem; margin: 0 0 2px; display: flex; align-items: center; gap: 8px; }
+  .chip { width: 12px; height: 12px; border-radius: 4px; display: inline-block; flex: none; }
+  .node-card .type { color: var(--ink-soft); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  .links { margin: 6px 0 0; font-size: 0.84rem; }
+  .links .real-link { color: var(--ink); }
+  .links .none { color: var(--ink-soft); font-style: italic; }
+  .suggest-row { margin-top: 8px; }
+  button.connect {
+    font: inherit; font-size: 0.83rem; cursor: pointer;
+    background: #f3effa; color: var(--accent-ink); border: 1px dashed var(--accent);
+    border-radius: 999px; padding: 5px 12px; transition: background 0.2s ease, transform 0.1s ease;
+  }
+  button.connect:hover { background: #ebe4f7; }
+  button.connect:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  button.connect:active { transform: scale(0.97); }
+  .hint { font-size: 0.78rem; color: var(--ink-soft); margin-top: 14px; }
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Wymber — graph + discovery spike</h1>
+    <p>A throwaway test of three things only: can a rented graph engine (Cytoscape.js) feel
+       <em>gentle</em>, can it show a <em>suggested</em> link distinctly from a real one, and can the
+       whole thing have a <em>keyboard- and screen-reader-accessible</em> twin? The dashed links are
+       what the hidden taxonomy <em>thinks</em> might be connected — you decide.</p>
+    <div class="questions">
+      <span>1 · gentle feel</span>
+      <span>2 · suggested vs real</span>
+      <span>3 · accessible twin</span>
+    </div>
+  </header>
+
+  <div class="legend">
+    <span><i class="swatch-real"></i>Real connection (you made it)</span>
+    <span><i class="swatch-suggested"></i>Suggested — tap it (or use the panel) to confirm</span>
+  </div>
+
+  <main>
+    <div id="cy" role="img" aria-label="Visual graph of the map. An equivalent accessible outline is in the Outline panel."></div>
+    <aside aria-label="Outline">
+      <h2>Outline <span class="type">(the accessible twin)</span></h2>
+      <p class="sub">Every node and link, as text. Suggested links are buttons — reachable by Tab,
+         confirmed with Enter. This is the screen-reader path; the canvas is not.</p>
+      <div id="outline"></div>
+      <p class="hint">Calm by default: layout is computed once, no bouncing physics, soft blocks
+         instead of a clinical web.</p>
+    </aside>
+  </main>
+
+  <div id="live" class="sr-only" aria-live="polite"></div>
+
+  <script src="./vendor/cytoscape.min.js"></script>
+  <script>
+  /* ---- type palette: mirrors frontend/js/config.js (NODE_TYPES) ---- */
+  const TYPES = {
+    event:   { color: '#C8E6C9', label: 'Event' },
+    emotion: { color: '#BBDEFB', label: 'Emotion' },
+    person:  { color: '#F8BBD9', label: 'Person' },
+    place:   { color: '#D7CCC8', label: 'Place' },
+    trigger: { color: '#FFE0B2', label: 'Trigger' },
+    coping:  { color: '#A5D6A7', label: 'Coping' },
+    insight: { color: '#E1BEE7', label: 'Insight' },
+    growth:  { color: '#C8F7C5', label: 'Growth' },
+  };
+
+  /* ---- a small, gentle sample map ---- */
+  const NODES = [
+    { id: 'n1', title: 'Moving away from home', type: 'event' },
+    { id: 'n2', title: 'Loneliness',            type: 'emotion' },
+    { id: 'n3', title: 'Anxiety',               type: 'emotion' },
+    { id: 'n4', title: 'Sunday evenings',       type: 'trigger' },
+    { id: 'n5', title: 'Calling a friend',      type: 'coping' },
+    { id: 'n6', title: 'Sundays remind me of leaving', type: 'insight' },
+    { id: 'n7', title: 'Reaching out sooner',   type: 'growth' },
+  ];
+
+  /* edges: suggested:true = the taxonomy's guess, not yet confirmed */
+  const EDGES = [
+    { id: 'e1', source: 'n1', target: 'n2', suggested: false }, // moving -> loneliness
+    { id: 'e2', source: 'n4', target: 'n3', suggested: false }, // sunday evenings -> anxiety
+    { id: 'e3', source: 'n5', target: 'n3', suggested: false }, // calling a friend -> anxiety
+    { id: 'e4', source: 'n6', target: 'n4', suggested: false }, // insight about the trigger
+    // --- discovery: latent links the user may not have seen yet ---
+    { id: 's1', source: 'n4', target: 'n1', suggested: true, why: 'Triggers often point back to the event behind them' },
+    { id: 's2', source: 'n6', target: 'n7', suggested: true, why: 'Insight tends to lead to growth' },
+    { id: 's3', source: 'n5', target: 'n7', suggested: true, why: 'A coping skill can become a lasting change' },
+  ];
+
+  const titleOf = (id) => NODES.find((n) => n.id === id).title;
+  const announce = (msg) => { document.getElementById('live').textContent = msg; };
+
+  /* ---- Cytoscape: skin it into soft "building blocks" ---- */
+  const cy = cytoscape({
+    container: document.getElementById('cy'),
+    elements: [
+      ...NODES.map((n) => ({ data: { id: n.id, label: n.title, color: TYPES[n.type].color } })),
+      ...EDGES.map((e) => ({ data: { id: e.id, source: e.source, target: e.target }, classes: e.suggested ? 'suggested' : 'real' })),
+    ],
+    style: [
+      { selector: 'node', style: {
+          'shape': 'round-rectangle',
+          'background-color': 'data(color)',
+          'border-width': 2,
+          'border-color': 'rgba(74,69,64,0.14)',
+          'label': 'data(label)',
+          'color': '#4a4540',
+          'font-family': 'Segoe UI Rounded, Nunito, Segoe UI, sans-serif',
+          'font-size': 13,
+          'font-weight': 600,
+          'text-valign': 'center',
+          'text-halign': 'center',
+          'text-wrap': 'wrap',
+          'text-max-width': 110,
+          'width': 'label',
+          'height': 'label',
+          'padding': '16px',
+      }},
+      { selector: 'node:active', style: { 'overlay-color': '#9b8bbd', 'overlay-opacity': 0.12 } },
+      { selector: 'edge', style: {
+          'curve-style': 'bezier',
+          'width': 3,
+          'line-color': '#cfc7ba',
+          'target-arrow-shape': 'none',
+      }},
+      { selector: 'edge.suggested', style: {
+          'width': 2.5,
+          'line-color': '#9b8bbd',
+          'line-style': 'dashed',
+          'line-dash-pattern': [7, 5],
+          'opacity': 0.85,
+      }},
+    ],
+    layout: {
+      name: 'cose', animate: false, padding: 36,
+      idealEdgeLength: 110, nodeRepulsion: 9000, componentSpacing: 90,
+    },
+    minZoom: 0.4, maxZoom: 2.5, wheelSensitivity: 0.2,
+  });
+
+  /* ---- the discovery action: confirm a suggested link (graph OR outline) ---- */
+  function promote(edgeId) {
+    const e = EDGES.find((x) => x.id === edgeId);
+    if (!e || !e.suggested) return;
+    e.suggested = false;
+    cy.getElementById(edgeId).removeClass('suggested').addClass('real');
+    announce(`Connected ${titleOf(e.source)} to ${titleOf(e.target)}.`);
+    renderOutline();
+  }
+
+  cy.on('tap', 'edge.suggested', (evt) => promote(evt.target.id()));
+  cy.on('tap', 'node', (evt) => {
+    cy.elements().removeClass('dim');
+    const hood = evt.target.closedNeighborhood();
+    cy.elements().not(hood).addClass('dim');
+  });
+  cy.on('tap', (evt) => { if (evt.target === cy) cy.elements().removeClass('dim'); });
+  cy.style().selector('.dim').style({ 'opacity': 0.25 }).update();
+
+  /* ---- the accessible twin: same model, as text + buttons ---- */
+  function renderOutline() {
+    const root = document.getElementById('outline');
+    root.innerHTML = '';
+    for (const n of NODES) {
+      const card = document.createElement('div');
+      card.className = 'node-card';
+
+      const h = document.createElement('h3');
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.style.background = TYPES[n.type].color;
+      h.append(chip, document.createTextNode(n.title));
+      const t = document.createElement('div');
+      t.className = 'type';
+      t.textContent = TYPES[n.type].label;
+      card.append(h, t);
+
+      // real connections
+      const real = EDGES.filter((e) => !e.suggested && (e.source === n.id || e.target === n.id));
+      const links = document.createElement('div');
+      links.className = 'links';
+      if (real.length) {
+        links.innerHTML = 'Connected to: ' + real
+          .map((e) => `<span class="real-link">${titleOf(e.source === n.id ? e.target : e.source)}</span>`)
+          .join(', ');
+      } else {
+        links.innerHTML = '<span class="none">No connections yet</span>';
+      }
+      card.append(links);
+
+      // suggested connections -> buttons (keyboard path)
+      const suggs = EDGES.filter((e) => e.suggested && (e.source === n.id || e.target === n.id));
+      for (const s of suggs) {
+        const other = s.source === n.id ? s.target : s.source;
+        const row = document.createElement('div');
+        row.className = 'suggest-row';
+        const btn = document.createElement('button');
+        btn.className = 'connect';
+        btn.textContent = `+ Connect to ${titleOf(other)}`;
+        btn.title = s.why || 'Suggested connection';
+        btn.setAttribute('aria-label', `Suggested: connect ${n.title} to ${titleOf(other)}. ${s.why || ''}`);
+        btn.addEventListener('click', () => promote(s.id));
+        row.append(btn);
+        card.append(row);
+      }
+      root.append(card);
+    }
+  }
+
+  renderOutline();
+  </script>
+</body>
+</html>
