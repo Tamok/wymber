@@ -5,7 +5,7 @@
   --surface: #fffdf9;
   --surface-2: #f4eee4;
   --ink: #44403c;
-  --ink-soft: #78716c;
+  --ink-soft: #5f5852;
   --line: #e7e0d6;
   --accent: #8b7cb8;
   --accent-ink: #6f5f96;
@@ -29,6 +29,9 @@
     --accent-soft: #2e2838;
     --shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
   }
+  /* In dark mode the accent is light, so the primary button uses dark text */
+  .btn-primary { background: var(--accent); color: var(--bg); }
+  .btn-primary:hover { background: var(--accent-ink); }
 }
 
 * { box-sizing: border-box; }
@@ -87,8 +90,8 @@ a:focus-visible, .btn:focus-visible {
 .band { border-top: 1px solid var(--line); }
 .band-tint { background: var(--surface-2); max-width: none; border-top: none; }
 .band-tint > * { max-width: var(--maxw); margin-left: auto; margin-right: auto; }
-h2 { font-size: clamp(1.5rem, 3vw, 2rem); margin: 0 0 8px; }
-.band-lede { color: var(--ink-soft); max-width: 60ch; margin: 0 0 28px; font-size: 1.05rem; }
+h2 { font-size: clamp(1.5rem, 3vw, 2rem); margin: 0 0 8px; text-align: center; }
+.band-lede { color: var(--ink-soft); max-width: 60ch; margin: 0 auto 28px; font-size: 1.05rem; text-align: center; }
 
 /* Hero */
 .hero { padding-top: 40px; text-align: center; }
@@ -113,8 +116,8 @@ h2 { font-size: clamp(1.5rem, 3vw, 2rem); margin: 0 0 8px; }
   border: 1.5px solid transparent; transition: transform 0.12s ease, background var(--ease), border-color var(--ease);
 }
 .btn:active { transform: translateY(1px); }
-.btn-primary { background: var(--accent); color: #fff; }
-.btn-primary:hover { background: var(--accent-ink); }
+.btn-primary { background: var(--accent-ink); color: #fff; }
+.btn-primary:hover { background: #5b4d7e; }
 .btn-ghost { background: transparent; color: var(--ink); border-color: var(--line); }
 .btn-ghost:hover { border-color: var(--accent); color: var(--accent-ink); }
 
@@ -150,7 +153,7 @@ h2 { font-size: clamp(1.5rem, 3vw, 2rem); margin: 0 0 8px; }
 }
 .card h3 { margin: 0 0 8px; font-size: 1.15rem; display: flex; align-items: center; gap: 10px; }
 .card p { margin: 0; color: var(--ink-soft); }
-.card-soon { opacity: 0.92; }
+.card-soon { border-style: dashed; }
 .card-link { display: inline-block; margin-top: 12px; font-weight: 600; text-decoration: none; }
 .card-link:hover { text-decoration: underline; }
 
@@ -165,7 +168,7 @@ h2 { font-size: clamp(1.5rem, 3vw, 2rem); margin: 0 0 8px; }
 }
 
 /* Gentle list */
-.gentle-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; max-width: 64ch; }
+.gentle-list { list-style: none; padding: 0; margin: 0 auto; display: grid; gap: 12px; max-width: 64ch; }
 .gentle-list li { position: relative; padding-left: 30px; color: var(--ink); }
 .gentle-list li::before {
   content: "✓"; position: absolute; left: 0; top: 0;
@@ -175,10 +178,10 @@ kbd {
   background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px;
   padding: 1px 7px; font-family: ui-monospace, monospace; font-size: 0.85em;
 }
-.disclaimer { margin-top: 26px; color: var(--ink-soft); font-size: 0.92rem; font-style: italic; }
+.disclaimer { margin-top: 26px; color: var(--ink-soft); font-size: 0.92rem; font-style: italic; text-align: center; }
 
 /* Chips */
-.chips { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 12px; }
+.chips { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
 .chips li {
   display: inline-flex; align-items: center; gap: 9px;
   background: var(--surface); border: 1px solid var(--line);
