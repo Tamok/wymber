@@ -33,7 +33,7 @@ connects, and how you're growing — at your own pace, on your own device. It's 
 - **Frontend** — vanilla JS + ES modules, no build step.
 - **Crypto** — envelope encryption (a random AES-256-GCM data key, wrapped per unlock method:
   password, recovery code, later passkeys); PBKDF2 today, Argon2id tracked.
-- **Backend (optional / self-host)** — FastAPI + SQLAlchemy + SQLite.
+- **Backend (optional / self-host)** — a tiny FastAPI app that only serves the static files (and is where an optional, future, zero-knowledge sync endpoint would live). No database, no accounts.
 
 ## Run it (development)
 
