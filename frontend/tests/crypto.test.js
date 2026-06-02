@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
 import {
-    createVault, unlockVault, sealDocument, changePassword,
+    createVault, unlockVault, sealDocument, changePassword, resetPassword,
     serializeVault, parseVault, generateRecoveryCode, normalizeRecoveryCode,
 } from '../js/crypto.js';
 
@@ -47,6 +47,14 @@ describe('vault crypto', () => {
         expect(reopened.document.nodes).toHaveLength(1);
         const viaRecovery = await unlockVault(rewrapped, recoveryCode, 'recovery');
         expect(viaRecovery.document.nodes[0].title).toBe('a private memory');
+    });
+
+    it('resets the password via the recovery code (forgot-password flow)', async () => {
+        const { vault, recoveryCode } = await createVault(doc(), 'lost-pw', FAST);
+        const reset = await resetPassword(vault, recoveryCode, 'brand-new-pw');
+        await expect(unlockVault(reset, 'lost-pw')).rejects.toThrow();
+        const reopened = await unlockVault(reset, 'brand-new-pw');
+        expect(reopened.document.nodes[0].title).toBe('a private memory');
     });
 
     it('seals edits without re-deriving the key from the password', async () => {

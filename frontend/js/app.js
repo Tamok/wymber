@@ -1,63 +1,57 @@
 import { NODE_TYPES } from './config.js';
-import { api } from './api.js';
-import { AuthManager } from './auth.js';
+import { LocalRepo } from './local-repo.js';
 import { TrauMindMap } from './mindmap.js';
 import { validateNodeData, passwordStrength } from './utils.js';
 import { analyzeMap, renderAnalysis } from './analyze.js';
 import { exportAsJSON, exportAsText, importMap } from './export.js';
 
+// Local-first: the encrypted vault on this device IS the backend. `api` keeps the
+// same get/post/put/delete surface the rest of the app already uses.
+const api = new LocalRepo();
+
 class TrauMappdApp {
     constructor() {
         this.currentUser = null;
-        this.authManager = new AuthManager();
         this.mindMap = null;
         this.editingNode = null;
-        this.authMode = 'login';
+        this.authPanel = 'create';
+        this.currentRecoveryCode = null;
+        this.autoLockMinutes = 15;
+        this.idleTimer = null;
+        this._resetIdle = null;
+        this._mainListenersSet = false;
     }
 
     async init() {
-        const token = localStorage.getItem('token');
-
-        if (token) {
-            api.setToken(token);
-            try {
-                const response = await api.get('/check');
-                if (response.authenticated) {
-                    this.currentUser = response.username;
-                    await this.showMainApp();
-                } else {
-                    this.showLoginScreen();
-                }
-            } catch {
-                this.showLoginScreen();
-            }
-        } else {
-            this.showLoginScreen();
-        }
-
         this.setupEventListeners();
+        let hasVault = false;
+        try {
+            hasVault = await api.hasVault();
+        } catch {
+            hasVault = false;
+        }
+        this.showAuthPanel(hasVault ? 'unlock' : 'create');
     }
 
-    // ===== AUTH =====
+    // ===== AUTH (local vault) =====
 
     setupEventListeners() {
-        const loginForm = document.getElementById('login-form');
-        if (loginForm) {
-            loginForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                await this.handleLogin();
-            });
-        }
-
-        const passwordInput = document.getElementById('password');
-        if (passwordInput) {
-            passwordInput.addEventListener('input', () => this.updateStrengthMeter());
-        }
+        document.getElementById('create-form')?.addEventListener('submit', (e) => this.handleCreate(e));
+        document.getElementById('unlock-form')?.addEventListener('submit', (e) => this.handleUnlock(e));
+        document.getElementById('recover-form')?.addEventListener('submit', (e) => this.handleRecover(e));
+        document.getElementById('create-password')?.addEventListener('input', () => this.updateStrengthMeter());
+        document.getElementById('show-recover')?.addEventListener('click', () => this.showAuthPanel('recover'));
+        document.getElementById('back-to-unlock')?.addEventListener('click', () => this.showAuthPanel('unlock'));
+        document.getElementById('download-recovery')?.addEventListener('click', () => this.downloadRecovery());
+        document.getElementById('copy-recovery')?.addEventListener('click', () => this.copyRecovery());
+        document.getElementById('ack-saved-recovery')?.addEventListener('change', (e) => {
+            const cont = document.getElementById('recovery-continue');
+            if (cont) cont.disabled = !e.target.checked;
+        });
+        document.getElementById('recovery-continue')?.addEventListener('click', () => this.enterApp());
 
         const logoutBtn = document.getElementById('logout-btn');
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', () => this.handleLogout());
-        }
+        if (logoutBtn) logoutBtn.addEventListener('click', () => this.handleLogout());
 
         // Close modals on outside click
         window.addEventListener('click', (e) => {
@@ -96,13 +90,213 @@ class TrauMappdApp {
             });
         }
 
-        // Safety affordances — available on both the login and main screens.
+        // Safety affordances — available on both the auth and main screens.
         document.getElementById('grounding-btn')?.addEventListener('click', () => this.openGrounding());
         document.getElementById('crisis-btn')?.addEventListener('click', () => this.openSafetyModal('crisis-modal'));
         document.getElementById('close-crisis')?.addEventListener('click', () => this.closeSafetyModal('crisis-modal'));
         document.getElementById('close-crisis-btn')?.addEventListener('click', () => this.closeSafetyModal('crisis-modal'));
         document.getElementById('close-grounding')?.addEventListener('click', () => this.closeGrounding());
         document.getElementById('close-grounding-btn')?.addEventListener('click', () => this.closeGrounding());
+    }
+
+    showAuthPanel(name) {
+        const panels = {
+            create: 'create-form',
+            unlock: 'unlock-form',
+            recover: 'recover-form',
+            'recovery-sheet': 'recovery-sheet',
+        };
+        document.querySelectorAll('.auth-panel').forEach((p) => { p.style.display = 'none'; });
+        const el = document.getElementById(panels[name]);
+        if (el) el.style.display = 'block';
+        this.authPanel = name;
+        this.showError('', false);
+
+        // Clear secret fields whenever we switch panels (privacy hygiene).
+        ['create-password', 'create-confirm', 'unlock-password', 'recover-code', 'recover-password', 'recover-confirm']
+            .forEach((id) => { const f = document.getElementById(id); if (f) f.value = ''; });
+
+        document.getElementById('main-app').style.display = 'none';
+        document.getElementById('login-screen').style.display = 'block';
+
+        if (name === 'create') this.updateStrengthMeter();
+        setTimeout(() => {
+            const focusId = { create: 'create-password', unlock: 'unlock-password', recover: 'recover-code' }[name];
+            document.getElementById(focusId)?.focus();
+        }, 50);
+    }
+
+    async handleCreate(e) {
+        e.preventDefault();
+        const password = document.getElementById('create-password').value;
+        const confirm = document.getElementById('create-confirm').value;
+        this.showError('', false);
+        if (password.length < 8) {
+            this.showError('Please choose a password with at least 8 characters.');
+            return;
+        }
+        if (password !== confirm) {
+            this.showError("The passwords don't match. Please re-enter them.");
+            return;
+        }
+        try {
+            this.currentRecoveryCode = await api.createVault(password);
+            this.showRecoverySheet(this.currentRecoveryCode);
+        } catch (error) {
+            console.error('Create vault failed:', error);
+            this.showError('Could not create your space. Please try again.');
+        }
+    }
+
+    async handleUnlock(e) {
+        e.preventDefault();
+        const password = document.getElementById('unlock-password').value;
+        this.showError('', false);
+        try {
+            await api.unlock(password);
+            this.enterApp();
+        } catch {
+            this.showError('Incorrect password. Please try again, or use your recovery code.');
+        }
+    }
+
+    async handleRecover(e) {
+        e.preventDefault();
+        const code = document.getElementById('recover-code').value.trim();
+        const password = document.getElementById('recover-password').value;
+        const confirm = document.getElementById('recover-confirm').value;
+        this.showError('', false);
+        if (password.length < 8) {
+            this.showError('Please choose a new password with at least 8 characters.');
+            return;
+        }
+        if (password !== confirm) {
+            this.showError("The passwords don't match. Please re-enter them.");
+            return;
+        }
+        try {
+            await api.resetPassword(code, password);
+            await api.unlock(password);
+            this.enterApp();
+            this.showNotification('Welcome back. Your new password is set.', 'success');
+        } catch {
+            this.showError('That recovery code was not recognized. Please check it and try again.');
+        }
+    }
+
+    showRecoverySheet(code) {
+        document.getElementById('recovery-code-display').textContent = code;
+        const ack = document.getElementById('ack-saved-recovery');
+        const cont = document.getElementById('recovery-continue');
+        if (ack) ack.checked = false;
+        if (cont) cont.disabled = true;
+        // Show without clearing fields-of-other-panels logic interfering with the code display.
+        document.querySelectorAll('.auth-panel').forEach((p) => { p.style.display = 'none'; });
+        document.getElementById('recovery-sheet').style.display = 'block';
+        this.authPanel = 'recovery-sheet';
+        this.showError('', false);
+    }
+
+    downloadRecovery() {
+        const code = this.currentRecoveryCode || '';
+        const text = 'Wymber recovery code\n\n'
+            + 'Keep this somewhere safe. It is the only way back into your space if you\n'
+            + 'forget your password. We cannot recover it for you.\n\n'
+            + `${code}\n`;
+        const blob = new Blob([text], { type: 'text/plain' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'wymber-recovery-code.txt';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+    }
+
+    copyRecovery() {
+        const code = this.currentRecoveryCode || '';
+        navigator.clipboard?.writeText(code).then(
+            () => this.showNotification('Recovery code copied', 'success'),
+            () => this.showNotification('Could not copy — please write it down', 'error')
+        );
+    }
+
+    async handleLogout() {
+        this.stopIdleTimer();
+        if (this.mindMap) {
+            this.mindMap.destroy();
+            this.mindMap = null;
+        }
+        api.lock();
+        this.currentUser = null;
+        this.showAuthPanel('unlock');
+    }
+
+    updateStrengthMeter() {
+        const pwInput = document.getElementById('create-password');
+        const fill = document.getElementById('strength-fill');
+        const label = document.getElementById('strength-label');
+        if (!pwInput || !fill || !label) return;
+        const pw = pwInput.value;
+        const { score, label: text } = passwordStrength(pw);
+        fill.style.width = `${(score / 4) * 100}%`;
+        fill.className = `strength-fill strength-${score}`;
+        label.textContent = pw ? text : '';
+    }
+
+    async enterApp() {
+        this.currentUser = 'you';
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('main-app').style.display = 'block';
+
+        if (!this._mainListenersSet) {
+            this.setupMainAppEventListeners();
+            this._mainListenersSet = true;
+        }
+        await this.loadSettings();
+        this.showSoftStart();
+        this.startIdleTimer();
+    }
+
+    // ===== AUTO-LOCK (trauma-informed privacy) =====
+
+    getAutoLockMs() {
+        const mins = this.autoLockMinutes ?? 15;
+        return mins > 0 ? mins * 60 * 1000 : 0; // 0 = never
+    }
+
+    startIdleTimer() {
+        this.stopIdleTimer();
+        const ms = this.getAutoLockMs();
+        if (!ms) return;
+        this._resetIdle = () => {
+            clearTimeout(this.idleTimer);
+            this.idleTimer = setTimeout(() => this.autoLock(), ms);
+        };
+        ['mousemove', 'keydown', 'click', 'touchstart', 'scroll']
+            .forEach((ev) => document.addEventListener(ev, this._resetIdle, { passive: true }));
+        this._resetIdle();
+    }
+
+    stopIdleTimer() {
+        clearTimeout(this.idleTimer);
+        if (this._resetIdle) {
+            ['mousemove', 'keydown', 'click', 'touchstart', 'scroll']
+                .forEach((ev) => document.removeEventListener(ev, this._resetIdle));
+            this._resetIdle = null;
+        }
+    }
+
+    autoLock() {
+        this.stopIdleTimer();
+        if (this.mindMap) {
+            this.mindMap.destroy();
+            this.mindMap = null;
+        }
+        api.lock();
+        this.currentUser = null;
+        this.showAuthPanel('unlock');
+        this.showNotification('Locked for your privacy. Enter your password to continue.', 'info');
     }
 
     // ===== SAFETY AFFORDANCES =====
@@ -191,142 +385,6 @@ class TrauMappdApp {
 
         document.getElementById('open-map-btn')?.addEventListener('click', () => this.openMapFromSoftStart());
         document.getElementById('soft-start-grounding-btn')?.addEventListener('click', () => this.openGrounding());
-    }
-
-    async handleLogin() {
-        const username = document.getElementById('username').value.trim();
-        const password = document.getElementById('password').value;
-
-        if (!username || !password) {
-            this.showError('Please enter both your username and password');
-            return;
-        }
-
-        try {
-            this.showError('', false);
-            api.clearToken();
-
-            if (this.authMode === 'create') {
-                const confirmPw = document.getElementById('confirm-password').value;
-                const acknowledged = document.getElementById('ack-no-recovery').checked;
-                if (password.length < 8) {
-                    this.showError('Please choose a password with at least 8 characters.');
-                    return;
-                }
-                if (password !== confirmPw) {
-                    this.showError("The passwords don't match. Please re-enter them.");
-                    return;
-                }
-                if (!acknowledged) {
-                    this.showError('Please confirm you understand there is no password recovery.');
-                    return;
-                }
-                await this.authManager.setup(username, password);
-            }
-
-            const token = await this.authManager.login(username, password);
-            api.setToken(token);
-            this.currentUser = username;
-            await this.showMainApp();
-        } catch {
-            this.showError(this.authMode === 'create'
-                ? 'Could not create your account. That username may be taken — please try another.'
-                : 'Login failed. Please check your credentials and try again.');
-        }
-    }
-
-    async handleLogout() {
-        try {
-            if (this.currentUser) await this.authManager.logout(api.token);
-        } catch { /* ignore */ }
-
-        if (this.mindMap) {
-            this.mindMap.destroy();
-            this.mindMap = null;
-        }
-
-        api.clearToken();
-        this.currentUser = null;
-        this.showLoginScreen();
-    }
-
-    showLoginScreen() {
-        document.getElementById('main-app').style.display = 'none';
-        document.getElementById('login-screen').style.display = 'block';
-        api.clearToken();
-
-        document.getElementById('username').value = '';
-        document.getElementById('password').value = '';
-        const confirmPw = document.getElementById('confirm-password');
-        if (confirmPw) confirmPw.value = '';
-        const ack = document.getElementById('ack-no-recovery');
-        if (ack) ack.checked = false;
-        this.showError('', false);
-        this.applyAuthMode();
-        this.updateStrengthMeter();
-        document.getElementById('username').focus();
-    }
-
-    async applyAuthMode() {
-        let hasUser = true;
-        try {
-            const res = await fetch('/api/status');
-            if (res.ok) hasUser = (await res.json()).has_user;
-        } catch {
-            hasUser = true;
-        }
-        this.authMode = hasUser ? 'login' : 'create';
-        const createMode = this.authMode === 'create';
-
-        const toggle = (id, show) => {
-            const el = document.getElementById(id);
-            if (el) el.style.display = show ? 'block' : 'none';
-        };
-        toggle('confirm-group', createMode);
-        toggle('password-strength', createMode);
-        toggle('ack-group', createMode);
-
-        const submit = document.getElementById('auth-submit');
-        if (submit) submit.textContent = createMode ? 'Create account' : 'Log in';
-
-        const note = document.getElementById('setup-prompt');
-        if (note) {
-            note.style.display = createMode ? 'block' : 'none';
-            if (createMode) {
-                note.innerHTML = "<p><strong>Welcome.</strong> Create your private account below. " +
-                    "Your password encrypts everything and is the only key — there's no recovery, " +
-                    "so choose something you'll remember.</p>";
-            }
-        }
-        this.updateStrengthMeter();
-    }
-
-    updateStrengthMeter() {
-        const pwInput = document.getElementById('password');
-        const fill = document.getElementById('strength-fill');
-        const label = document.getElementById('strength-label');
-        if (!pwInput || !fill || !label) return;
-        if (this.authMode !== 'create') {
-            fill.style.width = '0';
-            label.textContent = '';
-            return;
-        }
-        const pw = pwInput.value;
-        const { score, label: text } = passwordStrength(pw);
-        fill.style.width = `${(score / 4) * 100}%`;
-        fill.className = `strength-fill strength-${score}`;
-        label.textContent = pw ? text : '';
-    }
-
-    async showMainApp() {
-        document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('main-app').style.display = 'block';
-
-        this.setupMainAppEventListeners();
-        await this.loadSettings();
-
-        // A gentle "soft start" — the map renders only when the user chooses to open it.
-        this.showSoftStart();
     }
 
     showSoftStart() {
@@ -474,6 +532,8 @@ class TrauMappdApp {
         const content = document.getElementById('settings-content');
         const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
         const currentFont = document.documentElement.getAttribute('data-font-size') || 'medium';
+        const al = this.autoLockMinutes ?? 15;
+        const lockOpt = (val, text) => `<option value="${val}" ${al === val ? 'selected' : ''}>${text}</option>`;
 
         content.innerHTML = `
             <div class="settings-panel">
@@ -498,6 +558,20 @@ class TrauMappdApp {
                     </div>
                 </section>
                 <section>
+                    <h3>Privacy</h3>
+                    <div class="form-group">
+                        <label for="autolock-select">Auto-lock after inactivity</label>
+                        <select id="autolock-select">
+                            ${lockOpt(5, '5 minutes')}
+                            ${lockOpt(15, '15 minutes')}
+                            ${lockOpt(30, '30 minutes')}
+                            ${lockOpt(60, '60 minutes')}
+                            ${lockOpt(0, 'Never')}
+                        </select>
+                        <p class="settings-note">Locks your space and asks for your password again after a period of inactivity.</p>
+                    </div>
+                </section>
+                <section>
                     <h3>Safety</h3>
                     <div class="crisis-resources">
                         <h4>Crisis Resources (Always Available)</h4>
@@ -513,7 +587,7 @@ class TrauMappdApp {
                     <h3>Your data</h3>
                     <p class="settings-note">Everything you write is stored <strong>locally on this device</strong>, encrypted with your password. Nothing is sent anywhere.</p>
                     <button id="delete-account-btn" class="btn btn-danger" type="button">Delete everything</button>
-                    <p class="settings-note">Permanently removes your account and all entries from this device. This can't be undone, and there's no backup unless you exported one.</p>
+                    <p class="settings-note">Permanently removes your space and all entries from this device. This can't be undone, and there's no backup unless you exported one.</p>
                 </section>
             </div>
         `;
@@ -524,20 +598,20 @@ class TrauMappdApp {
 
     async deleteAccount() {
         const confirmed = confirm(
-            'Permanently delete your account and ALL your entries from this device?\n\n' +
+            'Permanently delete your space and ALL your entries from this device?\n\n' +
             "This cannot be undone, and there's no backup unless you exported one."
         );
         if (!confirmed) return;
         try {
-            await api.delete('/account');
+            await api.destroyVault();
+            this.stopIdleTimer();
             if (this.mindMap) { this.mindMap.destroy(); this.mindMap = null; }
-            api.clearToken();
             this.currentUser = null;
             document.getElementById('settings-modal').style.display = 'none';
-            this.showLoginScreen();
-            this.showNotification('Your account and data were permanently deleted.', 'success');
+            this.showAuthPanel('create');
+            this.showNotification('Your space and data were permanently deleted.', 'success');
         } catch (error) {
-            console.error('Error deleting account:', error);
+            console.error('Error deleting data:', error);
             this.showNotification('Could not delete your data. Please try again.', 'error');
         }
     }
@@ -545,16 +619,19 @@ class TrauMappdApp {
     async saveSettings() {
         const theme = document.getElementById('theme-select').value;
         const fontSize = document.getElementById('font-size').value;
+        const autoLockMinutes = parseInt(document.getElementById('autolock-select').value, 10);
 
         document.documentElement.setAttribute('data-theme', theme);
         document.documentElement.setAttribute('data-font-size', fontSize);
+        this.autoLockMinutes = autoLockMinutes;
 
         try {
-            await api.put('/settings', { theme, fontSize });
+            await api.put('/settings', { theme, fontSize, autoLockMinutes });
         } catch (error) {
             console.error('Error saving settings:', error);
         }
 
+        this.startIdleTimer(); // apply the new timeout immediately
         document.getElementById('settings-modal').style.display = 'none';
         this.showNotification('Settings saved', 'success');
     }
@@ -569,8 +646,9 @@ class TrauMappdApp {
             if (settings.fontSize) {
                 document.documentElement.setAttribute('data-font-size', settings.fontSize);
             }
+            this.autoLockMinutes = settings.autoLockMinutes ?? 15;
         } catch {
-            // Settings not available, use defaults
+            this.autoLockMinutes = 15;
         }
     }
 

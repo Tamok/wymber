@@ -122,8 +122,10 @@ describe('walkNodes', () => {
 });
 
 describe('convertToMindElixirFormat', () => {
-    it('returns null for an empty map', () => {
-        expect(convertToMindElixirFormat({ nodes: [], edges: [] })).toBeNull();
+    it('returns a stable empty root for an empty map', () => {
+        const me = convertToMindElixirFormat({ nodes: [], edges: [] });
+        expect(me.nodeData.id).toBe('root');
+        expect(me.nodeData.children).toEqual([]);
     });
 
     it('rebuilds a nested tree from parent_id under the stable root', () => {
