@@ -623,6 +623,7 @@ class TrauMappdApp {
 
         document.documentElement.setAttribute('data-theme', theme);
         document.documentElement.setAttribute('data-font-size', fontSize);
+        this.mindMap?.applyTheme(); // keep the map canvas in sync with the app theme
         this.autoLockMinutes = autoLockMinutes;
 
         try {

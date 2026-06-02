@@ -2,7 +2,7 @@ import json
 import os
 from datetime import datetime, timedelta
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -73,6 +73,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def revalidate_app_assets(request: Request, call_next):
+    """There's no build/hashing step, so tell browsers to revalidate the app shell and
+    static assets on each load. Without this a returning user can be stuck on stale cached
+    JS after an update (revalidation is a cheap conditional GET → 304 when unchanged)."""
+    response = await call_next(request)
+    if request.url.path == "/" or request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/login")
 app.mount("/static", StaticFiles(directory="frontend"), name="static")
