@@ -1,18 +1,9 @@
 import { test, expect } from '@playwright/test';
-
-async function login(page) {
-    await page.goto('/');
-    await page.fill('#username', 'TestUser');
-    await page.fill('#password', 'SecureTest2025!');
-    await page.click('button[type="submit"]');
-    await expect(page.locator('#main-app')).toBeVisible({ timeout: 10000 });
-    // Pass the soft-start screen to reach the map.
-    await page.click('#open-map-btn');
-}
+import { createVaultAndOpenMap } from './helpers.js';
 
 test.describe('Analyze Feature', () => {
     test('analyze button opens analysis modal', async ({ page }) => {
-        await login(page);
+        await createVaultAndOpenMap(page);
 
         await page.click('#analyze-btn');
         await expect(page.locator('#analyze-modal')).toBeVisible({ timeout: 5000 });
@@ -20,7 +11,7 @@ test.describe('Analyze Feature', () => {
     });
 
     test('analysis shows node counts', async ({ page }) => {
-        await login(page);
+        await createVaultAndOpenMap(page);
 
         // Add a node first
         await page.click('#add-node-btn');
@@ -39,7 +30,7 @@ test.describe('Analyze Feature', () => {
 
 test.describe('Export Feature', () => {
     test('export button opens export modal', async ({ page }) => {
-        await login(page);
+        await createVaultAndOpenMap(page);
 
         await page.click('#export-btn');
         await expect(page.locator('#export-modal')).toBeVisible({ timeout: 5000 });
@@ -50,7 +41,7 @@ test.describe('Export Feature', () => {
 
 test.describe('Settings Feature', () => {
     test('settings button opens settings modal', async ({ page }) => {
-        await login(page);
+        await createVaultAndOpenMap(page);
 
         await page.click('#settings-btn');
         await expect(page.locator('#settings-modal')).toBeVisible({ timeout: 5000 });
@@ -59,7 +50,7 @@ test.describe('Settings Feature', () => {
     });
 
     test('settings show data-location transparency and a delete option', async ({ page }) => {
-        await login(page);
+        await createVaultAndOpenMap(page);
 
         await page.click('#settings-btn');
         await expect(page.locator('#settings-modal')).toBeVisible({ timeout: 5000 });
@@ -69,7 +60,7 @@ test.describe('Settings Feature', () => {
     });
 
     test('changing theme applies to page', async ({ page }) => {
-        await login(page);
+        await createVaultAndOpenMap(page);
 
         await page.click('#settings-btn');
         await page.selectOption('#theme-select', 'dark');
@@ -80,7 +71,7 @@ test.describe('Settings Feature', () => {
     });
 
     test('settings persist after save', async ({ page }) => {
-        await login(page);
+        await createVaultAndOpenMap(page);
 
         // Set theme to soft
         await page.click('#settings-btn');

@@ -17,13 +17,11 @@ export function extractNodeId(mindElixirId) {
  * @returns {object} MindElixir-compatible data object
  */
 export function convertToMindElixirFormat(mapData) {
-    if (!mapData.nodes || mapData.nodes.length === 0) {
-        return null;
-    }
+    const nodes = (mapData && mapData.nodes) || [];
 
     // Build a MindElixir node for each backend node, keyed by db id.
     const meById = new Map();
-    for (const node of mapData.nodes) {
+    for (const node of nodes) {
         const typeInfo = NODE_TYPES[node.node_type];
         meById.set(node.id, {
             id: `node-${node.id}`,
@@ -39,7 +37,7 @@ export function convertToMindElixirFormat(mapData) {
 
     // Attach each node to its parent; collect those with no resolvable parent.
     const topLevel = [];
-    for (const node of mapData.nodes) {
+    for (const node of nodes) {
         const me = meById.get(node.id);
         const parent = node.parent_id != null ? meById.get(node.parent_id) : null;
         if (parent) {

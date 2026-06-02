@@ -164,6 +164,17 @@ export async function changePassword(vault, oldPassword, newPassword) {
     return { ...vault, keys, updatedAt: new Date().toISOString() };
 }
 
+/**
+ * Forgot-password recovery: prove ownership with the recovery code, then set a new password.
+ * The DEK never leaves this module. Returns the updated vault (unlock with the new password).
+ */
+export async function resetPassword(vault, recoveryCode, newPassword) {
+    const dek = await unwrapDEK(vault.keys.recovery, normalizeRecoveryCode(recoveryCode), vault.kdf.iterations)
+        .catch(() => { throw new Error('Incorrect recovery code.'); });
+    const keys = { ...vault.keys, password: await wrapDEK(dek, newPassword, vault.kdf.iterations) };
+    return { ...vault, keys, updatedAt: new Date().toISOString() };
+}
+
 /** Serialize a vault to a string for export / file storage, and back. */
 export function serializeVault(vault) {
     return JSON.stringify(vault);

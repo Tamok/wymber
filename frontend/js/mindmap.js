@@ -1,6 +1,38 @@
 import { NODE_TYPES } from './config.js';
 import { extractNodeId, convertToMindElixirFormat, countNodes, walkNodes } from './utils.js';
 
+// Canvas palettes per app theme. Node colors come from NODE_TYPES; these cssVars control the
+// MindElixir canvas (bg, root, links) so the map follows light/dark/soft instead of staying light.
+const ME_CSS_VARS = {
+    light: {
+        '--main-color': '#2E3440', '--main-bgcolor': '#FEFEFE',
+        '--color': '#5E81AC', '--bgcolor': '#ECEFF4',
+        '--panel-color': '46, 52, 64', '--panel-bgcolor': '236, 239, 244',
+        '--node-color': '#2E3440', '--node-bgcolor': '#ECEFF4',
+    },
+    dark: {
+        '--main-color': '#E5E9F0', '--main-bgcolor': '#1f2228',
+        '--color': '#A3BE8C', '--bgcolor': '#2b2f38',
+        '--panel-color': '229, 233, 240', '--panel-bgcolor': '43, 47, 56',
+        '--node-color': '#E5E9F0', '--node-bgcolor': '#2b2f38',
+    },
+    soft: {
+        '--main-color': '#5a4f42', '--main-bgcolor': '#f7f2ea',
+        '--color': '#9c8a72', '--bgcolor': '#efe8db',
+        '--panel-color': '90, 79, 66', '--panel-bgcolor': '239, 232, 219',
+        '--node-color': '#5a4f42', '--node-bgcolor': '#efe8db',
+    },
+};
+
+function mindElixirTheme() {
+    const name = document.documentElement.getAttribute('data-theme') || 'light';
+    return {
+        name: `Wymber-${name}`,
+        palette: Object.values(NODE_TYPES).map((t) => t.color),
+        cssVar: ME_CSS_VARS[name] || ME_CSS_VARS.light,
+    };
+}
+
 export class TrauMindMap {
     constructor(container, apiClient) {
         this.container = container;
@@ -44,20 +76,7 @@ export class TrauMindMap {
                     }
                 ]
             },
-            theme: {
-                name: 'TraumaInformed',
-                palette: Object.values(NODE_TYPES).map(t => t.color),
-                cssVar: {
-                    '--main-color': '#2E3440',
-                    '--main-bgcolor': '#FEFEFE',
-                    '--color': '#5E81AC',
-                    '--bgcolor': '#ECEFF4',
-                    '--panel-color': '46, 52, 64',
-                    '--panel-bgcolor': '236, 239, 244',
-                    '--node-color': '#2E3440',
-                    '--node-bgcolor': '#ECEFF4'
-                }
-            },
+            theme: mindElixirTheme(),
             before: {
                 insertSibling: () => this.guardAdd(),
                 addChild: () => this.guardAdd(),
@@ -100,6 +119,11 @@ export class TrauMindMap {
             console.error('Error loading map:', error);
             this.mindElixir.init(window.MindElixir.new('My Healing Journey'));
         }
+    }
+
+    /** Re-apply the canvas theme to match the app's current data-theme (light/dark/soft). */
+    applyTheme() {
+        this.mindElixir?.changeTheme?.(mindElixirTheme());
     }
 
     // ===== SAVE / SYNC =====
@@ -167,21 +191,11 @@ export class TrauMindMap {
         const payload = parentDbId ? { ...nodeData, parent_id: parentDbId } : nodeData;
 
         const response = await this.api.post('/node', payload);
-        const typeInfo = NODE_TYPES[nodeData.node_type];
-
-        const newNode = {
-            id: `node-${response.id}`,
-            topic: nodeData.title,
-            style: {
-                background: typeInfo?.color || '#E8F5E8',
-                color: '#2E3440'
-            }
-        };
-
-        this.mindElixir.addChild(parentNode, newNode);
-        this.updateNodeReferences();
+        // Re-render from the source of truth so the new node appears immediately with the
+        // correct topic and parent. MindElixir's incremental addChild was unreliable here
+        // (especially on an empty map), so we reload the (already-saved) map instead.
+        await this.loadMap();
         this.announceToScreenReader(`Added ${nodeData.title} to your map`);
-        this.scheduleSave();
         return response.id;
     }
 

@@ -61,6 +61,15 @@ export class LocalRepo {
         await this.persistence.saveVault(vaultCrypto.serializeVault(this.vault));
     }
 
+    /** Forgot-password flow: reset the password using the recovery code (stays locked after). */
+    async resetPassword(recoveryCode, newPassword) {
+        const str = await this.persistence.loadVault();
+        if (!str) throw new Error('No vault on this device yet.');
+        const vault = vaultCrypto.parseVault(str);
+        const updated = await vaultCrypto.resetPassword(vault, recoveryCode, newPassword);
+        await this.persistence.saveVault(vaultCrypto.serializeVault(updated));
+    }
+
     async destroyVault() {
         await this.persistence.clearVault();
         this.lock();

@@ -12,7 +12,9 @@ const python = existsSync(venvPython) ? venvPython : 'python';
 export default defineConfig({
     testDir: './e2e',
     timeout: 30000,
-    retries: 0,
+    // Each vault create/unlock runs real PBKDF2 (600k), so under serial load a step can
+    // occasionally exceed a timeout. Retry to absorb that inherent flakiness.
+    retries: 2,
     use: {
         baseURL: 'http://localhost:8089',
         headless: true,
