@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { createVault, createVaultAndOpenMap, unlock } from './helpers.js';
 
 test.describe('Mind Map Operations', () => {
-    test('add node via modal saves it', async ({ page }) => {
+    test('add node via modal renders it on the map', async ({ page }) => {
         await createVaultAndOpenMap(page);
 
         await page.click('#add-node-btn');
@@ -15,8 +15,8 @@ test.describe('Mind Map Operations', () => {
 
         await expect(page.locator('#node-modal')).toBeHidden({ timeout: 5000 });
         await expect(page.locator('.notification-success')).toBeVisible({ timeout: 5000 });
-        // The node's data is confirmed by the "persists across reload" test below; live
-        // MindElixir rendering of a freshly-added node is tracked separately (see issue).
+        // Renders immediately from the reloaded map (fix for #102).
+        await expect(page.locator('#mindmap')).toContainText('A difficult day', { timeout: 5000 });
     });
 
     test('Ctrl+N opens add node modal', async ({ page }) => {

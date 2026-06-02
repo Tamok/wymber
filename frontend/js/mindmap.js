@@ -167,21 +167,11 @@ export class TrauMindMap {
         const payload = parentDbId ? { ...nodeData, parent_id: parentDbId } : nodeData;
 
         const response = await this.api.post('/node', payload);
-        const typeInfo = NODE_TYPES[nodeData.node_type];
-
-        const newNode = {
-            id: `node-${response.id}`,
-            topic: nodeData.title,
-            style: {
-                background: typeInfo?.color || '#E8F5E8',
-                color: '#2E3440'
-            }
-        };
-
-        this.mindElixir.addChild(parentNode, newNode);
-        this.updateNodeReferences();
+        // Re-render from the source of truth so the new node appears immediately with the
+        // correct topic and parent. MindElixir's incremental addChild was unreliable here
+        // (especially on an empty map), so we reload the (already-saved) map instead.
+        await this.loadMap();
         this.announceToScreenReader(`Added ${nodeData.title} to your map`);
-        this.scheduleSave();
         return response.id;
     }
 
