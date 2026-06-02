@@ -3,15 +3,11 @@
 #   pip install -r requirements.lock
 # Regenerate the lock after editing this file:
 #   pip install -r requirements.txt && pip freeze > requirements.lock
+
+# Local-first: the server only serves static files, so the runtime is tiny.
 fastapi==0.136.3
 uvicorn[standard]==0.48.0
-sqlalchemy==2.0.50
-python-jose[cryptography]==3.5.0
-passlib[argon2]==1.7.4
-python-multipart==0.0.30
-pydantic==2.13.4
-cryptography==48.0.0
-python-dotenv==1.2.2
+
+# Tests
 pytest==9.0.3
-pytest-asyncio==1.4.0
 httpx==0.28.1

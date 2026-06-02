@@ -4,75 +4,68 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Summary
 
-Wymber is a privacy-first, self-hosted trauma mapping tool. Users visualize trauma experiences as an interactive mind map. All data stays local and encrypted. The app follows trauma-informed design principles: gentle language, soft colors, predictable UI, no jarring animations.
+Wymber is a **privacy-first, local-first** trauma-mapping tool. Users visualize trauma experiences as an interactive mind map. The data **never leaves the device**: it lives in a single encrypted vault in the browser, unlocked by the user's password (or a recovery code). Trauma-informed design throughout: gentle language, soft colors, predictable UI, no jarring animations. Live at **wymber.app**; currently alpha. Open-source (AGPL-3.0).
 
-## Build & Run Commands
+## Architecture — local-first (see `docs/adr/0001-local-first-encrypted-file.md`)
+
+There is **no server account, no database, and no user API.** The browser is the backend:
+
+- **Frontend**: vanilla JS + ES modules, no build step. Entry point `frontend/js/app.js`.
+- **The vault**: `crypto.js` (envelope encryption — a random AES-256-GCM data key, wrapped per unlock method: password, recovery code, later passkeys; PBKDF2-600k now, Argon2id tracked) + `vault-store.js` (the in-memory document: nodes, edges, settings) + `persistence.js` (only ciphertext at rest, in OPFS with an IndexedDB fallback).
+- **The api seam**: `local-repo.js` exposes the same `get/post/put/delete` surface the app already used, so `app.js` / `mindmap.js` / `export.js` didn't change. `const api = new LocalRepo()`.
+- **Backend**: `backend/main.py` is a ~40-line FastAPI app that **only serves the static frontend** (+ `/api/health`). It exists for self-hosting and is where an optional, future, zero-knowledge sync endpoint would live. No DB, no auth, no secrets.
+
+**Data flow**: `app.js` → `local-repo.js` → `vault-store.js` (decrypted doc in memory) → `crypto.js` seals it → `persistence.js` (OPFS/IndexedDB). Unlock per session; auto-lock on idle.
+
+## Build & Run
 
 ```bash
-# Docker
-docker-compose up -d          # Start (serves on localhost:8080)
-
-# Direct development (no Docker) — use a venv + the lockfile (reproducible)
+# Direct dev — venv + lockfile (reproducible)
 python -m venv .venv
 .venv\Scripts\python.exe -m pip install -r requirements.lock
 .venv\Scripts\python.exe -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
+# open http://localhost:8000  (the server just serves the static app)
+
+# Docker (self-host)
+docker-compose up -d          # serves on localhost:8080
 
 # Tests
-python -m pytest tests/ -v              # Backend (23 tests)
-npx vitest run                          # Frontend unit (29 tests)
-npx playwright test                     # E2E browser (15 tests, uses port 8089)
-
-# Single test
-python -m pytest tests/test_nodes.py::test_create_node -v   # one backend test
-npx vitest run frontend/tests/utils.test.js                 # one frontend file
-npx playwright test e2e/auth.spec.js                        # one E2E file
-
-# Access: http://localhost:8080 (Docker) or http://localhost:8000 (direct)
-# API docs: http://localhost:8000/docs
+.venv\Scripts\python.exe -m pytest tests/ -q   # backend: serves-the-app smoke tests
+npx vitest run                                  # frontend units incl. crypto/vault
+npx playwright test                             # E2E vault flow (port 8089)
 ```
 
-Run all commands from the repo root (see Gotchas — the DB path is relative).
+Run commands from the repo root.
 
-## Architecture
+## Key files
 
-**Backend**: FastAPI (Python 3.11) + SQLAlchemy + SQLite. `backend/main.py` has all endpoints. `backend/database.py` has ORM models with Fernet encryption.
+- `frontend/js/crypto.js` — vault crypto (`createVault`/`unlockVault`/`sealDocument`/`changePassword`/`resetPassword`, recovery codes). Tested by Vitest (WebCrypto via `// @vitest-environment node`).
+- `frontend/js/vault-store.js` — the document model + migrations (`emptyDocument`, add/update node + edge, settings).
+- `frontend/js/local-repo.js` — the `api.js`-shaped adapter over the vault (drop-in for the old APIClient).
+- `frontend/js/persistence.js` — OPFS / IndexedDB ciphertext storage.
+- `frontend/js/app.js` — orchestrator: create / unlock / recover panels, recovery sheet, auto-lock, the map.
+- `frontend/js/mindmap.js` — MindElixir wrapper (theme-aware via `applyTheme()`).
+- `frontend/js/{utils,analyze,export}.js` — pure utils, local map analysis, export.
+- `frontend/js/config.js` — `NODE_TYPES` + `MESSAGES` (source of truth).
+- `backend/main.py` — the static server (+ health). That's the whole backend.
 
-**Frontend**: Vanilla JS with ES modules (no build step). Served as static files by FastAPI. MindElixir.js vendored in `frontend/libs/`. Entry point: `frontend/js/app.js` imports all other modules.
-
-**Data flow**: `app.js` orchestrates → `api.js` (fetch + Bearer token) → FastAPI REST → SQLAlchemy → SQLite with encrypted description fields.
-
-**Security**: Argon2 password hashing → JWT (HS256). On login, a Fernet key is derived from the password (PBKDF2, 100k iterations) and stored in `session_keys` dict — the plaintext password is never stored. Node descriptions are encrypted at rest.
-
-## Key Files
-
-- `frontend/js/utils.js` — Pure utility functions (extractNodeId, convertToMindElixirFormat, validateNodeData). Tested by Vitest.
-- `frontend/js/analyze.js` — Local-only map analysis (node counts, isolated nodes, trigger-to-coping ratio)
-- `frontend/js/export.js` — Export as JSON or text
-- `frontend/js/mindmap.js` — MindElixir wrapper with working sync, connections, toolbar
-- `backend/config.py` + `frontend/js/config.js` — `NODE_TYPES` and `MESSAGES` (must stay in sync between the two files)
-- `backend/env_config.py` — Reads env vars / `.env` (test user, JWT secret, expiry, DEBUG)
-
-The 8 node types are: `event`, `emotion`, `person`, `place`, `trigger`, `coping`, `insight`, `growth`. (Note: `.github/instructions/copilot.instructions.md` lists outdated/wrong slugs like `trauma_event`/`body_sensation` — trust `config.py`, not that file.)
-
-## API Endpoints
-
-- `POST /api/setup` — Create first user
-- `POST /api/login` — Returns JWT (form-encoded body)
-- `GET /api/mindmap` — All nodes and edges for authenticated user
-- `POST|PUT|DELETE /api/node[/{id}]` — Node CRUD (title max 200 chars, description max 5000)
-- `POST|DELETE /api/edge[/{id}]` — Edge CRUD
-- `GET|PUT /api/settings` — User preferences (theme, fontSize)
+The 8 node types: `event`, `emotion`, `person`, `place`, `trigger`, `coping`, `insight`, `growth`.
 
 ## Gotchas (non-obvious)
 
-- **`session_keys` is in-memory** (`backend/main.py`). The per-user Fernet key is derived from the password only at login, then held in a module-level dict. A server restart wipes it, so any endpoint that touches descriptions (`GET /api/mindmap`, node create/update) returns `401 "Session expired"` via `require_session_key` until the user logs in again. There is no key persistence and no password recovery — forgotten password = unrecoverable encrypted descriptions.
-- **DB path is relative and hardcoded.** `database.py` uses `sqlite:///./data/wymber.db` (relative to the current working directory) and does **not** read `env_config.DATABASE_PATH` (that setting is effectively dead). Always launch from the repo root so it resolves to `./data/`.
-- **Three ports, all in the CORS allowlist** (`main.py`): 8000 (direct dev), 8080 (Docker host → container's 8000, bound to `127.0.0.1`), 8089 (E2E). Playwright starts its own server on 8089 with `reuseExistingServer: false`, so don't run a server yourself before `npx playwright test`.
-- **Test user auto-creation.** When `AUTO_CREATE_TEST_USER=true` (the default), `TestUser` / `SecureTest2025!` is created on startup. E2E tests rely on this.
-- **`data/`, `*.db`, and `.env` are gitignored.** A fresh checkout has no DB; it's created on first run.
+- **The vault *is* the data.** Lose the password *and* the recovery code → it's unrecoverable (encrypted client-side; nothing sits on a server). The recovery sheet exists precisely to avoid the cruel "forgot password = data gone" failure.
+- **Storage is OPFS (IndexedDB fallback), per origin.** `localhost` vs `127.0.0.1` vs different ports are *separate origins* → separate vaults. Handy for testing a clean state; surprising if you forget.
+- **Auto-lock on idle** clears the in-memory key; a page reload also requires unlock (only ciphertext persists).
+- **E2E** (Playwright, port 8089) creates fresh-context OPFS vaults; `--workers=1`, `retries:2` for crypto-load timing. The webServer prefers `.venv` Python.
+- **No server state.** A server restart changes nothing for users — their data is in the browser. The backend is stateless static serving.
 
 ## Design Constraints
 
-- **Trauma-informed**: Gentle language, soft pastels, 0.3s ease transitions, Escape to close all modals
-- **Privacy-first**: No external API calls, no telemetry, localhost-only CORS, Fernet-encrypted sensitive fields
-- **Accessibility**: WCAG 2.1 AA, keyboard navigable, ARIA labels, `prefers-reduced-motion`, three themes (light/dark/soft)
+- **Trauma-informed**: gentle language, soft pastels, 0.3s ease transitions, Escape closes all modals, no jarring motion.
+- **Privacy-first**: local-first, client-side encryption, no accounts/telemetry, localhost-only CORS, open-source (AGPL-3.0) so the privacy claims are auditable.
+- **Accessibility (architecture, not a checkbox)**: WCAG 2.1 AA, keyboard navigable, ARIA, `prefers-reduced-motion`, three themes (light/dark/soft).
+
+## Architecture decisions
+
+- **ADR-0001** — local-first encrypted vault (the data model).
+- **ADR-0002** — graph + discovery direction (own the taxonomy, rent the renderer): MindElixir for alpha, Cytoscape spike done.
