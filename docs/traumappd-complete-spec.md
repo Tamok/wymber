@@ -1,5 +1,10 @@
 # TrauMapp'd Complete Implementation Specification
 
+> **Historical document.** This is the original prototype specification for what became
+> **Wymber**, preserved for reference. It is **superseded** by the current
+> [README](../README.md) and the [architecture decisions](adr/) — expect the old name
+> ("TrauMapp'd"), outdated scope, and design details that have since changed.
+
 ## Project Context
 You're building TrauMapp'd - a trauma mapping and exploration tool that helps users visualize their trauma experiences through an interactive mind map and explore them with a local AI assistant. This is deeply sensitive work requiring careful attention to user safety, privacy, and trauma-informed design principles.
 
