@@ -96,3 +96,33 @@ describe('LocalRepo (local-first, api-compatible adapter)', () => {
         expect(await repo.hasVault()).toBe(false);
     });
 });
+
+describe('encrypted .wymber export / import', () => {
+    it('round-trips the map to a fresh device, and the file is ciphertext', async () => {
+        const repo1 = repoOver(new MemoryPersistence());
+        await repo1.createVault('CorrectHorseBattery9!');
+        await repo1.post('/node', { node_type: 'event', title: 'Moving away from home' });
+
+        const exported = await repo1.exportVault();
+        expect(typeof exported).toBe('string');
+        // The sealed file must not leak the plaintext title.
+        expect(exported).not.toContain('Moving away from home');
+
+        // Import into a brand-new "device" and unlock.
+        const repo2 = repoOver(new MemoryPersistence());
+        await repo2.importVault(exported);
+        expect(repo2.isUnlocked()).toBe(false); // import leaves it locked
+        await repo2.unlock('CorrectHorseBattery9!');
+        expect((await repo2.get('/mindmap')).nodes.map((n) => n.title)).toContain('Moving away from home');
+    });
+
+    it('rejects a file that is not a Wymber vault', async () => {
+        const repo = repoOver(new MemoryPersistence());
+        await expect(repo.importVault('{"definitely":"not a vault"}')).rejects.toThrow();
+    });
+
+    it('refuses to export when there is no vault yet', async () => {
+        const repo = repoOver(new MemoryPersistence());
+        await expect(repo.exportVault()).rejects.toThrow();
+    });
+});

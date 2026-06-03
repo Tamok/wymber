@@ -76,6 +76,25 @@ export function exportAsText(nodes, edges) {
 }
 
 /**
+ * Export the whole vault as an encrypted `.wymber` file. This is the safe, portable backup:
+ * it's ciphertext only, so it can live in any cloud or drive, and it still needs the password
+ * to open. Import it into any Wymber instance to move your map between devices.
+ */
+export async function exportVaultFile(api) {
+    const serialized = await api.exportVault();
+    const blob = new Blob([serialized], { type: 'application/octet-stream' });
+    downloadBlob(blob, `wymber-vault-${dateStamp()}.wymber`);
+}
+
+/**
+ * Import a `.wymber` file, replacing the vault on this device. The caller unlocks afterward.
+ */
+export async function importVaultFile(file, api) {
+    const text = await file.text();
+    await api.importVault(text);
+}
+
+/**
  * Recreate a map from a previously exported JSON object, adding it to the current map.
  * Remaps old node ids to the new ones the server assigns. DOM-free for testability.
  * @returns {Promise<{nodeCount: number, edgeCount: number}>}

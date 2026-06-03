@@ -75,6 +75,26 @@ export class LocalRepo {
         this.lock();
     }
 
+    /**
+     * Export the sealed vault as a portable string for a `.wymber` file. It's ciphertext only
+     * (the envelope), so it's safe to store anywhere; it still needs the password to unlock.
+     */
+    async exportVault() {
+        const serialized = await this.persistence.loadVault();
+        if (!serialized) throw new Error('No vault on this device yet.');
+        return serialized;
+    }
+
+    /**
+     * Replace the vault on this device with an imported `.wymber` file. The file stays encrypted;
+     * the caller unlocks it afterward with its own password (or recovery code).
+     */
+    async importVault(serialized) {
+        vaultCrypto.parseVault(serialized); // throws if it isn't a valid Wymber vault
+        await this.persistence.saveVault(serialized);
+        this.lock();
+    }
+
     // ===== api.js-compatible surface =====
 
     async get(endpoint) {
