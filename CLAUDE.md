@@ -6,12 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Wymber is a **privacy-first, local-first** trauma-mapping tool. Users visualize trauma experiences as an interactive mind map. The data **never leaves the device**: it lives in a single encrypted vault in the browser, unlocked by the user's password (or a recovery code). Trauma-informed design throughout: gentle language, soft colors, predictable UI, no jarring animations. Live at **wymber.app**; currently alpha. Open-source (AGPL-3.0).
 
-## Architecture — local-first (see `docs/adr/0001-local-first-encrypted-file.md`)
+## Architecture: local-first (see `docs/adr/0001-local-first-encrypted-file.md`)
 
 There is **no server account, no database, and no user API.** The browser is the backend:
 
 - **Frontend**: vanilla JS + ES modules, no build step. Entry point `frontend/js/app.js`.
-- **The vault**: `crypto.js` (envelope encryption — a random AES-256-GCM data key, wrapped per unlock method: password, recovery code, later passkeys; PBKDF2-600k now, Argon2id tracked) + `vault-store.js` (the in-memory document: nodes, edges, settings) + `persistence.js` (only ciphertext at rest, in OPFS with an IndexedDB fallback).
+- **The vault**: `crypto.js` (envelope encryption: a random AES-256-GCM data key, wrapped per unlock method: password, recovery code, later passkeys; PBKDF2-600k now, Argon2id tracked) + `vault-store.js` (the in-memory document: nodes, edges, settings) + `persistence.js` (only ciphertext at rest, in OPFS with an IndexedDB fallback).
 - **The api seam**: `local-repo.js` exposes the same `get/post/put/delete` surface the app already used, so `app.js` / `mindmap.js` / `export.js` didn't change. `const api = new LocalRepo()`.
 - **Backend**: `backend/main.py` is a ~40-line FastAPI app that **only serves the static frontend** (+ `/api/health`). It exists for self-hosting and is where an optional, future, zero-knowledge sync endpoint would live. No DB, no auth, no secrets.
 
@@ -20,7 +20,7 @@ There is **no server account, no database, and no user API.** The browser is the
 ## Build & Run
 
 ```bash
-# Direct dev — venv + lockfile (reproducible)
+# Direct dev: venv + lockfile (reproducible)
 python -m venv .venv
 .venv\Scripts\python.exe -m pip install -r requirements.lock
 .venv\Scripts\python.exe -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
@@ -39,15 +39,15 @@ Run commands from the repo root.
 
 ## Key files
 
-- `frontend/js/crypto.js` — vault crypto (`createVault`/`unlockVault`/`sealDocument`/`changePassword`/`resetPassword`, recovery codes). Tested by Vitest (WebCrypto via `// @vitest-environment node`).
-- `frontend/js/vault-store.js` — the document model + migrations (`emptyDocument`, add/update node + edge, settings).
-- `frontend/js/local-repo.js` — the `api.js`-shaped adapter over the vault (drop-in for the old APIClient).
-- `frontend/js/persistence.js` — OPFS / IndexedDB ciphertext storage.
-- `frontend/js/app.js` — orchestrator: create / unlock / recover panels, recovery sheet, auto-lock, the map.
-- `frontend/js/mindmap.js` — MindElixir wrapper (theme-aware via `applyTheme()`).
-- `frontend/js/{utils,analyze,export}.js` — pure utils, local map analysis, export.
-- `frontend/js/config.js` — `NODE_TYPES` + `MESSAGES` (source of truth).
-- `backend/main.py` — the static server (+ health). That's the whole backend.
+- `frontend/js/crypto.js`: vault crypto (`createVault`/`unlockVault`/`sealDocument`/`changePassword`/`resetPassword`, recovery codes). Tested by Vitest (WebCrypto via `// @vitest-environment node`).
+- `frontend/js/vault-store.js`: the document model + migrations (`emptyDocument`, add/update node + edge, settings).
+- `frontend/js/local-repo.js`: the `api.js`-shaped adapter over the vault (drop-in for the old APIClient).
+- `frontend/js/persistence.js`: OPFS / IndexedDB ciphertext storage.
+- `frontend/js/app.js`: orchestrator: create / unlock / recover panels, recovery sheet, auto-lock, the map.
+- `frontend/js/mindmap.js`: MindElixir wrapper (theme-aware via `applyTheme()`).
+- `frontend/js/{utils,analyze,export}.js`: pure utils, local map analysis, export.
+- `frontend/js/config.js`: `NODE_TYPES` + `MESSAGES` (source of truth).
+- `backend/main.py`: the static server (+ health). That's the whole backend.
 
 The 8 node types: `event`, `emotion`, `person`, `place`, `trigger`, `coping`, `insight`, `growth`.
 
@@ -57,7 +57,7 @@ The 8 node types: `event`, `emotion`, `person`, `place`, `trigger`, `coping`, `i
 - **Storage is OPFS (IndexedDB fallback), per origin.** `localhost` vs `127.0.0.1` vs different ports are *separate origins* → separate vaults. Handy for testing a clean state; surprising if you forget.
 - **Auto-lock on idle** clears the in-memory key; a page reload also requires unlock (only ciphertext persists).
 - **E2E** (Playwright, port 8089) creates fresh-context OPFS vaults; `--workers=1`, `retries:2` for crypto-load timing. The webServer prefers `.venv` Python.
-- **No server state.** A server restart changes nothing for users — their data is in the browser. The backend is stateless static serving.
+- **No server state.** A server restart changes nothing for users: their data is in the browser. The backend is stateless static serving.
 
 ## Design Constraints
 
@@ -67,5 +67,5 @@ The 8 node types: `event`, `emotion`, `person`, `place`, `trigger`, `coping`, `i
 
 ## Architecture decisions
 
-- **ADR-0001** — local-first encrypted vault (the data model).
-- **ADR-0002** — graph + discovery direction (own the taxonomy, rent the renderer): MindElixir for alpha, Cytoscape spike done.
+- **ADR-0001**: local-first encrypted vault (the data model).
+- **ADR-0002**: graph + discovery direction (own the taxonomy, rent the renderer): MindElixir for alpha, Cytoscape spike done.

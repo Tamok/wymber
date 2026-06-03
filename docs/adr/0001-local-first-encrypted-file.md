@@ -40,10 +40,10 @@ KDF: **PBKDF2-SHA256** for the dependency-free, buildless floor (native WebCrypt
 browser and in Node tests). **Argon2id (WASM)** is the planned upgrade; because the KDF is named
 in the header, swapping it is a localized, backward-compatible change.
 
-Cipher: **AES-256-GCM** (authenticated — tampering fails decryption). XChaCha20-Poly1305 is a
+Cipher: **AES-256-GCM** (authenticated, tampering fails decryption). XChaCha20-Poly1305 is a
 fine future alternative if we move off WebCrypto.
 
-### Recovery sheet (required, not optional — this is a trauma app)
+### Recovery sheet (required, not optional, this is a trauma app)
 
 Losing a trauma map because a distressed user forgot a password would be actively harmful.
 On vault creation we generate a high-entropy **recovery code** (120-bit, Crockford-base32,
@@ -55,7 +55,7 @@ QR). Forgetting the password no longer means losing data.
 A passkey unlocks via the WebAuthn **PRF extension** (`hmac-secret`): derive a stable secret
 from the credential, use it as `KEK_passkey`. Caveats: PRF support is still maturing, and
 passkeys are device/platform-bound (iCloud/Google sync), so they do **not** travel inside the
-portable file — the password and recovery code remain the universal, portable roots. The passkey
+portable file, the password and recovery code remain the universal, portable roots. The passkey
 is a fast unlock on a trusted device.
 
 ### Working copy & session model
@@ -67,23 +67,23 @@ privacy if the user steps away). Never leave decrypted data at rest on the devic
 ### Sync (post-MVP, paid, greyed-out "Coming soon")
 
 Optional cloud sync is a **dumb authenticated blob store**: it takes the opaque encrypted vault
-and gives it back (zero-knowledge — it never holds the key). Best-fit hosting is serverless
+and gives it back (zero-knowledge, it never holds the key). Best-fit hosting is serverless
 blob storage (Cloudflare Workers + R2, or Supabase), **not** an always-on container. Conflict
 handling starts last-write-wins with a version vector; CRDTs are a later option.
 
 ### Hosting consequences
 
 - **MVP web app**: a **static PWA** on free static hosting (Cloudflare Pages / Porkbun static).
-  No app server, no hosting cost — and the privacy claim becomes literally true.
+  No app server, no hosting cost, and the privacy claim becomes literally true.
 - **Self-host container**: the existing `Dockerfile` stays, for people who want to run the
   optional sync/blob store on their own infrastructure.
-- **Fly.io is dropped from the plan** — unnecessary for MVP, and not the best fit for the
+- **Fly.io is dropped from the plan**, unnecessary for MVP, and not the best fit for the
   eventual sync backend either.
 
 ### Threat model (stated plainly)
 
 The web build trusts wymber.app to serve honest JS on each load; a compromised host/CDN could
-ship code that exfiltrates the password — the web cannot fully solve "malicious app author."
+ship code that exfiltrates the password, the web cannot fully solve "malicious app author."
 Mitigations: strict CSP + Subresource Integrity, and the **desktop app** (signed, user-controlled
 binary) + **self-host** as the high-trust tiers. "Honest-but-curious" is fully solved; the
 paranoid tier uses desktop/self-host.
