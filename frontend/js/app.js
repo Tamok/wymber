@@ -501,15 +501,12 @@ class WymberApp {
         let newTriggerId = null;
         try {
             if (this.editingNode) {
-                const nodeId = typeof this.editingNode === 'string'
-                    ? this.editingNode.replace('node-', '')
-                    : this.editingNode?.id?.replace?.('node-', '') || this.editingNode;
+                const raw = typeof this.editingNode === 'string' ? this.editingNode : this.editingNode?.id;
+                const nodeId = (typeof raw === 'string' && raw.startsWith('node-')) ? raw.slice('node-'.length) : raw;
                 await api.put(`/node/${nodeId}`, { title, description });
-
-                if (this.editingNode?.topic !== undefined) {
-                    this.editingNode.topic = title;
-                    this.mindMap?.mindElixir?.refresh();
-                }
+                // Re-render from the source of truth so the edit shows. loadMap honors saved
+                // positions (preset layout), so the map doesn't jump.
+                await this.mindMap?.loadMap();
                 this.showNotification('Node updated', 'success');
             } else {
                 const nodeData = {

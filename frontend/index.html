@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wymber - Private Trauma Mapping</title>
     <link rel="stylesheet" href="/static/css/styles.css">
-    <link rel="stylesheet" href="/static/libs/mind-elixir.css">
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
 </head>
 <body>
@@ -206,6 +205,15 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Accessible list view: a keyboard-first twin of the map, always in sync with the
+                 canvas. Selecting, editing, and linking all work from here, so the map is usable
+                 without a pointer or sight (a11y is architecture, not an afterthought). -->
+            <section id="map-outline-region" class="map-outline-region" aria-label="Your map as a list">
+                <h3 class="map-outline-heading">Your map as a list</h3>
+                <p class="map-outline-note">A keyboard-friendly view. Choose a node to select it; in Link mode, choose two to connect them.</p>
+                <div id="map-outline" class="map-outline"></div>
+            </section>
         </main>
 
         <footer class="app-footer">
@@ -394,7 +402,7 @@
     </div>
 
     <!-- Load scripts -->
-    <script src="/static/libs/mind-elixir.min.js"></script>
+    <script src="/static/libs/cytoscape.min.js"></script>
     <script type="module" src="/static/js/app.js"></script>
 </body>
 </html>

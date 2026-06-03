@@ -451,9 +451,10 @@ textarea {
     background: #c62828;
 }
 
-/* Main app content */
+/* Main app content. min-height (not a fixed height) so the map keeps filling the viewport,
+   but the page can grow and scroll when the accessible outline twin sits below it. */
 .app-main {
-    height: calc(100vh - 140px);
+    min-height: calc(100vh - 140px);
     display: flex;
     flex-direction: column;
 }
@@ -496,65 +497,111 @@ kbd {
     min-height: 400px;
 }
 
-/* MindElixir overrides for trauma-informed design */
-.mind-elixir {
-    font-family: inherit !important;
+/* The graph is drawn to a canvas by Cytoscape; node/edge styling (pastel building-block
+   nodes, first-class edges) lives in mindmap.js (the Cytoscape style array, theme-aware).
+   The list-view twin below is the accessible, keyboard-first representation of the same map. */
+
+/* ===== MAP OUTLINE (accessible list-view twin of the canvas) ===== */
+.map-outline-region {
+    margin: 0 var(--spacing-md) var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
 }
 
-.mind-elixir svg text {
-    font-family: inherit !important;
-    fill: var(--text-primary) !important;
+.map-outline-heading {
+    margin: 0 0 var(--spacing-xs);
+    font-size: 1rem;
+    color: var(--text-primary);
 }
 
-.mind-elixir .node {
-    transition: all 0.3s ease !important;
+.map-outline-note {
+    margin: 0 0 var(--spacing-md);
+    font-size: 0.85rem;
+    color: var(--text-secondary);
 }
 
-.mind-elixir .node:focus,
-.mind-elixir .node.selected {
-    outline: 2px solid var(--focus) !important;
-    outline-offset: 2px !important;
+.map-outline-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
 }
 
-/* Gentle node colors override */
-.mind-elixir .node[data-nodeid*="event"] { 
-    background-color: #C8E6C9 !important; 
-    border-color: #A5D6A7 !important;
+.map-outline-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
 
-.mind-elixir .node[data-nodeid*="emotion"] { 
-    background-color: #BBDEFB !important;
-    border-color: #90CAF9 !important;
+.map-outline-node {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    width: 100%;
+    text-align: left;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    cursor: pointer;
+    /* Keep focus/scroll-into-view clear of the sticky top crisis bar and the fixed
+       bottom safety bar (both z-index 1000), so a node never tucks under them. */
+    scroll-margin-top: 4rem;
+    scroll-margin-bottom: 4rem;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 }
 
-.mind-elixir .node[data-nodeid*="person"] { 
-    background-color: #F8BBD9 !important;
-    border-color: #F48FB1 !important;
+.map-outline-node:hover {
+    border-color: var(--accent, #6f5f96);
 }
 
-.mind-elixir .node[data-nodeid*="place"] { 
-    background-color: #D7CCC8 !important;
-    border-color: #BCAAA4 !important;
+.map-outline-node:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
 }
 
-.mind-elixir .node[data-nodeid*="trigger"] { 
-    background-color: #FFE0B2 !important;
-    border-color: #FFCC80 !important;
+.map-outline-node.selected {
+    border-color: var(--accent, #6f5f96);
+    box-shadow: 0 0 0 2px rgba(111, 95, 150, 0.25);
 }
 
-.mind-elixir .node[data-nodeid*="coping"] { 
-    background-color: #A5D6A7 !important;
-    border-color: #81C784 !important;
+.map-outline-chip {
+    flex: 0 0 auto;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 1px solid rgba(74, 69, 64, 0.18);
 }
 
-.mind-elixir .node[data-nodeid*="insight"] { 
-    background-color: #E1BEE7 !important;
-    border-color: #CE93D8 !important;
+.map-outline-title {
+    flex: 1 1 auto;
+    font-weight: 600;
 }
 
-.mind-elixir .node[data-nodeid*="growth"] { 
-    background-color: #C8F7C5 !important;
-    border-color: #A5E6A8 !important;
+.map-outline-type {
+    flex: 0 0 auto;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.map-outline-connections {
+    padding-left: calc(14px + var(--spacing-sm) + var(--spacing-md));
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.map-outline-empty {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
 }
 
 .mindmap-placeholder {
@@ -863,8 +910,10 @@ kbd {
 }
 
 /* ===== Safety affordances (persistent) ===== */
+/* Clear the fixed bottom safety bar (which can wrap to two rows on narrow screens), so the
+   last of the page content is never tucked underneath it. */
 body {
-    padding-bottom: 3rem;
+    padding-bottom: 4rem;
 }
 
 .safety-bar {
@@ -1010,17 +1059,6 @@ body {
 
 #selection-status {
     font-weight: 500;
-}
-
-/* Node selection feedback */
-.node-selected {
-    box-shadow: 0 0 0 3px var(--focus) !important;
-    z-index: 1000;
-}
-
-.node-connecting {
-    box-shadow: 0 0 0 3px #4caf50 !important;
-    z-index: 1000;
 }
 
 /* ===== MIND MAP HELP SYSTEM ===== */

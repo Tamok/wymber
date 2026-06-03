@@ -44,12 +44,12 @@ Run commands from the repo root.
 - `frontend/js/local-repo.js`: the `api.js`-shaped adapter over the vault (drop-in for the old APIClient).
 - `frontend/js/persistence.js`: OPFS / IndexedDB ciphertext storage.
 - `frontend/js/app.js`: orchestrator: create / unlock / recover panels, recovery sheet, auto-lock, the map.
-- `frontend/js/mindmap.js`: MindElixir wrapper (theme-aware via `applyTheme()`).
+- `frontend/js/mindmap.js`: the graph renderer (Cytoscape, vendored in `frontend/libs/`). Draws pastel building-block nodes + first-class edges straight from `/mindmap`, theme-aware via `applyTheme()`, and keeps an accessible `#map-outline` list twin in lockstep (the keyboard-first, non-visual surface).
 - `frontend/js/{utils,analyze,export}.js`: pure utils, local map analysis, export.
 - `frontend/js/config.js`: `NODE_TYPES` + `MESSAGES` (source of truth).
 - `backend/main.py`: the static server (+ health). That's the whole backend.
 
-The 8 node types: `event`, `emotion`, `person`, `place`, `trigger`, `coping`, `insight`, `growth`.
+The 11 node types: `event`, `emotion`, `body`, `person`, `place`, `trigger`, `coping`, `support`, `need`, `insight`, `growth`. Each has a color + a gentle, non-directive `prompt` (config.js is the source of truth).
 
 ## Gotchas (non-obvious)
 
@@ -68,4 +68,4 @@ The 8 node types: `event`, `emotion`, `person`, `place`, `trigger`, `coping`, `i
 ## Architecture decisions
 
 - **ADR-0001**: local-first encrypted vault (the data model).
-- **ADR-0002**: graph + discovery direction (own the taxonomy, rent the renderer): MindElixir for alpha, Cytoscape spike done.
+- **ADR-0002**: graph + discovery direction (own the taxonomy, rent the renderer). Cytoscape is the live renderer (it replaced MindElixir); the map is a true graph (nodes + first-class edges), with the `#map-outline` list as its accessible twin.

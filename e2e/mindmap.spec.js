@@ -15,8 +15,8 @@ test.describe('Mind Map Operations', () => {
 
         await expect(page.locator('#node-modal')).toBeHidden({ timeout: 5000 });
         await expect(page.locator('.notification-success')).toBeVisible({ timeout: 5000 });
-        // Renders immediately from the reloaded map (fix for #102).
-        await expect(page.locator('#mindmap')).toContainText('A difficult day', { timeout: 5000 });
+        // Renders immediately into the accessible outline twin (the canvas has no DOM text).
+        await expect(page.locator('#map-outline')).toContainText('A difficult day', { timeout: 5000 });
     });
 
     test('Ctrl+N opens add node modal', async ({ page }) => {
@@ -66,7 +66,7 @@ test.describe('Mind Map Operations', () => {
         await expect(page.locator('#soft-start')).toBeVisible({ timeout: 10000 });
         await page.click('#open-map-btn');
 
-        await expect(page.locator('#mindmap')).toContainText(unique, { timeout: 10000 });
+        await expect(page.locator('#map-outline')).toContainText(unique, { timeout: 10000 });
     });
 
     test('soft-start screen appears before the map', async ({ page }) => {
@@ -82,15 +82,15 @@ test.describe('Mind Map Operations', () => {
         await page.selectOption('#node-type', 'event');
         await page.fill('#node-title', 'A difficult day');
         await page.click('#save-node');
-        await expect(page.locator('#mindmap')).toContainText('A difficult day', { timeout: 5000 });
+        await expect(page.locator('#map-outline')).toContainText('A difficult day', { timeout: 5000 });
 
         // Before selecting: the verbs are dead and nothing is selected.
         await expect(page.locator('#edit-selected-btn')).toBeDisabled();
         await expect(page.locator('#delete-selected-btn')).toBeDisabled();
         await expect(page.locator('#selection-status')).toHaveText('No node selected');
 
-        // Click the node on the map (the <me-tpc> topic element, not the inner text).
-        await page.locator('me-tpc', { hasText: 'A difficult day' }).first().click();
+        // Select the node from the accessible outline twin (the keyboard-first surface).
+        await page.locator('.map-outline-node', { hasText: 'A difficult day' }).first().click();
 
         // After selecting: status reflects it and Edit/Delete come alive.
         await expect(page.locator('#selection-status')).toContainText('A difficult day', { timeout: 3000 });
@@ -106,7 +106,7 @@ test.describe('Mind Map Operations', () => {
         await page.selectOption('#node-type', 'trigger');
         await page.fill('#node-title', 'A loud argument');
         await page.click('#save-node');
-        await expect(page.locator('#mindmap')).toContainText('A loud argument', { timeout: 5000 });
+        await expect(page.locator('#map-outline')).toContainText('A loud argument', { timeout: 5000 });
 
         // The gentle, dismissible nudge appears with an "Add an anchor" action.
         const nudge = page.locator('.notification-nudge');
@@ -121,7 +121,7 @@ test.describe('Mind Map Operations', () => {
         // Fill + save the anchor; it lands on the map (and is linked back to the trigger).
         await page.fill('#node-title', 'Step outside and breathe');
         await page.click('#save-node');
-        await expect(page.locator('#mindmap')).toContainText('Step outside and breathe', { timeout: 5000 });
+        await expect(page.locator('#map-outline')).toContainText('Step outside and breathe', { timeout: 5000 });
     });
 
     test('non-trigger nodes do not raise the pairing nudge', async ({ page }) => {

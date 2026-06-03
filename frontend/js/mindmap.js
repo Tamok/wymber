@@ -1,138 +1,236 @@
 import { NODE_TYPES } from './config.js';
-import { extractNodeId, convertToMindElixirFormat, countNodes, walkNodes } from './utils.js';
 
-// Canvas palettes per app theme. Node colors come from NODE_TYPES; these cssVars control the
-// MindElixir canvas (bg, root, links) so the map follows light/dark/soft instead of staying light.
-const ME_CSS_VARS = {
-    light: {
-        '--main-color': '#2E3440', '--main-bgcolor': '#FEFEFE',
-        '--color': '#5E81AC', '--bgcolor': '#ECEFF4',
-        '--panel-color': '46, 52, 64', '--panel-bgcolor': '236, 239, 244',
-        '--node-color': '#2E3440', '--node-bgcolor': '#ECEFF4',
-    },
-    dark: {
-        '--main-color': '#E5E9F0', '--main-bgcolor': '#1f2228',
-        '--color': '#A3BE8C', '--bgcolor': '#2b2f38',
-        '--panel-color': '229, 233, 240', '--panel-bgcolor': '43, 47, 56',
-        '--node-color': '#E5E9F0', '--node-bgcolor': '#2b2f38',
-    },
-    soft: {
-        '--main-color': '#5a4f42', '--main-bgcolor': '#f7f2ea',
-        '--color': '#9c8a72', '--bgcolor': '#efe8db',
-        '--panel-color': '90, 79, 66', '--panel-bgcolor': '239, 232, 219',
-        '--node-color': '#5a4f42', '--node-bgcolor': '#efe8db',
-    },
+/**
+ * TrauMindMap — the Wymber graph renderer (Cytoscape).
+ *
+ * It draws the map the way the data actually is: gentle pastel "building-block" nodes and
+ * first-class edges, rendered straight from the vault's { nodes, edges } document. No tree
+ * conversion, no synthetic root. It sits behind the unchanged api seam (LocalRepo), so app.js
+ * keeps calling init / loadMap / addNode / editNode / deleteNode / applyTheme / destroy exactly
+ * as before. ADR-0002: own the taxonomy, rent the renderer.
+ *
+ * Accessibility is architecture here: every visual node has a twin in the #map-outline list, a
+ * keyboard-reachable representation that stays in lockstep with the canvas. Selecting, editing,
+ * and linking all work from the outline, so the map is usable without a pointer or sight.
+ */
+
+const typeColor = (t) => NODE_TYPES[t]?.color || '#cfc7ba';
+const typeLabel = (t) => NODE_TYPES[t]?.label || (t ? t[0].toUpperCase() + t.slice(1) : 'Node');
+
+// Canvas + edge colors per app theme. Node fills stay the constant pastel type colors (they read
+// well on any background with the dark label text); only the surrounding canvas and the edges
+// follow light / dark / soft so the map never looks pasted onto the wrong theme.
+const CANVAS = {
+    light: { bg: '#FEFEFE', edge: '#cfc7ba', suggested: '#9b8bbd' },
+    dark:  { bg: '#1f2228', edge: '#3a3f49', suggested: '#7c6fa6' },
+    soft:  { bg: '#f7f2ea', edge: '#d8cdbb', suggested: '#9b8bbd' },
 };
 
-function mindElixirTheme() {
-    const name = document.documentElement.getAttribute('data-theme') || 'light';
-    return {
-        name: `Wymber-${name}`,
-        palette: Object.values(NODE_TYPES).map((t) => t.color),
-        cssVar: ME_CSS_VARS[name] || ME_CSS_VARS.light,
-    };
+const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+
+// Size each node box to its wrapped label. We compute this ourselves (rather than the
+// deprecated Cytoscape 'label' width/height) so the boxes stay snug and the console stays clean.
+function layoutLabel(label) {
+    const text = (label || '').trim() || ' ';
+    const MAX = 20; // target characters per line before wrapping
+    const lines = [];
+    let cur = '';
+    for (const word of text.split(/\s+/)) {
+        if (!cur) cur = word;
+        else if ((cur + ' ' + word).length <= MAX) cur += ' ' + word;
+        else { lines.push(cur); cur = word; }
+    }
+    if (cur) lines.push(cur);
+    const longest = lines.reduce((m, l) => Math.max(m, l.length), 1);
+    const lineCount = Math.min(lines.length, 4);
+    const w = Math.min(Math.max(Math.round(longest * 7.4) + 34, 84), 210);
+    const h = lineCount * 20 + 26;
+    return { w, h, tw: w - 28 };
 }
 
 export class TrauMindMap {
     constructor(container, apiClient) {
-        this.container = container;
+        this.container = container; // the #mindmap div (Cytoscape host)
         this.api = apiClient;
-        this.mindElixir = null;
-        this.nodes = new Map();
-        this.selectedNode = null;
-        this.lastSave = null;
-        this.autoSaveInterval = null;
-        this.autoSaveTimeout = null;
+        this.cy = null;
+        this.selectedNode = null; // the raw db node { id, node_type, title, ... } or null
         this.toolbarMode = 'select';
-        this.connectingFrom = null;
+        this.connectingFrom = null; // raw db node while linking
         this.onShowNodeModal = null; // callback set by app.js
-
-        this.config = {
-            el: container,
-            direction: window.MindElixir?.LEFT || 0,
-            draggable: true,
-            toolBar: false,
-            nodeMenu: true,
-            keypress: true,
-            locale: 'en',
-            overflowHidden: false,
-            mainLinkStyle: 2,
-            mouseSelectionButton: 0,
-            contextMenu: {
-                focus: true,
-                link: true,
-                extend: [
-                    {
-                        name: 'Edit Node',
-                        onclick: (nodeObj) => this.editNode(nodeObj)
-                    },
-                    {
-                        name: 'Delete Node',
-                        onclick: (nodeObj) => this.deleteNode(nodeObj)
-                    },
-                    {
-                        name: 'Connect To...',
-                        onclick: (nodeObj) => this.startConnection(nodeObj)
-                    }
-                ]
-            },
-            theme: mindElixirTheme(),
-            before: {
-                insertSibling: () => this.guardAdd(),
-                addChild: () => this.guardAdd(),
-                removeNode: () => true,
-                finishEdit: () => true
-            }
-        };
+        this.autoSaveTimeout = null;
+        this.lastData = { nodes: [], edges: [] };
+        this.outlineEl = document.getElementById('map-outline');
+        this._fitted = false;
     }
 
     async init() {
-        if (!window.MindElixir) {
-            throw new Error('MindElixir library not loaded');
-        }
+        if (!window.cytoscape) throw new Error('Cytoscape library not loaded');
 
-        this.mindElixir = new window.MindElixir(this.config);
-        this.setupEventHandlers();
+        this.cy = window.cytoscape({
+            container: this.container,
+            layout: { name: 'preset' },
+            minZoom: 0.3,
+            maxZoom: 2.5,
+            boxSelectionEnabled: false,
+            autoungrabify: false,
+        });
+
+        this.applyTheme();
+        this.setupInteractions();
         this.setupToolbar();
         await this.loadMap();
-        this.startAutoSave();
         return true;
     }
 
-    // ===== DATA LOADING =====
+    // ===== STYLE / THEME =====
 
-    async loadMap() {
-        try {
-            const mapData = await this.api.get('/mindmap');
-            const meData = convertToMindElixirFormat(mapData);
-
-            if (meData) {
-                this.mindElixir.init(meData);
-            } else {
-                this.mindElixir.init(window.MindElixir.new('My Healing Journey'));
-            }
-
-            this.updateNodeReferences();
-            this.lastSave = new Date();
-            this.updateSaveIndicator('All changes saved');
-        } catch (error) {
-            console.error('Error loading map:', error);
-            this.mindElixir.init(window.MindElixir.new('My Healing Journey'));
-        }
+    buildStyle(c) {
+        return [
+            {
+                selector: 'node',
+                style: {
+                    'shape': 'round-rectangle',
+                    'background-color': 'data(color)',
+                    'background-opacity': 1,
+                    'border-width': 2,
+                    'border-color': 'rgba(74,69,64,0.14)',
+                    'label': 'data(label)',
+                    'color': '#4a4540',
+                    'font-size': 13,
+                    'font-weight': 600,
+                    'text-valign': 'center',
+                    'text-halign': 'center',
+                    'text-wrap': 'wrap',
+                    'text-max-width': 'data(tw)',
+                    'width': 'data(w)',
+                    'height': 'data(h)',
+                    'transition-property': 'opacity, border-color, border-width',
+                    'transition-duration': '0.18s',
+                },
+            },
+            { selector: 'node.selected', style: { 'border-width': 3, 'border-color': '#6f5f96' } },
+            { selector: 'node.connecting', style: { 'border-width': 3, 'border-color': '#6f5f96', 'border-style': 'dashed' } },
+            { selector: 'node.dim', style: { 'opacity': 0.28 } },
+            {
+                selector: 'edge',
+                style: {
+                    'curve-style': 'bezier',
+                    'width': 3,
+                    'line-color': c.edge,
+                    'target-arrow-shape': 'none',
+                    'transition-property': 'opacity',
+                    'transition-duration': '0.18s',
+                },
+            },
+            // Suggested (discovery) edges land here later: dashed, gentle violet.
+            { selector: 'edge.suggested', style: { 'line-color': c.suggested, 'line-style': 'dashed', 'line-dash-pattern': [7, 5] } },
+            { selector: 'edge.dim', style: { 'opacity': 0.12 } },
+        ];
     }
 
     /** Re-apply the canvas theme to match the app's current data-theme (light/dark/soft). */
     applyTheme() {
-        this.mindElixir?.changeTheme?.(mindElixirTheme());
+        const name = document.documentElement.getAttribute('data-theme') || 'light';
+        const c = CANVAS[name] || CANVAS.light;
+        this.container.style.background = c.bg;
+        if (this.cy) this.cy.style().fromJson(this.buildStyle(c)).update();
     }
 
-    // ===== SAVE / SYNC =====
+    // ===== DATA LOADING / RENDER =====
+
+    async loadMap() {
+        let data;
+        try {
+            data = await this.api.get('/mindmap');
+        } catch (error) {
+            console.error('Error loading map:', error);
+            data = { nodes: [], edges: [] };
+        }
+        this.lastData = { nodes: data.nodes || [], edges: data.edges || [] };
+        this.renderGraph(this.lastData);
+        this.renderOutline(this.lastData);
+        this.updateSaveIndicator('All changes saved');
+    }
+
+    renderGraph({ nodes, edges }) {
+        const byId = new Map(nodes.map((n) => [n.id, n]));
+        const anyPositioned = nodes.some((n) => (n.x && n.x !== 0) || (n.y && n.y !== 0));
+
+        const elements = [];
+        nodes.forEach((n, i) => {
+            const size = layoutLabel(n.title);
+            elements.push({
+                group: 'nodes',
+                data: {
+                    id: String(n.id), label: n.title, color: typeColor(n.node_type), ntype: n.node_type,
+                    w: size.w, h: size.h, tw: size.tw,
+                },
+                position: this.positionFor(n, i),
+            });
+        });
+
+        // Real edges first; remember each pair so a parent_id link never doubles an explicit one.
+        const seen = new Set();
+        edges.forEach((e) => {
+            if (!byId.has(e.from_node_id) || !byId.has(e.to_node_id)) return;
+            seen.add(pairKey(e.from_node_id, e.to_node_id));
+            elements.push({ group: 'edges', data: { id: 'e' + e.id, source: String(e.from_node_id), target: String(e.to_node_id) } });
+        });
+        // parent_id-derived connections from the old tree view, preserved so nothing is lost.
+        nodes.forEach((n) => {
+            if (n.parent_id == null || !byId.has(n.parent_id)) return;
+            const key = pairKey(n.parent_id, n.id);
+            if (seen.has(key)) return;
+            seen.add(key);
+            elements.push({ group: 'edges', data: { id: `p${n.parent_id}-${n.id}`, source: String(n.parent_id), target: String(n.id) } });
+        });
+
+        this.cy.elements().remove();
+        this.cy.add(elements);
+
+        // Keep the current selection highlighted across the re-render (if it still exists).
+        if (this.selectedNode) {
+            const el = this.cy.getElementById(String(this.selectedNode.id));
+            if (el.nonempty()) el.addClass('selected');
+            else this.selectedNode = null;
+        }
+
+        // Honor saved positions (preset). Only when nothing was ever placed do we arrange gently.
+        if (!anyPositioned && nodes.length > 1) {
+            this.cy.layout({ name: 'cose', animate: false, padding: 36, idealEdgeLength: 110, nodeRepulsion: 9000 }).run();
+            this.scheduleSave(); // persist the arranged positions so it stays put next time
+        }
+
+        this.fitOnce();
+    }
+
+    positionFor(n, i) {
+        if ((n.x && n.x !== 0) || (n.y && n.y !== 0)) return { x: n.x, y: n.y };
+        // Gentle golden-angle spiral for never-placed nodes so they don't stack at the origin.
+        const golden = 2.399963;
+        const r = 70 + 46 * Math.sqrt(i);
+        return { x: Math.round(Math.cos(i * golden) * r), y: Math.round(Math.sin(i * golden) * r) };
+    }
+
+    fitOnce() {
+        if (this._fitted || this.cy.nodes().empty()) return;
+        this.cy.fit(undefined, 60);
+        if (this.cy.zoom() > 1.2) this.cy.zoom(1.0);
+        this.cy.center();
+        this._fitted = true;
+    }
+
+    // ===== SAVE / SYNC (positions only; the doc itself is saved per-mutation by the vault) =====
+
+    scheduleSave() {
+        clearTimeout(this.autoSaveTimeout);
+        this.autoSaveTimeout = setTimeout(() => this.saveMap(), 1200);
+    }
 
     async saveMap() {
         try {
             this.updateSaveIndicator('Saving...', 'saving');
             await this.syncToBackend();
-            this.lastSave = new Date();
             this.updateSaveIndicator('All changes saved');
             return true;
         } catch (error) {
@@ -143,123 +241,161 @@ export class TrauMindMap {
     }
 
     async syncToBackend() {
-        const mapData = this.mindElixir.getData();
+        if (!this.cy) return;
         const updates = [];
-
-        // Walk the tree tracking each node's parent so reparents persist, not just positions.
-        const sync = (node, parentDbId) => {
-            const dbId = extractNodeId(node.id);
-            if (dbId) {
-                const body = { x: node.cx || 0, y: node.cy || 0 };
-                if (parentDbId) body.parent_id = parentDbId;
-                updates.push(this.api.put(`/node/${dbId}`, body));
-            }
-            const childParentId = dbId || parentDbId;
-            if (node.children) {
-                node.children.forEach((child) => sync(child, childParentId));
-            }
-        };
-        sync(mapData.nodeData, null);
-
+        this.cy.nodes().forEach((el) => {
+            const id = parseInt(el.id(), 10);
+            const p = el.position();
+            const x = Math.round(p.x);
+            const y = Math.round(p.y);
+            updates.push(this.api.put(`/node/${id}`, { x, y }));
+            const cached = this.lastData.nodes.find((n) => n.id === id);
+            if (cached) { cached.x = x; cached.y = y; }
+        });
         await Promise.allSettled(updates);
-    }
-
-    startAutoSave() {
-        this.autoSaveInterval = setInterval(() => {
-            if (this.lastSave && (new Date() - this.lastSave) > 5000) {
-                this.saveMap();
-            }
-        }, 30000);
-    }
-
-    stopAutoSave() {
-        if (this.autoSaveInterval) {
-            clearInterval(this.autoSaveInterval);
-            this.autoSaveInterval = null;
-        }
     }
 
     // ===== NODE OPERATIONS =====
 
     async addNode(nodeData) {
-        if (!nodeData.node_type || !nodeData.title) {
-            throw new Error('Invalid node data');
-        }
-
-        const parentNode = this.selectedNode || this.mindElixir.nodeData;
-        const parentDbId = extractNodeId(parentNode?.id);
-        const payload = parentDbId ? { ...nodeData, parent_id: parentDbId } : nodeData;
-
-        const response = await this.api.post('/node', payload);
-        // Re-render from the source of truth so the new node appears immediately with the
-        // correct topic and parent. MindElixir's incremental addChild was unreliable here
-        // (especially on an empty map), so we reload the (already-saved) map instead.
+        if (!nodeData.node_type || !nodeData.title) throw new Error('Invalid node data');
+        const response = await this.api.post('/node', nodeData);
         await this.loadMap();
         this.announceToScreenReader(`Added ${nodeData.title} to your map`);
         return response.id;
     }
 
-    editNode(nodeObj) {
-        if (this.onShowNodeModal) {
-            this.onShowNodeModal(nodeObj);
-        }
+    editNode(node) {
+        if (this.onShowNodeModal) this.onShowNodeModal(node);
     }
 
-    async deleteNode(nodeObj) {
-        const nodeId = extractNodeId(nodeObj.id);
-        if (!nodeId) return;
-
+    async deleteNode(node) {
+        if (!node) return;
         const confirmed = confirm(
-            `This will remove "${nodeObj.topic}" and its connections from your map. ` +
+            `This will remove "${node.title}" and its connections from your map. ` +
             `You can always add it back later if you need to. Would you like to continue?`
         );
         if (!confirmed) return;
 
-        await this.api.delete(`/node/${nodeId}`);
-        this.mindElixir.removeNode(nodeObj);
-        this.updateNodeReferences();
-        this.announceToScreenReader(`Removed ${nodeObj.topic} from your map`);
-        this.scheduleSave();
+        await this.api.delete(`/node/${node.id}`);
+        if (this.selectedNode?.id === node.id) this.selectedNode = null;
+        await this.loadMap();
+        this.updateToolbar();
+        this.announceToScreenReader(`Removed ${node.title} from your map`);
     }
 
     // ===== CONNECTIONS =====
 
-    startConnection(nodeObj) {
+    /** Begin a connection from a node (used by the toolbar/keyboard link flow). */
+    startConnection(node) {
         this.setToolbarMode('link');
-        this.connectingFrom = nodeObj;
-        this.highlightConnectingNode(nodeObj, true);
+        this.connectingFrom = node;
+        this.cy?.getElementById(String(node.id)).addClass('connecting');
         this.updateToolbar();
     }
 
     async createConnection(fromNode, toNode) {
-        const fromId = extractNodeId(fromNode.id);
-        const toId = extractNodeId(toNode.id);
-
-        if (!fromId || !toId) {
+        if (!fromNode?.id || !toNode?.id) {
             this.showNotification('Could not identify nodes to connect', 'error');
             return;
         }
-
         try {
-            await this.api.post('/edge', {
-                from_node_id: fromId,
-                to_node_id: toId,
-                label: ''
-            });
-
-            // Add visual link in MindElixir
-            if (this.mindElixir.addLink) {
-                this.mindElixir.addLink(fromNode, toNode);
-            }
-
-            this.showNotification(
-                `Connected "${fromNode.topic}" to "${toNode.topic}"`,
-                'success'
-            );
+            await this.api.post('/edge', { from_node_id: fromNode.id, to_node_id: toNode.id, label: '' });
+            await this.loadMap();
+            this.showNotification(`Connected "${fromNode.title}" to "${toNode.title}"`, 'success');
+            this.announceToScreenReader(`Connected ${fromNode.title} to ${toNode.title}`);
         } catch (error) {
             console.error('Error creating connection:', error);
             this.showNotification('Could not create connection', 'error');
         }
+    }
+
+    // ===== INTERACTIONS =====
+
+    setupInteractions() {
+        this.cy.on('tap', 'node', (evt) => {
+            const node = this.nodeFromEl(evt.target);
+            if (node) this.handleNodeSelection(node);
+        });
+        this.cy.on('dbltap', 'node', (evt) => {
+            const node = this.nodeFromEl(evt.target);
+            if (node && this.toolbarMode !== 'link') this.editNode(node);
+        });
+        this.cy.on('tap', (evt) => {
+            if (evt.target === this.cy) {
+                if (this.toolbarMode !== 'link') this.clearSelection();
+                this.undim();
+            }
+        });
+        this.cy.on('dragfree', 'node', () => this.scheduleSave());
+
+        // Delete the selected node from the keyboard (the same gentle confirm as the toolbar).
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Delete') return;
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            const inMap = this.container.contains(e.target) || (this.outlineEl && this.outlineEl.contains(e.target));
+            if (inMap && this.selectedNode) {
+                e.preventDefault();
+                this.deleteNode(this.selectedNode);
+            }
+        });
+    }
+
+    nodeFromEl(el) {
+        const id = parseInt(el.id(), 10);
+        return this.lastData.nodes.find((n) => n.id === id) || null;
+    }
+
+    handleNodeSelection(node) {
+        if (this.toolbarMode === 'link') {
+            this.handleLinkModeClick(node);
+            return;
+        }
+        this.selectedNode = node;
+        this.cy.nodes().removeClass('selected');
+        this.cy.getElementById(String(node.id)).addClass('selected');
+        this.highlightNeighborhood(node);
+        this.updateToolbar();
+        this.syncOutlineSelection();
+        this.announceToScreenReader(`Selected ${node.title}`);
+    }
+
+    handleLinkModeClick(node) {
+        if (!this.connectingFrom) {
+            this.connectingFrom = node;
+            this.cy.nodes().removeClass('connecting');
+            this.cy.getElementById(String(node.id)).addClass('connecting');
+            this.updateToolbar();
+        } else if (this.connectingFrom.id !== node.id) {
+            this.createConnection(this.connectingFrom, node);
+            this.cy.nodes().removeClass('connecting');
+            this.connectingFrom = null;
+            this.setToolbarMode('select');
+        } else {
+            this.cy.nodes().removeClass('connecting');
+            this.connectingFrom = null;
+            this.updateToolbar();
+        }
+    }
+
+    clearSelection() {
+        this.selectedNode = null;
+        this.cy?.nodes().removeClass('selected');
+        this.undim();
+        this.updateToolbar();
+        this.syncOutlineSelection();
+    }
+
+    highlightNeighborhood(node) {
+        const el = this.cy.getElementById(String(node.id));
+        if (el.empty()) return;
+        const hood = el.closedNeighborhood();
+        this.cy.elements().addClass('dim');
+        hood.removeClass('dim');
+    }
+
+    undim() {
+        this.cy?.elements().removeClass('dim');
     }
 
     // ===== TOOLBAR =====
@@ -270,179 +406,139 @@ export class TrauMindMap {
             linkBtn: document.getElementById('link-mode-btn'),
             editBtn: document.getElementById('edit-selected-btn'),
             deleteBtn: document.getElementById('delete-selected-btn'),
-            status: document.getElementById('selection-status')
+            status: document.getElementById('selection-status'),
         };
 
         const { selectBtn, linkBtn, editBtn, deleteBtn } = this.toolbarElements;
-
         if (selectBtn) selectBtn.addEventListener('click', () => this.setToolbarMode('select'));
         if (linkBtn) linkBtn.addEventListener('click', () => this.setToolbarMode('link'));
-        if (editBtn) editBtn.addEventListener('click', () => {
-            if (this.selectedNode) this.editNode(this.selectedNode);
-        });
-        if (deleteBtn) deleteBtn.addEventListener('click', () => {
-            if (this.selectedNode && this.selectedNode.id !== 'root') {
-                this.deleteNode(this.selectedNode);
-                this.selectedNode = null;
-                this.updateToolbar();
-            }
-        });
+        if (editBtn) editBtn.addEventListener('click', () => { if (this.selectedNode) this.editNode(this.selectedNode); });
+        if (deleteBtn) deleteBtn.addEventListener('click', () => { if (this.selectedNode) this.deleteNode(this.selectedNode); });
 
-        // MindElixir 3.9's selection bus events don't fire reliably on a plain click,
-        // so detect selection from the DOM: each topic (<me-tpc>) carries its nodeObj.
-        // Clicking empty canvas (outside link mode) clears the selection.
-        this.container.addEventListener('click', (e) => {
-            const tpc = e.target.closest('me-tpc');
-            if (tpc && tpc.nodeObj) {
-                this.handleNodeSelection(tpc.nodeObj);
-            } else if (this.toolbarMode !== 'link') {
-                this.selectedNode = null;
-                this.updateToolbar();
-            }
-        });
+        this.updateToolbar();
     }
 
     setToolbarMode(mode) {
         this.toolbarMode = mode;
-        this.connectingFrom = null;
+        if (mode !== 'link') {
+            this.cy?.nodes().removeClass('connecting');
+            this.connectingFrom = null;
+        }
         this.updateToolbar();
 
-        document.querySelectorAll('.btn-toolbar').forEach(btn => btn.classList.remove('active'));
-        if (mode === 'select' && this.toolbarElements.selectBtn) {
-            this.toolbarElements.selectBtn.classList.add('active');
-        } else if (mode === 'link' && this.toolbarElements.linkBtn) {
-            this.toolbarElements.linkBtn.classList.add('active');
-        }
-    }
+        document.querySelectorAll('.btn-toolbar').forEach((btn) => btn.classList.remove('active'));
+        if (mode === 'select' && this.toolbarElements.selectBtn) this.toolbarElements.selectBtn.classList.add('active');
+        else if (mode === 'link' && this.toolbarElements.linkBtn) this.toolbarElements.linkBtn.classList.add('active');
 
-    handleNodeSelection(node) {
-        if (this.toolbarMode === 'link') {
-            this.handleLinkModeClick(node);
-            return;
-        }
-
-        this.selectedNode = node;
-        this.updateToolbar();
-        this.announceToScreenReader(`Selected ${node.topic}`);
-    }
-
-    handleLinkModeClick(node) {
-        if (!this.connectingFrom) {
-            this.connectingFrom = node;
-            this.highlightConnectingNode(node, true);
-            this.updateToolbar();
-        } else if (this.connectingFrom.id !== node.id) {
-            this.createConnection(this.connectingFrom, node);
-            this.highlightConnectingNode(this.connectingFrom, false);
-            this.connectingFrom = null;
-            this.setToolbarMode('select');
-        } else {
-            this.highlightConnectingNode(this.connectingFrom, false);
-            this.connectingFrom = null;
-            this.updateToolbar();
-        }
+        this.refreshOutlineHint();
     }
 
     updateToolbar() {
-        const { editBtn, deleteBtn, status } = this.toolbarElements;
-        const hasSelection = this.selectedNode && this.selectedNode.id !== 'root';
+        const { editBtn, deleteBtn, status } = this.toolbarElements || {};
+        const hasSelection = !!this.selectedNode;
 
         if (editBtn) editBtn.disabled = !hasSelection;
         if (deleteBtn) deleteBtn.disabled = !hasSelection;
 
         if (status) {
             if (this.toolbarMode === 'link' && this.connectingFrom) {
-                status.textContent = `Linking from "${this.connectingFrom.topic}" - click another node to connect`;
-            } else if (hasSelection) {
-                status.textContent = `Selected: "${this.selectedNode.topic}"`;
+                status.textContent = `Linking from "${this.connectingFrom.title}" - choose another node to connect`;
             } else if (this.toolbarMode === 'link') {
-                status.textContent = 'Link mode: click a node to start connecting';
+                status.textContent = 'Link mode: choose a node to start connecting';
+            } else if (hasSelection) {
+                status.textContent = `Selected: "${this.selectedNode.title}"`;
             } else {
                 status.textContent = 'No node selected';
             }
         }
     }
 
-    highlightConnectingNode(node, highlight) {
-        const el = this.container.querySelector(`[data-nodeid="${node.id}"]`);
-        if (el) {
-            el.classList.toggle('node-connecting', highlight);
+    // ===== OUTLINE TWIN (the accessible, keyboard-first representation) =====
+
+    renderOutline({ nodes, edges }) {
+        if (!this.outlineEl) return;
+        this.outlineEl.innerHTML = '';
+
+        if (nodes.length === 0) {
+            const empty = document.createElement('p');
+            empty.className = 'map-outline-empty';
+            empty.textContent = 'Your map is empty for now. Add your first node to begin.';
+            this.outlineEl.appendChild(empty);
+            return;
         }
-    }
 
-    // ===== EVENT HANDLERS =====
+        const byId = new Map(nodes.map((n) => [n.id, n]));
+        const adj = new Map(nodes.map((n) => [n.id, new Set()]));
+        const link = (a, b) => { if (adj.has(a) && byId.has(b)) adj.get(a).add(b); };
+        edges.forEach((e) => { link(e.from_node_id, e.to_node_id); link(e.to_node_id, e.from_node_id); });
+        nodes.forEach((n) => { if (n.parent_id != null && byId.has(n.parent_id)) { link(n.id, n.parent_id); link(n.parent_id, n.id); } });
 
-    setupEventHandlers() {
-        this.mindElixir.bus.addListener('operation', () => {
-            this.scheduleSave();
-        });
+        const list = document.createElement('ul');
+        list.className = 'map-outline-list';
 
-        // Keyboard navigation (arrow keys) does fire 'selectNode'; route it through the
-        // same handler so the toolbar tracks keyboard selection too.
-        this.mindElixir.bus.addListener('selectNode', (node) => {
-            this.handleNodeSelection(node);
-        });
+        nodes.forEach((n) => {
+            const li = document.createElement('li');
+            li.className = 'map-outline-item';
 
-        document.addEventListener('keydown', (e) => {
-            if (this.container.contains(e.target) || e.target === document.body) {
-                this.handleKeyboard(e);
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'map-outline-node';
+            btn.dataset.nodeId = String(n.id);
+
+            const chip = document.createElement('span');
+            chip.className = 'map-outline-chip';
+            chip.style.background = typeColor(n.node_type);
+            chip.setAttribute('aria-hidden', 'true');
+
+            const title = document.createElement('span');
+            title.className = 'map-outline-title';
+            title.textContent = n.title;
+
+            const type = document.createElement('span');
+            type.className = 'map-outline-type';
+            type.textContent = typeLabel(n.node_type);
+
+            btn.append(chip, title, type);
+            btn.addEventListener('click', () => this.handleNodeSelection(n));
+
+            li.appendChild(btn);
+
+            const links = [...adj.get(n.id)].map((id) => byId.get(id)?.title).filter(Boolean);
+            if (links.length) {
+                const conn = document.createElement('span');
+                conn.className = 'map-outline-connections';
+                conn.textContent = `Connected to: ${links.join(', ')}`;
+                li.appendChild(conn);
             }
+
+            list.appendChild(li);
+        });
+
+        this.outlineEl.appendChild(list);
+        this.syncOutlineSelection();
+        this.refreshOutlineHint();
+    }
+
+    syncOutlineSelection() {
+        if (!this.outlineEl) return;
+        this.outlineEl.querySelectorAll('.map-outline-node').forEach((b) => {
+            const selected = this.selectedNode && b.dataset.nodeId === String(this.selectedNode.id);
+            b.classList.toggle('selected', !!selected);
+            b.setAttribute('aria-pressed', selected ? 'true' : 'false');
         });
     }
 
-    handleKeyboard(e) {
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-        switch (e.key) {
-            case 'Delete':
-            case 'Backspace':
-                if (this.selectedNode && this.selectedNode.id !== 'root') {
-                    e.preventDefault();
-                    this.deleteNode(this.selectedNode);
-                }
-                break;
-            case 'Tab':
-                if (!e.shiftKey) {
-                    e.preventDefault();
-                    this.focusNextNode();
-                }
-                break;
-        }
-    }
-
-    // ===== HELPERS =====
-
-    guardAdd() {
-        const count = countNodes(this.mindElixir.nodeData);
-        if (count > 50) {
-            this.showNotification('Your map is getting quite full. Consider organizing or removing some nodes first.', 'error');
-            return false;
-        }
-        return true;
-    }
-
-    scheduleSave() {
-        clearTimeout(this.autoSaveTimeout);
-        this.autoSaveTimeout = setTimeout(() => this.saveMap(), 2000);
-    }
-
-    updateNodeReferences() {
-        this.nodes.clear();
-        walkNodes(this.mindElixir.nodeData, (node) => {
-            this.nodes.set(node.id, node);
+    refreshOutlineHint() {
+        if (!this.outlineEl) return;
+        const linking = this.toolbarMode === 'link';
+        this.outlineEl.querySelectorAll('.map-outline-node').forEach((b) => {
+            const t = b.querySelector('.map-outline-title')?.textContent || 'node';
+            const ty = b.querySelector('.map-outline-type')?.textContent || '';
+            b.setAttribute('aria-label', linking ? `${ty}: ${t}. Choose to connect.` : `${ty}: ${t}. Select.`);
         });
     }
 
-    focusNextNode() {
-        const allNodes = Array.from(this.nodes.values());
-        if (allNodes.length === 0) return;
-        const currentIdx = this.selectedNode
-            ? allNodes.findIndex(n => n.id === this.selectedNode.id)
-            : -1;
-        const next = allNodes[(currentIdx + 1) % allNodes.length];
-        this.mindElixir.selectNode(next);
-        this.announceToScreenReader(`Focused on ${next.topic}`);
-    }
+    // ===== UI HELPERS =====
 
     updateSaveIndicator(message, type = 'success') {
         const el = document.getElementById('save-indicator');
@@ -478,10 +574,11 @@ export class TrauMindMap {
     }
 
     destroy() {
-        this.stopAutoSave();
         clearTimeout(this.autoSaveTimeout);
-        if (this.mindElixir?.destroy) {
-            this.mindElixir.destroy();
+        if (this.cy) {
+            this.cy.destroy();
+            this.cy = null;
         }
+        if (this.outlineEl) this.outlineEl.innerHTML = '';
     }
 }

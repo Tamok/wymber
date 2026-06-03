@@ -37,7 +37,7 @@ test.describe('Accessibility (axe-core)', () => {
 
     test('main app has no serious a11y violations', async ({ page }) => {
         await createVaultAndOpenMap(page);
-        // Exclude the third-party MindElixir canvas (we don't control its internals).
+        // Exclude the Cytoscape canvas (a <canvas>; its accessible twin is the #map-outline list).
         const results = await new AxeBuilder({ page })
             .withTags(['wcag2a', 'wcag2aa'])
             .exclude('#mindmap')
