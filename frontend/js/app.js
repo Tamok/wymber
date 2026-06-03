@@ -473,11 +473,15 @@ class WymberApp {
 
     updateNodeTypeDescription(nodeType) {
         const el = document.getElementById('type-description');
+        const desc = document.getElementById('node-description');
         if (nodeType && NODE_TYPES[nodeType]) {
             const info = NODE_TYPES[nodeType];
             el.innerHTML = `<div class="type-info"><p>${info.description}</p><small>${info.tooltip}</small></div>`;
+            // A gentle, non-directive prompt for this type. Never required.
+            if (desc && info.prompt) desc.placeholder = info.prompt;
         } else {
             el.innerHTML = '';
+            if (desc) desc.placeholder = '';
         }
     }
 

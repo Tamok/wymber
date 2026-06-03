@@ -68,7 +68,7 @@ describe('validateNodeData', () => {
     });
 
     it('accepts all valid node types', () => {
-        const types = ['event', 'emotion', 'person', 'place', 'trigger', 'coping', 'insight', 'growth'];
+        const types = ['event', 'emotion', 'body', 'person', 'place', 'trigger', 'coping', 'support', 'need', 'insight', 'growth'];
         for (const type of types) {
             expect(validateNodeData({ node_type: type, title: 'Test' }).valid).toBe(true);
         }
