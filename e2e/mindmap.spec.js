@@ -75,4 +75,26 @@ test.describe('Mind Map Operations', () => {
         await page.click('#open-map-btn');
         await expect(page.locator('#soft-start')).toBeHidden();
     });
+
+    test('selecting a node enables the toolbar Edit/Delete (#105)', async ({ page }) => {
+        await createVaultAndOpenMap(page);
+        await page.click('#add-node-btn');
+        await page.selectOption('#node-type', 'event');
+        await page.fill('#node-title', 'A difficult day');
+        await page.click('#save-node');
+        await expect(page.locator('#mindmap')).toContainText('A difficult day', { timeout: 5000 });
+
+        // Before selecting: the verbs are dead and nothing is selected.
+        await expect(page.locator('#edit-selected-btn')).toBeDisabled();
+        await expect(page.locator('#delete-selected-btn')).toBeDisabled();
+        await expect(page.locator('#selection-status')).toHaveText('No node selected');
+
+        // Click the node on the map (the <me-tpc> topic element, not the inner text).
+        await page.locator('me-tpc', { hasText: 'A difficult day' }).first().click();
+
+        // After selecting: status reflects it and Edit/Delete come alive.
+        await expect(page.locator('#selection-status')).toContainText('A difficult day', { timeout: 3000 });
+        await expect(page.locator('#edit-selected-btn')).toBeEnabled();
+        await expect(page.locator('#delete-selected-btn')).toBeEnabled();
+    });
 });

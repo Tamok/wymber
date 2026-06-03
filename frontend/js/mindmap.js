@@ -288,8 +288,17 @@ export class TrauMindMap {
             }
         });
 
-        this.mindElixir.bus.addListener('selectNode', (node) => {
-            this.handleNodeSelection(node);
+        // MindElixir 3.9's selection bus events don't fire reliably on a plain click,
+        // so detect selection from the DOM: each topic (<me-tpc>) carries its nodeObj.
+        // Clicking empty canvas (outside link mode) clears the selection.
+        this.container.addEventListener('click', (e) => {
+            const tpc = e.target.closest('me-tpc');
+            if (tpc && tpc.nodeObj) {
+                this.handleNodeSelection(tpc.nodeObj);
+            } else if (this.toolbarMode !== 'link') {
+                this.selectedNode = null;
+                this.updateToolbar();
+            }
         });
     }
 
@@ -368,8 +377,10 @@ export class TrauMindMap {
             this.scheduleSave();
         });
 
+        // Keyboard navigation (arrow keys) does fire 'selectNode'; route it through the
+        // same handler so the toolbar tracks keyboard selection too.
         this.mindElixir.bus.addListener('selectNode', (node) => {
-            this.selectedNode = node;
+            this.handleNodeSelection(node);
         });
 
         document.addEventListener('keydown', (e) => {
