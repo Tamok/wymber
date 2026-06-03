@@ -64,6 +64,9 @@ audited by the maintainer before it ships.** The project is open-source under **
 exactly this reason: a privacy tool should be auditable. If a privacy claim here matters to you,
 you can read the code that backs it.
 
+Open-source also means your data outlives the project. A `.wymber` export is always yours to open
+with the public code, even if this site ever disappears.
+
 ## Crisis resources
 
 If you're in crisis, please reach out:

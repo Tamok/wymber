@@ -3,7 +3,7 @@ import { LocalRepo } from './local-repo.js';
 import { TrauMindMap } from './mindmap.js';
 import { validateNodeData, passwordStrength } from './utils.js';
 import { analyzeMap, renderAnalysis } from './analyze.js';
-import { exportAsJSON, exportAsText, importMap } from './export.js';
+import { exportAsJSON, exportAsText, importMap, exportVaultFile, importVaultFile } from './export.js';
 
 // Local-first: the encrypted vault on this device IS the backend. `api` keeps the
 // same get/post/put/delete surface the rest of the app already uses.
@@ -42,6 +42,7 @@ class WymberApp {
         document.getElementById('create-password')?.addEventListener('input', () => this.updateStrengthMeter());
         document.getElementById('show-recover')?.addEventListener('click', () => this.showAuthPanel('recover'));
         document.getElementById('back-to-unlock')?.addEventListener('click', () => this.showAuthPanel('unlock'));
+        document.getElementById('restore-vault-file')?.addEventListener('change', (e) => this.doRestoreVault(e));
         document.getElementById('download-recovery')?.addEventListener('click', () => this.downloadRecovery());
         document.getElementById('copy-recovery')?.addEventListener('click', () => this.copyRecovery());
         document.getElementById('ack-saved-recovery')?.addEventListener('change', (e) => {
@@ -379,6 +380,7 @@ class WymberApp {
         });
 
         // Export buttons
+        document.getElementById('export-vault')?.addEventListener('click', () => this.doExportVault());
         document.getElementById('export-json')?.addEventListener('click', () => this.doExport('json'));
         document.getElementById('export-text')?.addEventListener('click', () => this.doExport('text'));
         document.getElementById('import-file')?.addEventListener('change', (e) => this.doImport(e));
@@ -703,6 +705,37 @@ class WymberApp {
             console.error('Import failed:', error);
             event.target.value = '';
             this.showNotification('Could not import that file. Make sure it is a valid map export.', 'error');
+        }
+    }
+
+    async doExportVault() {
+        try {
+            await exportVaultFile(api);
+            document.getElementById('export-modal').style.display = 'none';
+            this.showNotification('Encrypted vault downloaded', 'success');
+        } catch (error) {
+            console.error('Vault export failed:', error);
+            this.showNotification('Could not export your vault', 'error');
+        }
+    }
+
+    async doRestoreVault(event) {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        try {
+            if (await api.hasVault() &&
+                !confirm('This replaces the space currently on this device. Continue?')) {
+                event.target.value = '';
+                return;
+            }
+            await importVaultFile(file, api);
+            event.target.value = '';
+            this.showNotification('Backup restored. Unlock it with its password.', 'success');
+            this.showAuthPanel('unlock');
+        } catch (error) {
+            console.error('Vault restore failed:', error);
+            event.target.value = '';
+            this.showNotification('That does not look like a .wymber file.', 'error');
         }
     }
 

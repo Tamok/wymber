@@ -28,7 +28,7 @@
     <div id="login-screen" class="screen">
         <div class="login-container">
             <div class="login-box">
-                <h1>Wymber</h1>
+                <h1><img src="/static/favicon.svg" alt="" width="28" height="28" style="vertical-align:-6px;margin-right:7px"> Wymber</h1>
                 <p class="tagline">Your private space for healing</p>
 
                 <!-- Create a new vault -->
@@ -98,6 +98,10 @@
                     <button type="button" id="back-to-unlock" class="btn-link">Back</button>
                 </form>
 
+                <p class="auth-restore-hint">Moving from another device?
+                    <label for="restore-vault-file" class="btn-link">Restore a <code>.wymber</code> backup</label>.</p>
+                <input type="file" id="restore-vault-file" accept=".wymber" style="display:none;" aria-label="Choose a .wymber backup to restore">
+
                 <div id="error-message" class="error-message" style="display:none;" role="alert"></div>
 
                 <div class="privacy-notice">
@@ -113,7 +117,7 @@
     <div id="main-app" class="screen" style="display:none;">
         <header class="app-header">
             <div class="header-left">
-                <h1>Wymber</h1>
+                <h1><img src="/static/favicon.svg" alt="" width="28" height="28" style="vertical-align:-6px;margin-right:7px"> Wymber</h1>
                 <span id="save-indicator" class="save-indicator">All changes saved</span>
             </div>
 
@@ -306,17 +310,27 @@
     <div id="export-modal" class="modal" style="display:none;">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Export Your Map</h2>
+                <h2>Export &amp; backup</h2>
                 <button class="close-btn" id="close-export">&times;</button>
             </div>
             <div class="modal-body">
-                <p>Choose a format to export your map data:</p>
+                <p><strong>Encrypted backup.</strong> The safe way to keep or move your map. It stays encrypted, so it's fine to store anywhere (a drive, a cloud, a USB stick).</p>
                 <div class="export-options">
-                    <button id="export-json" class="btn btn-primary">Export as JSON</button>
-                    <button id="export-text" class="btn">Export as Text</button>
+                    <button id="export-vault" class="btn btn-primary">Download encrypted vault (.wymber)</button>
                 </div>
+                <p class="export-note">Because Wymber is <a href="https://github.com/Tamok/wymber" target="_blank" rel="noopener">open-source</a>, a <code>.wymber</code> file is always yours to open. Even if this site disappeared, the code is public, so your data is never locked away.</p>
+
                 <hr class="modal-divider">
-                <p>Restore from a JSON backup (adds it to your current map):</p>
+
+                <p><strong>Unencrypted copies</strong> for your own reading. <em>Anyone who gets these files can read them,</em> so keep them somewhere private.</p>
+                <div class="export-options">
+                    <button id="export-json" class="btn btn-secondary">JSON</button>
+                    <button id="export-text" class="btn btn-secondary">Text</button>
+                </div>
+
+                <hr class="modal-divider">
+
+                <p>Merge a JSON map into your current one:</p>
                 <input type="file" id="import-file" accept="application/json,.json" aria-label="Choose a JSON backup file to import">
             </div>
         </div>
