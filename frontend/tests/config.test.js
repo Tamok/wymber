@@ -2,10 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { NODE_TYPES, MESSAGES } from '../js/config.js';
 
 describe('NODE_TYPES', () => {
-    const expectedTypes = ['event', 'emotion', 'person', 'place', 'trigger', 'coping', 'insight', 'growth'];
+    const expectedTypes = ['event', 'emotion', 'body', 'person', 'place', 'trigger', 'coping', 'support', 'need', 'insight', 'growth'];
 
-    it('has all 8 node types', () => {
-        expect(Object.keys(NODE_TYPES)).toHaveLength(8);
+    it('has all 11 node types', () => {
+        expect(Object.keys(NODE_TYPES)).toHaveLength(11);
         for (const type of expectedTypes) {
             expect(NODE_TYPES[type]).toBeDefined();
         }
@@ -18,6 +18,7 @@ describe('NODE_TYPES', () => {
             expect(type.label, `${key} missing label`).toBeDefined();
             expect(type.description, `${key} missing description`).toBeDefined();
             expect(type.tooltip, `${key} missing tooltip`).toBeDefined();
+            expect(type.prompt, `${key} missing prompt`).toBeDefined();
         }
     });
 
