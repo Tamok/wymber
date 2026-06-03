@@ -1,0 +1,12 @@
+#!/bin/sh
+# Wymber pre-commit: keep the frontend units green when frontend code changes.
+# Intentional bypass: git commit --no-verify
+if git diff --cached --name-only | grep -qE '^frontend/'; then
+  echo "[pre-commit] frontend changed, running vitest..."
+  if ! npx vitest run >/dev/null 2>&1; then
+    echo "[pre-commit] FAIL: vitest is red. Fix it, or use --no-verify if you mean to."
+    exit 1
+  fi
+  echo "[pre-commit] vitest green."
+fi
+exit 0

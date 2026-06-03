@@ -18,9 +18,10 @@ connects, and how you're growing, at your own pace, on your own device. It's an 
   your password. There's no account to create and nothing is sent to a server. A printable
   **recovery sheet** means a forgotten password no longer costs you your data.
   See [ADR-0001](docs/adr/0001-local-first-encrypted-file.md).
-- **A map, not a form.** Eight gentle building blocks (Event, Emotion, Person, Place, Trigger,
-  Coping, Insight, Growth) connect into a web you can explore. A discovery engine is planned to
-  gently surface links you might not have seen yet.
+- **A map, not a form.** Eleven gentle building blocks (Event, Emotion, Body, Person, Place,
+  Trigger, Coping, Support, Need, Insight, Growth) connect into a web you can explore, each with a
+  gentle, optional prompt. A discovery engine is planned to surface links you might not have seen
+  yet.
 - **Trauma-informed by design.** Soft colours, gentle language, predictable UI, no jarring motion,
   full keyboard navigation, and WCAG 2.1 AA accessibility as a baseline.
 
@@ -59,10 +60,12 @@ npx playwright test           # end-to-end (browser)
 
 ## Transparency
 
-Wymber is developed with heavy AI assistance (Claude Code), and **every change is reviewed and
-audited by the maintainer before it ships.** The project is open-source under **AGPL-3.0** for
-exactly this reason: a privacy tool should be auditable. If a privacy claim here matters to you,
-you can read the code that backs it.
+Wymber is built with heavy AI assistance (Claude Code) as a tool, and **every change is reviewed
+and audited by the maintainer ([@tamok](https://github.com/tamok)) before it ships.** The project
+is open-source under **AGPL-3.0** for exactly this reason: a privacy tool should be auditable. If a
+privacy claim here matters to you, you can read the code that backs it, and verify that
+[wymber.app](https://wymber.app) serves exactly that code (see
+[ADR-0003](docs/adr/0003-client-integrity-and-anti-phishing.md)).
 
 Open-source also means your data outlives the project. A `.wymber` export is always yours to open
 with the public code, even if this site ever disappears.

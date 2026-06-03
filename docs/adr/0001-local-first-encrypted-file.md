@@ -1,7 +1,7 @@
 # ADR-0001: Local-first encrypted file as the unit of data
 
 - Status: Accepted (2026-06-01)
-- Deciders: project owner + Claude
+- Decider: [@tamok](https://github.com/tamok)
 
 ## Context
 

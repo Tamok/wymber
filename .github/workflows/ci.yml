@@ -53,7 +53,7 @@ jobs:
           node-version: "20"
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      # --workers=1: the suite shares one dev DB; serial avoids the flakiness tracked in #44.
+      # --workers=1: each unlock runs real PBKDF2 (600k); serial avoids crypto-load timeouts.
       - run: npx playwright test --workers=1
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}

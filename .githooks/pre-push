@@ -1,0 +1,17 @@
+#!/bin/sh
+# Wymber pre-push: prefer feature branches + PRs over direct pushes to main.
+# Soft guard during alpha (warns, allows). Set ALLOW_MAIN_PUSH=0 to hard-block at go-live.
+ALLOW_MAIN_PUSH=1
+while read local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in
+    refs/heads/main)
+      echo "[pre-push] NOTE: pushing directly to 'main'."
+      echo "[pre-push] For extensive work, use a feature branch + PR (see CONTRIBUTING.md)."
+      if [ "$ALLOW_MAIN_PUSH" != "1" ]; then
+        echo "[pre-push] BLOCKED: direct pushes to main are off. Open a PR. (bypass: --no-verify)"
+        exit 1
+      fi
+      ;;
+  esac
+done
+exit 0

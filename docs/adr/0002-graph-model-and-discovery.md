@@ -1,7 +1,7 @@
 # ADR-0002: Graph model + discovery engine (own the taxonomy, rent the renderer)
 
 - Status: Accepted (2026-06-01), renderer selection pending the spike in this PR
-- Deciders: project owner + Claude
+- Decider: [@tamok](https://github.com/tamok)
 
 ## Context
 
