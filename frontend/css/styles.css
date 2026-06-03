@@ -740,6 +740,46 @@ kbd {
     color: #C62828;
 }
 
+/* The trigger pairing nudge: a gentle, opt-in invitation (not an auto-dismissing toast). */
+.notification-nudge {
+    border-color: var(--accent, #6f5f96);
+    max-width: 320px;
+}
+.notification-nudge .nudge-text {
+    margin: 0 0 var(--spacing-sm);
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+.notification-nudge .nudge-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+.notification-nudge .nudge-actions button {
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.88rem;
+    cursor: pointer;
+    transition: background 0.3s ease, border-color 0.3s ease;
+}
+.notification-nudge .nudge-add {
+    background: #A5D6A7;
+    border-color: #A5D6A7;
+    color: #1f3b22;
+}
+.notification-nudge .nudge-add:hover {
+    background: #94c997;
+    border-color: #94c997;
+}
+.notification-nudge .nudge-dismiss {
+    background: transparent;
+    color: var(--text-secondary);
+}
+.notification-nudge .nudge-dismiss:hover {
+    border-color: var(--text-secondary);
+}
+
 /* Reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
     *,

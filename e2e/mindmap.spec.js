@@ -97,4 +97,40 @@ test.describe('Mind Map Operations', () => {
         await expect(page.locator('#edit-selected-btn')).toBeEnabled();
         await expect(page.locator('#delete-selected-btn')).toBeEnabled();
     });
+
+    test('saving a Trigger offers a gentle pairing nudge that pre-sets a connected anchor', async ({ page }) => {
+        await createVaultAndOpenMap(page);
+
+        // Add a Trigger.
+        await page.click('#add-node-btn');
+        await page.selectOption('#node-type', 'trigger');
+        await page.fill('#node-title', 'A loud argument');
+        await page.click('#save-node');
+        await expect(page.locator('#mindmap')).toContainText('A loud argument', { timeout: 5000 });
+
+        // The gentle, dismissible nudge appears with an "Add an anchor" action.
+        const nudge = page.locator('.notification-nudge');
+        await expect(nudge).toBeVisible({ timeout: 3000 });
+        await expect(nudge).toContainText(/anchor/i);
+        await nudge.getByRole('button', { name: /add an anchor/i }).click();
+
+        // The add-node modal reopens, pre-set to a coping anchor.
+        await expect(page.locator('#node-modal')).toBeVisible();
+        await expect(page.locator('#node-type')).toHaveValue('coping');
+
+        // Fill + save the anchor; it lands on the map (and is linked back to the trigger).
+        await page.fill('#node-title', 'Step outside and breathe');
+        await page.click('#save-node');
+        await expect(page.locator('#mindmap')).toContainText('Step outside and breathe', { timeout: 5000 });
+    });
+
+    test('non-trigger nodes do not raise the pairing nudge', async ({ page }) => {
+        await createVaultAndOpenMap(page);
+        await page.click('#add-node-btn');
+        await page.selectOption('#node-type', 'emotion');
+        await page.fill('#node-title', 'A quiet hope');
+        await page.click('#save-node');
+        await expect(page.locator('.notification-success')).toBeVisible({ timeout: 5000 });
+        await expect(page.locator('.notification-nudge')).toHaveCount(0);
+    });
 });

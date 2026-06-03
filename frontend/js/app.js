@@ -429,7 +429,7 @@ class WymberApp {
 
     // ===== NODE MODAL =====
 
-    showNodeModal(nodeObj = null) {
+    showNodeModal(nodeObj = null, presetType = null) {
         const modal = document.getElementById('node-modal');
         const title = document.getElementById('modal-title');
         this.editingNode = nodeObj;
@@ -439,15 +439,17 @@ class WymberApp {
             this.populateNodeModal(nodeObj);
         } else {
             title.textContent = 'Add to Your Map';
-            document.getElementById('node-type').value = '';
+            document.getElementById('node-type').value = presetType || '';
             document.getElementById('node-title').value = '';
             document.getElementById('node-description').value = '';
             document.getElementById('type-description').innerHTML = '';
+            if (presetType) this.updateNodeTypeDescription(presetType);
         }
 
         modal.style.display = 'flex';
         setTimeout(() => {
-            (nodeObj ? document.getElementById('node-title') : document.getElementById('node-type')).focus();
+            // With a type already chosen (edit, or a pre-set add), focus the title; otherwise the type.
+            (nodeObj || presetType ? document.getElementById('node-title') : document.getElementById('node-type')).focus();
         }, 100);
     }
 
@@ -496,6 +498,7 @@ class WymberApp {
             return;
         }
 
+        let newTriggerId = null;
         try {
             if (this.editingNode) {
                 const nodeId = typeof this.editingNode === 'string'
@@ -516,12 +519,29 @@ class WymberApp {
                     x: Math.random() * 300 + 50,
                     y: Math.random() * 200 + 50
                 };
+                let newId;
                 if (this.mindMap) {
-                    await this.mindMap.addNode(nodeData);
+                    newId = await this.mindMap.addNode(nodeData);
                 } else {
-                    await api.post('/node', nodeData);
+                    const res = await api.post('/node', nodeData);
+                    newId = res?.id;
                 }
+
+                // If this node answers a trigger (added via the pairing nudge), connect them so
+                // the pair is visible on the map. A trigger should never sit alone with no anchor.
+                const triggerId = this.pairingTriggerId;
+                this.pairingTriggerId = null;
+                if (triggerId && newId && (nodeType === 'coping' || nodeType === 'support')) {
+                    try {
+                        await api.post('/edge', { from_node_id: triggerId, to_node_id: newId, label: '' });
+                        await this.mindMap?.loadMap();
+                    } catch (e) {
+                        console.error('Could not link anchor to trigger:', e);
+                    }
+                }
+
                 this.showNotification('Added to your map', 'success');
+                if (nodeType === 'trigger' && newId) newTriggerId = newId;
             }
 
             document.getElementById('node-modal').style.display = 'none';
@@ -529,7 +549,11 @@ class WymberApp {
         } catch (error) {
             console.error('Error saving node:', error);
             this.showNotification('Could not save entry', 'error');
+            return;
         }
+
+        // After the modal closes, gently invite an anchor for a brand-new trigger.
+        if (newTriggerId) this.showPairingNudge(newTriggerId);
     }
 
     // ===== SETTINGS =====
@@ -777,6 +801,35 @@ class WymberApp {
             el.classList.remove('show');
             setTimeout(() => el.remove(), 300);
         }, 3000);
+    }
+
+    /**
+     * A gentle, opt-in invitation to pair a freshly-added Trigger with a calming anchor (a coping
+     * skill or a support), so a map is never only pain. Never forced; always easy to dismiss.
+     */
+    showPairingNudge(triggerId) {
+        document.querySelector('.notification-nudge')?.remove();
+        const el = document.createElement('div');
+        el.className = 'notification notification-nudge';
+        el.setAttribute('role', 'status');
+        el.setAttribute('aria-live', 'polite');
+        el.innerHTML = `
+            <p class="nudge-text">Triggers can feel lighter with an anchor nearby. Add a coping skill or a support for this one?</p>
+            <div class="nudge-actions">
+                <button type="button" class="nudge-add">Add an anchor</button>
+                <button type="button" class="nudge-dismiss">Not now</button>
+            </div>`;
+        document.body.appendChild(el);
+        setTimeout(() => el.classList.add('show'), 10);
+        const close = () => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); };
+        el.querySelector('.nudge-add').addEventListener('click', () => {
+            this.pairingTriggerId = triggerId;
+            close();
+            this.showNodeModal(null, 'coping');
+        });
+        el.querySelector('.nudge-dismiss').addEventListener('click', close);
+        // Lingers longer than a toast, but never nags forever.
+        setTimeout(close, 15000);
     }
 }
 
