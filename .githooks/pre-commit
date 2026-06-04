@@ -1,5 +1,6 @@
 #!/bin/sh
-# Wymber pre-commit: keep the frontend units green when frontend code changes.
+# Wymber pre-commit: keep the frontend units green AND the service-worker cache version in sync
+# with the shell, so returning users never get stale assets and no one has to remember to bump it.
 # Intentional bypass: git commit --no-verify
 if git diff --cached --name-only | grep -qE '^frontend/'; then
   echo "[pre-commit] frontend changed, running vitest..."
@@ -8,5 +9,9 @@ if git diff --cached --name-only | grep -qE '^frontend/'; then
     exit 1
   fi
   echo "[pre-commit] vitest green."
+
+  # Derive sw.js VERSION from a content hash of the cached shell, then fold it into this commit.
+  node scripts/sw-version.mjs
+  git add frontend/sw.js
 fi
 exit 0

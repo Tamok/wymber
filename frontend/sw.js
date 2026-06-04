@@ -6,9 +6,10 @@
  * the shell on install, serves it cache-first for offline, and keeps it fresh in the background.
  * No user data is ever touched here (the vault is never fetched over the network).
  *
- * Bump VERSION whenever the shell changes to retire the old cache.
+ * VERSION is derived from a content hash of the cached shell by scripts/sw-version.mjs (run in
+ * the pre-commit hook), so it bumps automatically when the shell changes. Don't hand-edit it.
  */
-const VERSION = 'wymber-shell-v2';
+const VERSION = 'wymber-shell-f5cd5f2633aa';
 
 const CORE = [
     '/',
