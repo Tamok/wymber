@@ -33,6 +33,16 @@ test.describe('Mind Map Operations', () => {
         await expect(page.locator('#node-modal')).toBeHidden({ timeout: 3000 });
     });
 
+    test('Escape closes a modal even while a field inside it is focused', async ({ page }) => {
+        await createVaultAndOpenMap(page);
+        await page.click('#add-node-btn');
+        await expect(page.locator('#node-modal')).toBeVisible();
+        await page.fill('#node-title', 'half a thought'); // focus is now inside a text input
+        await expect(page.locator('#node-title')).toBeFocused();
+        await page.keyboard.press('Escape');
+        await expect(page.locator('#node-modal')).toBeHidden({ timeout: 3000 });
+    });
+
     test('node type description updates on selection', async ({ page }) => {
         await createVaultAndOpenMap(page);
         await page.click('#add-node-btn');

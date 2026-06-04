@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { NODE_TYPES, MESSAGES } from '../js/config.js';
+import { NODE_TYPES } from '../js/config.js';
 
 describe('NODE_TYPES', () => {
     const expectedTypes = ['event', 'emotion', 'body', 'person', 'place', 'trigger', 'coping', 'support', 'need', 'insight', 'growth'];
@@ -33,14 +33,5 @@ describe('NODE_TYPES', () => {
             expect(typeof type.label).toBe('string');
             expect(type.label.length).toBeGreaterThan(0);
         }
-    });
-});
-
-describe('MESSAGES', () => {
-    it('has required message keys', () => {
-        expect(MESSAGES.welcome).toBeDefined();
-        expect(MESSAGES.first_time).toBeDefined();
-        expect(MESSAGES.session_expired).toBeDefined();
-        expect(MESSAGES.crisis_disclaimer).toBeDefined();
     });
 });

@@ -3,7 +3,7 @@ export const NODE_TYPES = {
         color: "#C8E6C9",
         icon: "circle",
         label: "Event",
-        description: "A significant experience in your healing journey",
+        description: "Something significant that happened",
         tooltip: "Trauma incidents, flashback memories, or important life events",
         prompt: "Something that happened. Share only as much as feels okay."
     },
@@ -28,7 +28,7 @@ export const NODE_TYPES = {
         icon: "user",
         label: "Person",
         description: "Important people in your experiences",
-        tooltip: "Family, friends, therapists, or others who have been part of your journey",
+        tooltip: "Family, friends, therapists, or anyone else involved",
         prompt: "Someone connected to this. You can use initials or a nickname."
     },
     place: {
@@ -36,7 +36,7 @@ export const NODE_TYPES = {
         icon: "map-pin",
         label: "Place",
         description: "Locations that hold significance for you",
-        tooltip: "Safe spaces, challenging environments, or meaningful locations",
+        tooltip: "Somewhere safe, somewhere hard, or any place that matters",
         prompt: "A place that's part of this."
     },
     trigger: {
@@ -83,17 +83,8 @@ export const NODE_TYPES = {
         color: "#C8F7C5",
         icon: "trending-up",
         label: "Growth",
-        description: "Positive changes and healing progress",
+        description: "Positive changes and progress",
         tooltip: "Ways you've grown, strengths you've developed, progress you've made",
         prompt: "A way you've grown or coped, however small."
     }
-};
-
-export const MESSAGES = {
-    welcome: "Welcome back to your safe space for reflection and healing.",
-    first_time: "Welcome to Wymber. This is your private space for mapping and understanding your experiences.",
-    session_expired: "Your session has expired for security. Please log in again.",
-    save_success: "Your map has been safely saved.",
-    delete_confirm: "This will remove this node and its connections. You can always recreate it later if needed.",
-    crisis_disclaimer: "If you're in crisis, please reach out for immediate help: Call 988 (Suicide & Crisis Lifeline) or 911."
 };

@@ -70,17 +70,14 @@ class WymberApp {
             }
         });
 
-        // Close all modals on Escape, Ctrl+N for new node
+        // Escape closes whatever is open, from anywhere, even mid-typing in a field. Other
+        // shortcuts (Ctrl+N) stay out of text fields.
         document.addEventListener('keydown', (e) => {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
             if (e.key === 'Escape') {
-                document.querySelectorAll('.modal').forEach(m => {
-                    if (m.style.display === 'flex') m.style.display = 'none';
-                });
-                this.stopBreathing();
+                this.closeAllOverlays();
+                return;
             }
-
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
             if ((e.ctrlKey || e.metaKey) && (e.key === 'n' || e.key === 'N')) {
                 e.preventDefault();
                 this.showNodeModal();
@@ -135,6 +132,16 @@ class WymberApp {
             });
             wrap.appendChild(btn);
         });
+    }
+
+    /** What Escape does: close every open overlay (modals, the detail drawer, the nudge) and
+        stop the breathing timer. Safe to call when nothing is open. */
+    closeAllOverlays() {
+        document.querySelectorAll('.modal').forEach((m) => { m.style.display = 'none'; });
+        this.stopBreathing();
+        this.pendingRestoreFile = null;
+        this.closeNodeDetail();
+        document.querySelectorAll('.notification-nudge').forEach((n) => n.remove());
     }
 
     showAuthPanel(name) {
@@ -261,7 +268,7 @@ class WymberApp {
         const code = this.currentRecoveryCode || '';
         navigator.clipboard?.writeText(code).then(
             () => this.showNotification('Recovery code copied', 'success'),
-            () => this.showNotification('Could not copy — please write it down', 'error')
+            () => this.showNotification('Could not copy. Write it down instead.', 'error')
         );
     }
 
@@ -864,7 +871,7 @@ class WymberApp {
         if (!this.suggestions.length) {
             const li = document.createElement('li');
             li.className = 'suggest-empty';
-            li.textContent = 'No suggestions right now. As your map grows, gentle ideas may appear here.';
+            li.textContent = 'Nothing to suggest yet. As your map grows, possible links will show up here.';
             ul.appendChild(li);
             return;
         }
