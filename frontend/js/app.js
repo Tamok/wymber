@@ -47,6 +47,10 @@ class WymberApp {
         document.getElementById('show-recover')?.addEventListener('click', () => this.showAuthPanel('recover'));
         document.getElementById('back-to-unlock')?.addEventListener('click', () => this.showAuthPanel('unlock'));
         document.getElementById('restore-vault-file')?.addEventListener('change', (e) => this.doRestoreVault(e));
+        document.getElementById('restore-confirm-btn')?.addEventListener('click', () => this.confirmRestore());
+        document.getElementById('restore-cancel-btn')?.addEventListener('click', () => this.closeRestoreConfirm());
+        document.getElementById('close-restore-confirm')?.addEventListener('click', () => this.closeRestoreConfirm());
+        document.getElementById('restore-export-first')?.addEventListener('click', () => this.doExportVault());
         document.getElementById('download-recovery')?.addEventListener('click', () => this.downloadRecovery());
         document.getElementById('copy-recovery')?.addEventListener('click', () => this.copyRecovery());
         document.getElementById('ack-saved-recovery')?.addEventListener('change', (e) => {
@@ -142,6 +146,12 @@ class WymberApp {
         }
         try {
             this.currentRecoveryCode = await api.createVault(password);
+            // Start a new vault in the OS color scheme so it matches the screens just seen.
+            try {
+                if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    await api.put('/settings', { theme: 'dark' });
+                }
+            } catch (_) {}
             this.showRecoverySheet(this.currentRecoveryCode);
         } catch (error) {
             console.error('Create vault failed:', error);
@@ -237,12 +247,25 @@ class WymberApp {
         const pwInput = document.getElementById('create-password');
         const fill = document.getElementById('strength-fill');
         const label = document.getElementById('strength-label');
+        const hint = document.getElementById('strength-hint');
         if (!pwInput || !fill || !label) return;
         const pw = pwInput.value;
         const { score, label: text } = passwordStrength(pw);
         fill.style.width = `${(score / 4) * 100}%`;
         fill.className = `strength-fill strength-${score}`;
         label.textContent = pw ? text : '';
+        if (hint) hint.textContent = pw ? this.passwordHint(pw) : '';
+    }
+
+    /** Actionable guidance: tell the user what would make this password stronger. */
+    passwordHint(pw) {
+        const tips = [];
+        if (pw.length < 12) tips.push('make it longer (aim for 12+)');
+        if (!(/[a-z]/.test(pw) && /[A-Z]/.test(pw))) tips.push('mix upper and lower case');
+        if (!/\d/.test(pw)) tips.push('add a number');
+        if (!/[^A-Za-z0-9]/.test(pw)) tips.push('add a symbol');
+        if (tips.length === 0) return 'Strong. A passphrase of a few unrelated words works well too.';
+        return 'To strengthen: ' + tips.slice(0, 2).join(', ') + '.';
     }
 
     async enterApp() {
@@ -341,7 +364,12 @@ class WymberApp {
                 orb.classList.remove('is-in', 'is-hold', 'is-out');
                 orb.classList.add(p.cls);
             }
-            label.textContent = p.text;
+            // Fade the word out, swap it while invisible, fade it back in (CSS handles the ease).
+            label.style.opacity = '0';
+            this.breathingFadeTimeout = setTimeout(() => {
+                label.textContent = p.text;
+                label.style.opacity = '1';
+            }, 350);
             i = (i + 1) % phases.length;
             this.breathingTimeout = setTimeout(step, p.ms);
         };
@@ -352,6 +380,10 @@ class WymberApp {
         if (this.breathingTimeout) {
             clearTimeout(this.breathingTimeout);
             this.breathingTimeout = null;
+        }
+        if (this.breathingFadeTimeout) {
+            clearTimeout(this.breathingFadeTimeout);
+            this.breathingFadeTimeout = null;
         }
         document.getElementById('breathing-orb')?.classList.remove('is-in', 'is-hold', 'is-out');
     }
@@ -1075,20 +1107,72 @@ class WymberApp {
     async doRestoreVault(event) {
         const file = event.target.files?.[0];
         if (!file) return;
+        event.target.value = ''; // let the same file be re-picked later
+
+        // Fresh device (no vault yet) → restore directly; that's the migration path, no friction.
+        if (!(await api.hasVault())) {
+            await this.performRestore(file);
+            return;
+        }
+        // A vault already exists → gate the destructive overwrite behind the current password,
+        // so someone with your locked device can't wipe your data by importing over it.
+        this.pendingRestoreFile = file;
+        this.openRestoreConfirm();
+    }
+
+    openRestoreConfirm() {
+        document.getElementById('restore-current-password').value = '';
+        this.showRestoreConfirmError('', false);
+        document.getElementById('restore-confirm-modal').style.display = 'flex';
+        setTimeout(() => document.getElementById('restore-current-password')?.focus(), 60);
+    }
+
+    closeRestoreConfirm() {
+        document.getElementById('restore-confirm-modal').style.display = 'none';
+        this.pendingRestoreFile = null;
+    }
+
+    async confirmRestore() {
+        const file = this.pendingRestoreFile;
+        if (!file) return;
+        const pw = document.getElementById('restore-current-password').value;
+        if (!pw) {
+            this.showRestoreConfirmError('Enter your current password to confirm.');
+            return;
+        }
+        // Verify the password by unlocking the current vault. Wrong password → no wipe.
         try {
-            if (await api.hasVault() &&
-                !confirm('This replaces the space currently on this device. Continue?')) {
-                event.target.value = '';
-                return;
-            }
-            await importVaultFile(file, api);
-            event.target.value = '';
+            await api.unlock(pw);
+        } catch {
+            this.showRestoreConfirmError('That password does not match the space on this device.');
+            return;
+        }
+        document.getElementById('restore-confirm-modal').style.display = 'none';
+        this.pendingRestoreFile = null;
+        await this.performRestore(file);
+    }
+
+    async performRestore(file) {
+        try {
+            await importVaultFile(file, api); // validates, replaces the ciphertext, then locks
             this.showNotification('Backup restored. Unlock it with its password.', 'success');
             this.showAuthPanel('unlock');
         } catch (error) {
             console.error('Vault restore failed:', error);
-            event.target.value = '';
+            api.lock(); // the old vault is untouched; don't leave a verified-but-not-restored state
             this.showNotification('That does not look like a .wymber file.', 'error');
+        }
+    }
+
+    showRestoreConfirmError(message, show = true) {
+        const el = document.getElementById('restore-confirm-error');
+        if (!el) return;
+        if (show && message) {
+            el.textContent = message;
+            el.style.display = 'block';
+        } else {
+            el.textContent = '';
+            el.style.display = 'none';
         }
     }
 

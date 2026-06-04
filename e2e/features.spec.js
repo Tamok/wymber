@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { createVaultAndOpenMap } from './helpers.js';
+import { createVaultAndOpenMap, PASSWORD } from './helpers.js';
 
 test.describe('Analyze Feature', () => {
     test('analyze button opens analysis modal', async ({ page }) => {
@@ -36,6 +36,40 @@ test.describe('Export Feature', () => {
         await expect(page.locator('#export-modal')).toBeVisible({ timeout: 5000 });
         await expect(page.locator('#export-json')).toBeVisible();
         await expect(page.locator('#export-text')).toBeVisible();
+    });
+});
+
+test.describe('Vault restore safety (#7)', () => {
+    test('restoring over an existing vault requires the current password', async ({ page }) => {
+        await createVaultAndOpenMap(page);
+
+        // Export the current vault to get a real .wymber file to restore.
+        await page.click('#export-btn');
+        await expect(page.locator('#export-modal')).toBeVisible({ timeout: 5000 });
+        const downloadPromise = page.waitForEvent('download');
+        await page.click('#export-vault');
+        const file = await (await downloadPromise).path();
+
+        // Reload → the unlock screen (a vault exists on this device).
+        await page.reload();
+        await expect(page.locator('#unlock-form')).toBeVisible({ timeout: 10000 });
+
+        // Choosing a backup to restore raises the gate (it would replace the local vault).
+        await page.setInputFiles('#restore-vault-file', file);
+        const gate = page.locator('#restore-confirm-modal');
+        await expect(gate).toBeVisible();
+
+        // A wrong password is refused and the vault is left untouched.
+        await page.fill('#restore-current-password', 'not-the-password');
+        await page.click('#restore-confirm-btn');
+        await expect(page.locator('#restore-confirm-error')).toBeVisible();
+        await expect(gate).toBeVisible();
+
+        // The correct current password authorizes the replace.
+        await page.fill('#restore-current-password', PASSWORD);
+        await page.click('#restore-confirm-btn');
+        await expect(gate).toBeHidden({ timeout: 5000 });
+        await expect(page.locator('#unlock-form')).toBeVisible();
     });
 });
 

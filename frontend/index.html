@@ -6,6 +6,16 @@
     <title>Wymber - Private Trauma Mapping</title>
     <link rel="stylesheet" href="/static/css/styles.css">
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <script>
+        // Follow the OS color scheme until the vault's saved theme loads, so the first screens
+        // (create / unlock) aren't a white flash for dark-mode users. Runs before paint.
+        try {
+            if (!document.documentElement.getAttribute('data-theme') &&
+                window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        } catch (_) {}
+    </script>
 
     <!-- Installable, offline-capable PWA (the data is already on-device; the shell is cached). -->
     <link rel="manifest" href="/manifest.webmanifest">
@@ -56,7 +66,7 @@
     <div id="login-screen" class="screen">
         <div class="login-container">
             <div class="login-box">
-                <h1><img src="/static/favicon.svg" alt="" width="28" height="28" style="vertical-align:-6px;margin-right:7px"> Wymber</h1>
+                <h1><img src="/static/favicon.svg" alt="" class="brand-mark"> Wymber</h1>
                 <p class="tagline">Your private space for healing</p>
 
                 <!-- Create a new vault -->
@@ -70,6 +80,7 @@
                     <div id="password-strength" class="password-strength" aria-live="polite">
                         <div class="strength-bar"><div id="strength-fill" class="strength-fill"></div></div>
                         <span id="strength-label" class="strength-label"></span>
+                        <p id="strength-hint" class="strength-hint"></p>
                     </div>
                     <div class="form-group">
                         <label for="create-confirm">Confirm password</label>
@@ -127,7 +138,7 @@
                 </form>
 
                 <p class="auth-restore-hint">Moving from another device?
-                    <label for="restore-vault-file" class="btn-link">Restore a <code>.wymber</code> backup</label>.</p>
+                    <label for="restore-vault-file" class="restore-link">Restore a <code>.wymber</code> backup</label></p>
                 <input type="file" id="restore-vault-file" accept=".wymber" style="display:none;" aria-label="Choose a .wymber backup to restore">
 
                 <div id="error-message" class="error-message" style="display:none;" role="alert"></div>
@@ -373,6 +384,31 @@
             <button id="detail-delete" class="btn btn-text-danger" type="button">Remove node</button>
         </div>
     </aside>
+
+    <!-- Restore gate: replacing an existing vault is destructive, so require the current
+         password to authorize it (a thief with your locked device can't wipe your data). -->
+    <div id="restore-confirm-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Replace the space on this device?</h2>
+                <button class="close-btn" id="close-restore-confirm" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Restoring a backup will <strong>replace</strong> the map currently on this device. This can't be undone.</p>
+                <p>If you want to keep what's here, export it first.</p>
+                <button type="button" id="restore-export-first" class="btn">Export current space first</button>
+                <div class="form-group" style="margin-top: var(--spacing-md);">
+                    <label for="restore-current-password">Enter the current password to confirm</label>
+                    <input type="password" id="restore-current-password" autocomplete="current-password">
+                </div>
+                <div id="restore-confirm-error" class="error-message" style="display:none;" role="alert"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="restore-confirm-btn" class="btn btn-danger">Replace my space</button>
+                <button type="button" id="restore-cancel-btn" class="btn btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Settings Modal -->
     <div id="settings-modal" class="modal" style="display:none;">
