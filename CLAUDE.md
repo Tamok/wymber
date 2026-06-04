@@ -46,6 +46,7 @@ Run commands from the repo root.
 - `frontend/js/app.js`: orchestrator: create / unlock / recover panels, recovery sheet, auto-lock, the map, the add-node modal, and the node detail drawer (#108: type/title/description/story/keywords, edit-in-place, auto-saving).
 - `frontend/js/mindmap.js`: the graph renderer (Cytoscape, vendored in `frontend/libs/`). Draws pastel building-block nodes + first-class edges straight from `/mindmap`, theme-aware via `applyTheme()`, and keeps an accessible `#map-outline` list twin in lockstep (the keyboard-first, non-visual surface).
 - `frontend/js/{utils,analyze,export}.js`: pure utils, local map analysis, export.
+- `frontend/js/suggest.js`: the discovery engine (`suggestLinks`): proposes *possible* links from shared keywords + an "anchor gap" type hint (a lone trigger/need with no coping/support). Pure/testable; surfaced via a quiet, opt-in "possible connections" prompt (never auto-added). A first cut meant to grow (ADR-0002).
 - `frontend/js/config.js`: `NODE_TYPES` + `MESSAGES` (source of truth).
 - `backend/main.py`: the static server (+ health). That's the whole backend.
 

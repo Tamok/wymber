@@ -794,6 +794,110 @@ kbd {
 
 .btn-text-danger:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
+/* ===== Discovery: a quiet "possible connections" affordance + its gentle list ===== */
+.suggest-affordance {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: var(--spacing-md);
+    padding: 4px 12px;
+    background: rgba(155, 139, 189, 0.12);
+    border: 1px solid rgba(155, 139, 189, 0.4);
+    border-radius: 999px;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.suggest-affordance[hidden] { display: none; }
+.suggest-affordance:hover { background: rgba(155, 139, 189, 0.2); border-color: rgba(155, 139, 189, 0.6); }
+.suggest-affordance:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.suggest-spark { color: #9b8bbd; }
+
+.suggest-intro {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin: 0 0 var(--spacing-md);
+}
+
+.suggest-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.suggest-item {
+    padding: var(--spacing-md);
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-left: 4px solid #9b8bbd;
+    border-radius: 10px;
+}
+
+.suggest-pair {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.suggest-chip {
+    flex: 0 0 auto;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 1px solid rgba(74, 69, 64, 0.18);
+}
+
+.suggest-link-icon { color: var(--text-secondary); }
+
+.suggest-reason {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    margin: 4px 0 var(--spacing-sm);
+}
+
+.suggest-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.suggest-connect {
+    background: #B2DFDB;
+    color: #1f3b37;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.suggest-connect:hover { filter: brightness(0.97); }
+.suggest-connect:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.suggest-dismiss {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 6px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.suggest-dismiss:hover { color: var(--text-primary); }
+.suggest-dismiss:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.suggest-empty {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
 .mindmap-placeholder {
     position: absolute;
     top: 50%;

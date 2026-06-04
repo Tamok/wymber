@@ -3,6 +3,7 @@ import { LocalRepo } from './local-repo.js';
 import { TrauMindMap } from './mindmap.js';
 import { validateNodeData, passwordStrength } from './utils.js';
 import { analyzeMap, renderAnalysis } from './analyze.js';
+import { suggestLinks } from './suggest.js';
 import { exportAsJSON, exportAsText, importMap, exportVaultFile, importVaultFile } from './export.js';
 
 // Local-first: the encrypted vault on this device IS the backend. `api` keeps the
@@ -15,6 +16,8 @@ class WymberApp {
         this.mindMap = null;
         this.detailNodeId = null; // node open in the detail drawer (#108)
         this.detailKeywords = []; // working copy of that node's keywords
+        this.suggestions = []; // current link suggestions (discovery engine)
+        this.dismissedSuggestions = new Set(); // pair keys the user said "not now" to this session
         this.authPanel = 'create';
         this.currentRecoveryCode = null;
         this.autoLockMinutes = 15;
@@ -358,6 +361,7 @@ class WymberApp {
         document.getElementById('settings-btn')?.addEventListener('click', () => this.showSettingsModal());
         document.getElementById('analyze-btn')?.addEventListener('click', () => this.showAnalysis());
         document.getElementById('export-btn')?.addEventListener('click', () => this.showExportModal());
+        document.getElementById('suggest-btn')?.addEventListener('click', () => this.openSuggestModal());
 
         // Modal close buttons
         document.querySelectorAll('.close-btn').forEach(btn => {
@@ -452,6 +456,7 @@ class WymberApp {
         this.mindMap.onShowNodeModal = (node) => this.openNodeDetail(node);
         this.mindMap.onSelectNode = (node) => this.openNodeDetail(node);
         this.mindMap.onDeselect = () => this.closeNodeDetail();
+        this.mindMap.onMapLoaded = (data) => this.refreshSuggestions(data);
 
         const success = await this.mindMap.init();
         if (success) {
@@ -739,6 +744,141 @@ class WymberApp {
             console.error('Could not remove node:', error);
             this.showNotification('Could not remove node', 'error');
         }
+    }
+
+    // ===== DISCOVERY: possible connections (quiet, opt-in) =====
+
+    suggestKey(s) {
+        const a = s.from_node_id;
+        const b = s.to_node_id;
+        return a < b ? `${a}|${b}` : `${b}|${a}`;
+    }
+
+    /** Recompute suggestions whenever the map (re)loads, and update the gentle affordance. */
+    refreshSuggestions(data) {
+        const nodes = data?.nodes || this.mindMap?.lastData?.nodes || [];
+        const edges = data?.edges || this.mindMap?.lastData?.edges || [];
+        const all = suggestLinks(nodes, edges);
+
+        // Forget session-dismissals that no longer apply (e.g. the pair got connected).
+        const live = new Set(all.map((s) => this.suggestKey(s)));
+        for (const k of [...this.dismissedSuggestions]) if (!live.has(k)) this.dismissedSuggestions.delete(k);
+
+        this.suggestions = all.filter((s) => !this.dismissedSuggestions.has(this.suggestKey(s)));
+        this.updateSuggestAffordance();
+
+        // Keep an open modal honest if its contents changed underneath it.
+        if (document.getElementById('suggest-modal')?.style.display === 'flex') this.renderSuggestList();
+    }
+
+    updateSuggestAffordance() {
+        const btn = document.getElementById('suggest-btn');
+        const label = document.getElementById('suggest-label');
+        if (!btn || !label) return;
+        const n = this.suggestions.length;
+        label.textContent = `${n} possible connection${n === 1 ? '' : 's'}`;
+        btn.hidden = n === 0;
+    }
+
+    openSuggestModal() {
+        if (!this.suggestions.length) return;
+        this.renderSuggestList();
+        document.getElementById('suggest-modal').style.display = 'flex';
+    }
+
+    closeSuggestModal() {
+        document.getElementById('suggest-modal').style.display = 'none';
+    }
+
+    renderSuggestList() {
+        const ul = document.getElementById('suggest-list');
+        if (!ul) return;
+        ul.innerHTML = '';
+        const byId = new Map((this.mindMap?.lastData?.nodes || []).map((n) => [n.id, n]));
+
+        if (!this.suggestions.length) {
+            const li = document.createElement('li');
+            li.className = 'suggest-empty';
+            li.textContent = 'No suggestions right now. As your map grows, gentle ideas may appear here.';
+            ul.appendChild(li);
+            return;
+        }
+
+        for (const s of this.suggestions) {
+            const a = byId.get(s.from_node_id);
+            const b = byId.get(s.to_node_id);
+            if (!a || !b) continue;
+
+            const li = document.createElement('li');
+            li.className = 'suggest-item';
+
+            const pair = document.createElement('div');
+            pair.className = 'suggest-pair';
+            pair.append(
+                this.suggestChip(a), document.createTextNode(a.title),
+                this.suggestArrow(),
+                this.suggestChip(b), document.createTextNode(b.title),
+            );
+
+            const reason = document.createElement('p');
+            reason.className = 'suggest-reason';
+            reason.textContent = s.reason;
+
+            const actions = document.createElement('div');
+            actions.className = 'suggest-actions';
+            const connect = document.createElement('button');
+            connect.type = 'button';
+            connect.className = 'suggest-connect';
+            connect.textContent = 'Connect';
+            connect.addEventListener('click', () => this.connectSuggestion(s));
+            const dismiss = document.createElement('button');
+            dismiss.type = 'button';
+            dismiss.className = 'suggest-dismiss';
+            dismiss.textContent = 'Not now';
+            dismiss.addEventListener('click', () => this.dismissSuggestion(s));
+            actions.append(connect, dismiss);
+
+            li.append(pair, reason, actions);
+            ul.appendChild(li);
+        }
+    }
+
+    suggestChip(node) {
+        const chip = document.createElement('span');
+        chip.className = 'suggest-chip';
+        chip.style.background = NODE_TYPES[node.node_type]?.color || '#cfc7ba';
+        chip.setAttribute('aria-hidden', 'true');
+        return chip;
+    }
+
+    suggestArrow() {
+        const span = document.createElement('span');
+        span.className = 'suggest-link-icon';
+        span.setAttribute('aria-hidden', 'true');
+        span.textContent = '↔';
+        return span;
+    }
+
+    async connectSuggestion(s) {
+        try {
+            await api.post('/edge', { from_node_id: s.from_node_id, to_node_id: s.to_node_id, label: '' });
+            // loadMap fires onMapLoaded -> refreshSuggestions, which drops the now-connected pair
+            // and re-renders the open list.
+            await this.mindMap?.loadMap();
+            if (!this.suggestions.length) this.closeSuggestModal();
+            this.showNotification('Connected', 'success');
+        } catch (error) {
+            console.error('Could not connect suggestion:', error);
+            this.showNotification('Could not connect', 'error');
+        }
+    }
+
+    dismissSuggestion(s) {
+        this.dismissedSuggestions.add(this.suggestKey(s));
+        this.suggestions = this.suggestions.filter((x) => this.suggestKey(x) !== this.suggestKey(s));
+        this.renderSuggestList();
+        this.updateSuggestAffordance();
+        if (!this.suggestions.length) this.closeSuggestModal();
     }
 
     // ===== SETTINGS =====

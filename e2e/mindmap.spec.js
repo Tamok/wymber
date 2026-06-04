@@ -157,6 +157,49 @@ test.describe('Mind Map Operations', () => {
         await expect(page.locator('#detail-keywords .keyword-tag')).toContainText('morning');
     });
 
+    test('discovery: shared keywords raise a quiet suggestion you can connect (ADR-0002)', async ({ page }) => {
+        await createVaultAndOpenMap(page);
+
+        const giveKeyword = async (title, kw) => {
+            await page.locator('.map-outline-node', { hasText: title }).first().click();
+            await expect(page.locator('#node-detail')).toHaveClass(/open/);
+            await page.fill('#detail-keyword-input', kw);
+            await page.locator('#detail-keyword-input').press('Enter');
+            await page.click('#detail-save');
+            await expect(page.locator('#node-detail')).not.toHaveClass(/open/, { timeout: 3000 });
+        };
+
+        // Two unconnected nodes that share a keyword.
+        await page.click('#add-node-btn');
+        await page.selectOption('#node-type', 'event');
+        await page.fill('#node-title', 'A storm');
+        await page.click('#save-node');
+        await expect(page.locator('#map-outline')).toContainText('A storm', { timeout: 5000 });
+        await giveKeyword('A storm', 'rain');
+
+        await page.click('#add-node-btn');
+        await page.selectOption('#node-type', 'emotion');
+        await page.fill('#node-title', 'Unease');
+        await page.click('#save-node');
+        await expect(page.locator('#map-outline')).toContainText('Unease', { timeout: 5000 });
+        await giveKeyword('Unease', 'rain');
+
+        // The quiet affordance appears with a count; nothing is added until the user opens it.
+        const affordance = page.locator('#suggest-btn');
+        await expect(affordance).toBeVisible();
+        await expect(affordance).toContainText(/possible connection/i);
+
+        // Open it; the suggestion explains itself.
+        await affordance.click();
+        const modal = page.locator('#suggest-modal');
+        await expect(modal).toBeVisible();
+        await expect(modal).toContainText(/rain/);
+
+        // Connect the pair; the only suggestion clears and the affordance goes quiet.
+        await page.locator('.suggest-item', { hasText: 'Unease' }).first().locator('.suggest-connect').click();
+        await expect(affordance).toBeHidden({ timeout: 5000 });
+    });
+
     test('non-trigger nodes do not raise the pairing nudge', async ({ page }) => {
         await createVaultAndOpenMap(page);
         await page.click('#add-node-btn');

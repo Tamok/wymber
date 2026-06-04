@@ -59,6 +59,7 @@ export class TrauMindMap {
         this.onShowNodeModal = null; // callback set by app.js (edit -> node detail drawer)
         this.onSelectNode = null; // node selected in select mode (open its detail drawer)
         this.onDeselect = null; // selection cleared (close the drawer)
+        this.onMapLoaded = null; // map (re)loaded: { nodes, edges } (drives link suggestions)
         this.autoSaveTimeout = null;
         this.lastData = { nodes: [], edges: [] };
         this.outlineEl = document.getElementById('map-outline');
@@ -152,6 +153,7 @@ export class TrauMindMap {
         this.renderGraph(this.lastData);
         this.renderOutline(this.lastData);
         this.updateSaveIndicator('All changes saved');
+        this.onMapLoaded?.(this.lastData);
     }
 
     renderGraph({ nodes, edges }) {

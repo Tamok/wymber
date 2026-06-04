@@ -160,6 +160,10 @@
                 </div>
                 <div class="toolbar-status">
                     <span id="selection-status">No node selected</span>
+                    <button id="suggest-btn" class="suggest-affordance" type="button" hidden>
+                        <span class="suggest-spark" aria-hidden="true">&#10022;</span>
+                        <span id="suggest-label">0 possible connections</span>
+                    </button>
                 </div>
             </div>
 
@@ -472,6 +476,20 @@
             </div>
             <div class="modal-footer">
                 <button id="close-grounding-btn" class="btn btn-primary">I'm okay for now</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Possible connections (discovery, quiet + opt-in): gentle ideas you choose or ignore. -->
+    <div id="suggest-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Possible connections</h2>
+                <button class="close-btn" id="close-suggest" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="suggest-intro">A few gentle ideas, only if they fit. Nothing is added unless you choose it.</p>
+                <ul id="suggest-list" class="suggest-list"></ul>
             </div>
         </div>
     </div>
