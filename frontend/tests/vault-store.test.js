@@ -77,4 +77,36 @@ describe('VaultStore', () => {
     it('a fresh document is at the current schema version', () => {
         expect(emptyDocument().schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
     });
+
+    it('stores story and keywords on a node, defaulting them', () => {
+        const s = new VaultStore();
+        const a = s.addNode({ node_type: 'event', title: 'A' });
+        expect(a.story).toBe('');
+        expect(a.keywords).toEqual([]);
+        const b = s.addNode({ node_type: 'event', title: 'B', story: 'my words', keywords: ['rain', 'home'] });
+        expect(b.story).toBe('my words');
+        expect(b.keywords).toEqual(['rain', 'home']);
+    });
+
+    it('updates story and keywords', () => {
+        const s = new VaultStore();
+        const a = s.addNode({ node_type: 'event', title: 'A' });
+        s.updateNode(a.id, { story: 'a longer narrative', keywords: ['night'] });
+        const got = s.getMindmap().nodes.find((n) => n.id === a.id);
+        expect(got.story).toBe('a longer narrative');
+        expect(got.keywords).toEqual(['night']);
+    });
+
+    it('migrates v1 nodes to v2 by backfilling story and keywords', () => {
+        const v1 = {
+            ...emptyDocument(),
+            schemaVersion: 1,
+            nodes: [{ id: 1, node_type: 'event', title: 'old', description: 'd' }],
+        };
+        const store = VaultStore.fromDocument(v1);
+        const n = store.getMindmap().nodes[0];
+        expect(n.story).toBe('');
+        expect(n.keywords).toEqual([]);
+        expect(store.toDocument().schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    });
 });

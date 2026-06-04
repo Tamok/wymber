@@ -56,7 +56,9 @@ export class TrauMindMap {
         this.selectedNode = null; // the raw db node { id, node_type, title, ... } or null
         this.toolbarMode = 'select';
         this.connectingFrom = null; // raw db node while linking
-        this.onShowNodeModal = null; // callback set by app.js
+        this.onShowNodeModal = null; // callback set by app.js (edit -> node detail drawer)
+        this.onSelectNode = null; // node selected in select mode (open its detail drawer)
+        this.onDeselect = null; // selection cleared (close the drawer)
         this.autoSaveTimeout = null;
         this.lastData = { nodes: [], edges: [] };
         this.outlineEl = document.getElementById('map-outline');
@@ -358,6 +360,7 @@ export class TrauMindMap {
         this.updateToolbar();
         this.syncOutlineSelection();
         this.announceToScreenReader(`Selected ${node.title}`);
+        this.onSelectNode?.(node);
     }
 
     handleLinkModeClick(node) {
@@ -384,6 +387,7 @@ export class TrauMindMap {
         this.undim();
         this.updateToolbar();
         this.syncOutlineSelection();
+        this.onDeselect?.();
     }
 
     highlightNeighborhood(node) {

@@ -13,7 +13,8 @@ class WymberApp {
     constructor() {
         this.currentUser = null;
         this.mindMap = null;
-        this.editingNode = null;
+        this.detailNodeId = null; // node open in the detail drawer (#108)
+        this.detailKeywords = []; // working copy of that node's keywords
         this.authPanel = 'create';
         this.currentRecoveryCode = null;
         this.autoLockMinutes = 15;
@@ -58,7 +59,6 @@ class WymberApp {
         window.addEventListener('click', (e) => {
             if (e.target.classList.contains('modal')) {
                 e.target.style.display = 'none';
-                if (e.target.id === 'node-modal') this.editingNode = null;
                 if (e.target.id === 'grounding-modal') this.stopBreathing();
             }
         });
@@ -69,10 +69,7 @@ class WymberApp {
 
             if (e.key === 'Escape') {
                 document.querySelectorAll('.modal').forEach(m => {
-                    if (m.style.display === 'flex') {
-                        m.style.display = 'none';
-                        if (m.id === 'node-modal') this.editingNode = null;
-                    }
+                    if (m.style.display === 'flex') m.style.display = 'none';
                 });
                 this.stopBreathing();
             }
@@ -360,12 +357,35 @@ class WymberApp {
         document.getElementById('save-node')?.addEventListener('click', () => this.saveNode());
         document.getElementById('cancel-node')?.addEventListener('click', () => {
             document.getElementById('node-modal').style.display = 'none';
-            this.editingNode = null;
         });
 
         // Node type description updates
         document.getElementById('node-type')?.addEventListener('change', (e) => {
             this.updateNodeTypeDescription(e.target.value);
+        });
+
+        // Node detail drawer (#108)
+        document.getElementById('detail-close')?.addEventListener('click', () => this.closeNodeDetail());
+        document.getElementById('detail-save')?.addEventListener('click', () => this.saveNodeDetail());
+        document.getElementById('detail-delete')?.addEventListener('click', () => this.deleteFromDetail());
+        document.getElementById('detail-type')?.addEventListener('change', (e) => {
+            const info = NODE_TYPES[e.target.value] || {};
+            document.getElementById('detail-chip').style.background = info.color || '#cfc7ba';
+            document.getElementById('detail-type-name').textContent = info.label || e.target.value;
+        });
+        const kwInput = document.getElementById('detail-keyword-input');
+        kwInput?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault();
+                this.addDetailKeyword(kwInput.value);
+            }
+        });
+        // Escape closes the drawer even with focus inside a field (saving as it goes).
+        document.getElementById('node-detail')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                e.stopPropagation();
+                this.closeNodeDetail();
+            }
         });
 
         // Settings save
@@ -413,7 +433,11 @@ class WymberApp {
         if (!container) throw new Error('Mind map container not found');
 
         this.mindMap = new TrauMindMap(container, api);
-        this.mindMap.onShowNodeModal = (nodeObj) => this.showNodeModal(nodeObj);
+        // Selecting or editing a node opens its detail drawer (#108); the add-node modal is now
+        // only for creating new nodes. Tapping empty canvas (deselect) closes the drawer.
+        this.mindMap.onShowNodeModal = (node) => this.openNodeDetail(node);
+        this.mindMap.onSelectNode = (node) => this.openNodeDetail(node);
+        this.mindMap.onDeselect = () => this.closeNodeDetail();
 
         const success = await this.mindMap.init();
         if (success) {
@@ -429,48 +453,22 @@ class WymberApp {
 
     // ===== NODE MODAL =====
 
-    showNodeModal(nodeObj = null, presetType = null) {
+    // The modal is now only for creating a node; editing an existing node lives in the
+    // detail drawer (#108). `presetType` pre-selects a type (used by the pairing nudge).
+    showNodeModal(presetType = null) {
         const modal = document.getElementById('node-modal');
-        const title = document.getElementById('modal-title');
-        this.editingNode = nodeObj;
-
-        if (nodeObj) {
-            title.textContent = 'Edit Node';
-            this.populateNodeModal(nodeObj);
-        } else {
-            title.textContent = 'Add to Your Map';
-            document.getElementById('node-type').value = presetType || '';
-            document.getElementById('node-title').value = '';
-            document.getElementById('node-description').value = '';
-            document.getElementById('type-description').innerHTML = '';
-            if (presetType) this.updateNodeTypeDescription(presetType);
-        }
+        document.getElementById('modal-title').textContent = 'Add to Your Map';
+        document.getElementById('node-type').value = presetType || '';
+        document.getElementById('node-title').value = '';
+        document.getElementById('node-description').value = '';
+        document.getElementById('type-description').innerHTML = '';
+        if (presetType) this.updateNodeTypeDescription(presetType);
 
         modal.style.display = 'flex';
         setTimeout(() => {
-            // With a type already chosen (edit, or a pre-set add), focus the title; otherwise the type.
-            (nodeObj || presetType ? document.getElementById('node-title') : document.getElementById('node-type')).focus();
+            // With a type pre-set, focus the title; otherwise the type picker.
+            (presetType ? document.getElementById('node-title') : document.getElementById('node-type')).focus();
         }, 100);
-    }
-
-    async populateNodeModal(nodeObj) {
-        try {
-            const nodeId = typeof nodeObj === 'string' ? nodeObj : nodeObj?.id;
-            const mapData = await api.get('/mindmap');
-            const idNum = typeof nodeId === 'string' && nodeId.startsWith('node-')
-                ? parseInt(nodeId.replace('node-', ''), 10)
-                : nodeId;
-            const node = mapData.nodes.find(n => n.id === idNum);
-
-            if (node) {
-                document.getElementById('node-type').value = node.node_type;
-                document.getElementById('node-title').value = node.title;
-                document.getElementById('node-description').value = node.description || '';
-                this.updateNodeTypeDescription(node.node_type);
-            }
-        } catch (error) {
-            console.error('Error loading node data:', error);
-        }
     }
 
     updateNodeTypeDescription(nodeType) {
@@ -500,49 +498,38 @@ class WymberApp {
 
         let newTriggerId = null;
         try {
-            if (this.editingNode) {
-                const raw = typeof this.editingNode === 'string' ? this.editingNode : this.editingNode?.id;
-                const nodeId = (typeof raw === 'string' && raw.startsWith('node-')) ? raw.slice('node-'.length) : raw;
-                await api.put(`/node/${nodeId}`, { title, description });
-                // Re-render from the source of truth so the edit shows. loadMap honors saved
-                // positions (preset layout), so the map doesn't jump.
-                await this.mindMap?.loadMap();
-                this.showNotification('Node updated', 'success');
+            const nodeData = {
+                node_type: nodeType,
+                title,
+                description,
+                x: Math.random() * 300 + 50,
+                y: Math.random() * 200 + 50
+            };
+            let newId;
+            if (this.mindMap) {
+                newId = await this.mindMap.addNode(nodeData);
             } else {
-                const nodeData = {
-                    node_type: nodeType,
-                    title,
-                    description,
-                    x: Math.random() * 300 + 50,
-                    y: Math.random() * 200 + 50
-                };
-                let newId;
-                if (this.mindMap) {
-                    newId = await this.mindMap.addNode(nodeData);
-                } else {
-                    const res = await api.post('/node', nodeData);
-                    newId = res?.id;
-                }
-
-                // If this node answers a trigger (added via the pairing nudge), connect them so
-                // the pair is visible on the map. A trigger should never sit alone with no anchor.
-                const triggerId = this.pairingTriggerId;
-                this.pairingTriggerId = null;
-                if (triggerId && newId && (nodeType === 'coping' || nodeType === 'support')) {
-                    try {
-                        await api.post('/edge', { from_node_id: triggerId, to_node_id: newId, label: '' });
-                        await this.mindMap?.loadMap();
-                    } catch (e) {
-                        console.error('Could not link anchor to trigger:', e);
-                    }
-                }
-
-                this.showNotification('Added to your map', 'success');
-                if (nodeType === 'trigger' && newId) newTriggerId = newId;
+                const res = await api.post('/node', nodeData);
+                newId = res?.id;
             }
 
+            // If this node answers a trigger (added via the pairing nudge), connect them so
+            // the pair is visible on the map. A trigger should never sit alone with no anchor.
+            const triggerId = this.pairingTriggerId;
+            this.pairingTriggerId = null;
+            if (triggerId && newId && (nodeType === 'coping' || nodeType === 'support')) {
+                try {
+                    await api.post('/edge', { from_node_id: triggerId, to_node_id: newId, label: '' });
+                    await this.mindMap?.loadMap();
+                } catch (e) {
+                    console.error('Could not link anchor to trigger:', e);
+                }
+            }
+
+            this.showNotification('Added to your map', 'success');
+            if (nodeType === 'trigger' && newId) newTriggerId = newId;
+
             document.getElementById('node-modal').style.display = 'none';
-            this.editingNode = null;
         } catch (error) {
             console.error('Error saving node:', error);
             this.showNotification('Could not save entry', 'error');
@@ -551,6 +538,193 @@ class WymberApp {
 
         // After the modal closes, gently invite an anchor for a brand-new trigger.
         if (newTriggerId) this.showPairingNudge(newTriggerId);
+    }
+
+    // ===== NODE DETAIL DRAWER (#108) =====
+
+    /** Open the drawer for a node (a raw node or its id), populated with the freshest data. */
+    async openNodeDetail(node) {
+        const id = typeof node === 'object' && node !== null ? node.id : node;
+        if (id == null) return;
+
+        // Persist whatever is already open first, so switching nodes never drops edits.
+        if (this.detailNodeId != null && this.detailNodeId !== id) {
+            await this.commitDetail({ silent: true });
+        }
+
+        let fresh = null;
+        try {
+            const map = await api.get('/mindmap');
+            fresh = (map.nodes || []).find((n) => n.id === id);
+        } catch (error) {
+            console.error('Could not load node detail:', error);
+        }
+        if (!fresh) return;
+
+        this.detailNodeId = fresh.id;
+        this.detailKeywords = Array.isArray(fresh.keywords) ? [...fresh.keywords] : [];
+
+        const info = NODE_TYPES[fresh.node_type] || {};
+        document.getElementById('detail-chip').style.background = info.color || '#cfc7ba';
+        document.getElementById('detail-type-name').textContent = info.label || fresh.node_type || 'Details';
+        document.getElementById('detail-type').value = fresh.node_type || 'event';
+        document.getElementById('detail-title').value = fresh.title || '';
+        document.getElementById('detail-description').value = fresh.description || '';
+        document.getElementById('detail-story').value = fresh.story || '';
+        document.getElementById('detail-keyword-input').value = '';
+        this.renderDetailKeywords();
+        this.renderDetailConnections(fresh);
+        this.detailSnapshot = this.currentDetailValues(); // baseline for the dirty check
+
+        const drawer = document.getElementById('node-detail');
+        drawer.inert = false;
+        drawer.classList.add('open');
+        setTimeout(() => document.getElementById('detail-title')?.focus(), 60);
+    }
+
+    renderDetailKeywords() {
+        const wrap = document.getElementById('detail-keywords');
+        if (!wrap) return;
+        wrap.innerHTML = '';
+        this.detailKeywords.forEach((kw, i) => {
+            const tag = document.createElement('span');
+            tag.className = 'keyword-tag';
+            const label = document.createElement('span');
+            label.textContent = kw;
+            const rm = document.createElement('button');
+            rm.type = 'button';
+            rm.setAttribute('aria-label', `Remove keyword ${kw}`);
+            rm.textContent = '×';
+            rm.addEventListener('click', () => {
+                this.detailKeywords.splice(i, 1);
+                this.renderDetailKeywords();
+            });
+            tag.append(label, rm);
+            wrap.appendChild(tag);
+        });
+    }
+
+    addDetailKeyword(raw) {
+        const kw = (raw || '').replace(/,+$/, '').trim();
+        if (!kw) return;
+        const exists = this.detailKeywords.some((k) => k.toLowerCase() === kw.toLowerCase());
+        if (!exists) {
+            this.detailKeywords.push(kw);
+            this.renderDetailKeywords();
+        }
+        const input = document.getElementById('detail-keyword-input');
+        if (input) input.value = '';
+    }
+
+    renderDetailConnections(node) {
+        const ul = document.getElementById('detail-connections');
+        if (!ul) return;
+        ul.innerHTML = '';
+        const nodes = this.mindMap?.lastData?.nodes || [];
+        const edges = this.mindMap?.lastData?.edges || [];
+        const byId = new Map(nodes.map((n) => [n.id, n]));
+        const names = new Set();
+        edges.forEach((e) => {
+            if (e.from_node_id === node.id && byId.has(e.to_node_id)) names.add(byId.get(e.to_node_id).title);
+            if (e.to_node_id === node.id && byId.has(e.from_node_id)) names.add(byId.get(e.from_node_id).title);
+        });
+        nodes.forEach((n) => {
+            if (n.id === node.id && n.parent_id != null && byId.has(n.parent_id)) names.add(byId.get(n.parent_id).title);
+            if (n.parent_id === node.id) names.add(n.title);
+        });
+
+        if (names.size === 0) {
+            const li = document.createElement('li');
+            li.className = 'detail-connections-empty';
+            li.textContent = 'No connections yet. Use Link Nodes to relate this to another.';
+            ul.appendChild(li);
+            return;
+        }
+        [...names].forEach((t) => {
+            const li = document.createElement('li');
+            li.textContent = t;
+            ul.appendChild(li);
+        });
+    }
+
+    /** The drawer's current field values, used both to save and to detect changes. */
+    currentDetailValues() {
+        return {
+            node_type: document.getElementById('detail-type').value,
+            title: document.getElementById('detail-title').value.trim(),
+            description: document.getElementById('detail-description').value.trim(),
+            story: document.getElementById('detail-story').value,
+            keywords: [...this.detailKeywords],
+        };
+    }
+
+    /** Save the drawer's fields to the open node. Silent on auto-save (close/switch). */
+    async commitDetail({ silent = false } = {}) {
+        if (this.detailNodeId == null) return true;
+        const id = this.detailNodeId;
+        // Fold any half-typed keyword still in the input into the set before reading values.
+        this.addDetailKeyword(document.getElementById('detail-keyword-input')?.value);
+
+        const values = this.currentDetailValues();
+        if (!values.title) {
+            if (!silent) this.showNotification('Please give this node a title', 'error');
+            return false;
+        }
+        // No change since it opened: skip the write + re-render (no flicker on plain browsing).
+        const prev = this.detailSnapshot;
+        const unchanged = prev
+            && prev.node_type === values.node_type && prev.title === values.title
+            && prev.description === values.description && prev.story === values.story
+            && prev.keywords.length === values.keywords.length
+            && prev.keywords.every((k, i) => k === values.keywords[i]);
+        if (unchanged) return true;
+
+        try {
+            await api.put(`/node/${id}`, values);
+            await this.mindMap?.loadMap();
+            this.detailSnapshot = values;
+            if (!silent) this.showNotification('Saved', 'success');
+            return true;
+        } catch (error) {
+            console.error('Could not save node detail:', error);
+            if (!silent) this.showNotification('Could not save', 'error');
+            return false;
+        }
+    }
+
+    async closeNodeDetail({ skipSave = false } = {}) {
+        const drawer = document.getElementById('node-detail');
+        if (!drawer || !drawer.classList.contains('open')) return;
+        if (!skipSave) await this.commitDetail({ silent: true });
+        drawer.classList.remove('open');
+        drawer.inert = true;
+        this.detailNodeId = null;
+        this.detailKeywords = [];
+    }
+
+    async saveNodeDetail() {
+        const ok = await this.commitDetail({ silent: false });
+        if (ok) await this.closeNodeDetail({ skipSave: true });
+    }
+
+    async deleteFromDetail() {
+        if (this.detailNodeId == null) return;
+        const id = this.detailNodeId;
+        const title = document.getElementById('detail-title').value.trim() || 'this node';
+        const confirmed = confirm(
+            `This will remove "${title}" and its connections from your map. ` +
+            `You can always add it back later. Would you like to continue?`
+        );
+        if (!confirmed) return;
+        try {
+            await api.delete(`/node/${id}`);
+            await this.closeNodeDetail({ skipSave: true });
+            await this.mindMap?.loadMap();
+            this.showNotification('Removed from your map', 'success');
+        } catch (error) {
+            console.error('Could not remove node:', error);
+            this.showNotification('Could not remove node', 'error');
+        }
     }
 
     // ===== SETTINGS =====
@@ -822,7 +996,7 @@ class WymberApp {
         el.querySelector('.nudge-add').addEventListener('click', () => {
             this.pairingTriggerId = triggerId;
             close();
-            this.showNodeModal(null, 'coping');
+            this.showNodeModal('coping');
         });
         el.querySelector('.nudge-dismiss').addEventListener('click', close);
         // Lingers longer than a toast, but never nags forever.

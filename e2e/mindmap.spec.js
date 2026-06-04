@@ -124,6 +124,39 @@ test.describe('Mind Map Operations', () => {
         await expect(page.locator('#map-outline')).toContainText('Step outside and breathe', { timeout: 5000 });
     });
 
+    test('selecting a node opens the detail drawer; story and keywords persist (#108)', async ({ page }) => {
+        await createVaultAndOpenMap(page);
+
+        // Create a node.
+        await page.click('#add-node-btn');
+        await page.selectOption('#node-type', 'event');
+        await page.fill('#node-title', 'A gentle morning');
+        await page.click('#save-node');
+        await expect(page.locator('#map-outline')).toContainText('A gentle morning', { timeout: 5000 });
+
+        // Selecting it from the outline twin opens the detail drawer, pre-filled.
+        await page.locator('.map-outline-node', { hasText: 'A gentle morning' }).first().click();
+        const drawer = page.locator('#node-detail');
+        await expect(drawer).toHaveClass(/open/);
+        await expect(page.locator('#detail-title')).toHaveValue('A gentle morning');
+
+        // Write a story and add a keyword, then save.
+        await page.fill('#detail-story', 'I noticed the light and felt okay for a moment.');
+        await page.fill('#detail-keyword-input', 'morning');
+        await page.locator('#detail-keyword-input').press('Enter');
+        await expect(page.locator('#detail-keywords .keyword-tag')).toContainText('morning');
+        await page.click('#detail-save');
+
+        // An explicit save closes the drawer.
+        await expect(drawer).not.toHaveClass(/open/, { timeout: 3000 });
+
+        // Reopen: the story and keyword came back from the encrypted vault.
+        await page.locator('.map-outline-node', { hasText: 'A gentle morning' }).first().click();
+        await expect(drawer).toHaveClass(/open/);
+        await expect(page.locator('#detail-story')).toHaveValue('I noticed the light and felt okay for a moment.');
+        await expect(page.locator('#detail-keywords .keyword-tag')).toContainText('morning');
+    });
+
     test('non-trigger nodes do not raise the pairing nudge', async ({ page }) => {
         await createVaultAndOpenMap(page);
         await page.click('#add-node-btn');

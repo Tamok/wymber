@@ -282,6 +282,65 @@
         </div>
     </div>
 
+    <!-- Node detail drawer (#108): a selected node's home. Edit its type, title, description,
+         a longer story (the user's own narrative), and keywords (tags that also feed link
+         discovery). Slides in gently; Escape or the close button dismisses it, saving as it goes. -->
+    <aside id="node-detail" class="node-detail" aria-label="Node details" inert>
+        <div class="node-detail-head">
+            <span id="detail-chip" class="detail-chip" aria-hidden="true"></span>
+            <span id="detail-type-name" class="detail-type-name">Details</span>
+            <button id="detail-close" class="detail-close" type="button" aria-label="Close details">&times;</button>
+        </div>
+        <div class="node-detail-body">
+            <label class="detail-field">
+                <span class="detail-label">Type</span>
+                <select id="detail-type" class="detail-input">
+                    <option value="event">Event</option>
+                    <option value="emotion">Emotion</option>
+                    <option value="body">Body</option>
+                    <option value="person">Person</option>
+                    <option value="place">Place</option>
+                    <option value="trigger">Trigger</option>
+                    <option value="coping">Coping</option>
+                    <option value="support">Support</option>
+                    <option value="need">Need</option>
+                    <option value="insight">Insight</option>
+                    <option value="growth">Growth</option>
+                </select>
+            </label>
+            <label class="detail-field">
+                <span class="detail-label">Title</span>
+                <input id="detail-title" class="detail-input" type="text" maxlength="200" />
+            </label>
+            <label class="detail-field">
+                <span class="detail-label">Description</span>
+                <textarea id="detail-description" class="detail-input" rows="2"
+                          placeholder="A brief note, if you'd like."></textarea>
+            </label>
+            <label class="detail-field">
+                <span class="detail-label">Your story</span>
+                <textarea id="detail-story" class="detail-input detail-story" rows="6"
+                          placeholder="Your own words, at your own pace. Nothing here is required."></textarea>
+                <span class="detail-hint">This is your space to tell it however you want, encrypted like everything in Wymber.</span>
+            </label>
+            <div class="detail-field">
+                <span class="detail-label">Keywords</span>
+                <div id="detail-keywords" class="keyword-tags"></div>
+                <input id="detail-keyword-input" class="detail-input keyword-input" type="text"
+                       placeholder="Add a keyword, then Enter" aria-label="Add a keyword" />
+                <span class="detail-hint">Tags that quietly connect related nodes. Press Enter or comma to add.</span>
+            </div>
+            <div class="detail-field">
+                <span class="detail-label">Connections</span>
+                <ul id="detail-connections" class="detail-connections"></ul>
+            </div>
+        </div>
+        <div class="node-detail-foot">
+            <button id="detail-save" class="btn btn-primary" type="button">Save</button>
+            <button id="detail-delete" class="btn btn-text-danger" type="button">Remove node</button>
+        </div>
+    </aside>
+
     <!-- Settings Modal -->
     <div id="settings-modal" class="modal" style="display:none;">
         <div class="modal-content modal-large">

@@ -8,11 +8,16 @@
  */
 
 export const DOC_SCHEMA = 'wymber-map';
-export const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = 2;
 
 /** Document migrations, keyed by the version they PRODUCE (e.g. 2 upgrades v1 → v2). */
 export const DOC_MIGRATIONS = {
-    // 2: (doc) => { /* transform a v1 document into v2 */ return doc; },
+    // v2 gives every node a `story` (the user's own narrative, in their words) and
+    // `keywords` (tags that double as discovery fuel; shared keywords hint at latent links).
+    2: (doc) => ({
+        ...doc,
+        nodes: (doc.nodes || []).map((n) => ({ story: '', keywords: [], ...n })),
+    }),
 };
 
 export function emptyDocument() {
@@ -70,7 +75,7 @@ export class VaultStore {
 
     // ----- nodes -----
 
-    addNode({ node_type, title, description = '', x = 0, y = 0, parent_id = null }) {
+    addNode({ node_type, title, description = '', story = '', keywords = [], x = 0, y = 0, parent_id = null }) {
         if (!node_type) throw new Error('node_type is required');
         if (!title || !title.trim()) throw new Error('Title is required');
         const node = {
@@ -78,6 +83,8 @@ export class VaultStore {
             node_type,
             title: title.trim(),
             description,
+            story,
+            keywords: Array.isArray(keywords) ? keywords : [],
             x,
             y,
             parent_id,
@@ -91,7 +98,7 @@ export class VaultStore {
     updateNode(id, patch = {}) {
         const node = this.doc.nodes.find((n) => n.id === id);
         if (!node) throw new Error(`Node ${id} not found`);
-        for (const key of ['node_type', 'title', 'description', 'x', 'y', 'parent_id']) {
+        for (const key of ['node_type', 'title', 'description', 'story', 'keywords', 'x', 'y', 'parent_id']) {
             if (key in patch) node[key] = patch[key];
         }
         node.updated_at = nowISO();

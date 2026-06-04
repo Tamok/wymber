@@ -43,13 +43,15 @@ Run commands from the repo root.
 - `frontend/js/vault-store.js`: the document model + migrations (`emptyDocument`, add/update node + edge, settings).
 - `frontend/js/local-repo.js`: the `api.js`-shaped adapter over the vault (drop-in for the old APIClient).
 - `frontend/js/persistence.js`: OPFS / IndexedDB ciphertext storage.
-- `frontend/js/app.js`: orchestrator: create / unlock / recover panels, recovery sheet, auto-lock, the map.
+- `frontend/js/app.js`: orchestrator: create / unlock / recover panels, recovery sheet, auto-lock, the map, the add-node modal, and the node detail drawer (#108: type/title/description/story/keywords, edit-in-place, auto-saving).
 - `frontend/js/mindmap.js`: the graph renderer (Cytoscape, vendored in `frontend/libs/`). Draws pastel building-block nodes + first-class edges straight from `/mindmap`, theme-aware via `applyTheme()`, and keeps an accessible `#map-outline` list twin in lockstep (the keyboard-first, non-visual surface).
 - `frontend/js/{utils,analyze,export}.js`: pure utils, local map analysis, export.
 - `frontend/js/config.js`: `NODE_TYPES` + `MESSAGES` (source of truth).
 - `backend/main.py`: the static server (+ health). That's the whole backend.
 
 The 11 node types: `event`, `emotion`, `body`, `person`, `place`, `trigger`, `coping`, `support`, `need`, `insight`, `growth`. Each has a color + a gentle, non-directive `prompt` (config.js is the source of truth).
+
+A node carries `{ node_type, title, description, story, keywords[], x, y, parent_id }` (vault schema v2; a migration backfills `story`/`keywords` on older docs). `keywords` are discovery fuel: shared keywords are the co-occurrence signal the future `suggestLinks()` uses (ADR-0002).
 
 ## Gotchas (non-obvious)
 
