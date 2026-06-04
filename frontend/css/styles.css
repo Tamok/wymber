@@ -898,6 +898,18 @@ kbd {
     font-size: 0.9rem;
 }
 
+.noscript-note {
+    max-width: 540px;
+    margin: 15vh auto;
+    padding: var(--spacing-lg);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    text-align: center;
+    line-height: 1.6;
+    color: var(--text-primary);
+}
+
 .mindmap-placeholder {
     position: absolute;
     top: 50%;
