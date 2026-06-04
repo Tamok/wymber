@@ -13,7 +13,8 @@ There is **no server account, no database, and no user API.** The browser is the
 - **Frontend**: vanilla JS + ES modules, no build step. Entry point `frontend/js/app.js`.
 - **The vault**: `crypto.js` (envelope encryption: a random AES-256-GCM data key, wrapped per unlock method: password, recovery code, later passkeys; PBKDF2-600k now, Argon2id tracked) + `vault-store.js` (the in-memory document: nodes, edges, settings) + `persistence.js` (only ciphertext at rest, in OPFS with an IndexedDB fallback).
 - **The api seam**: `local-repo.js` exposes the same `get/post/put/delete` surface the app already used, so `app.js` / `mindmap.js` / `export.js` didn't change. `const api = new LocalRepo()`.
-- **Backend**: `backend/main.py` is a ~40-line FastAPI app that **only serves the static frontend** (+ `/api/health`). It exists for self-hosting and is where an optional, future, zero-knowledge sync endpoint would live. No DB, no auth, no secrets.
+- **Backend**: `backend/main.py` is a small FastAPI app that **only serves the static frontend** (+ `/api/health`, and `/sw.js` / `/manifest.webmanifest` at root for the PWA). It exists for self-hosting and is where an optional, future, zero-knowledge sync endpoint would live. No DB, no auth, no secrets.
+- **PWA**: installable + fully offline (`frontend/sw.js` caches the shell; the data is already on-device). Cytoscape is lazy-loaded by `mindmap.js` so the auth screens stay light.
 
 **Data flow**: `app.js` → `local-repo.js` → `vault-store.js` (decrypted doc in memory) → `crypto.js` seals it → `persistence.js` (OPFS/IndexedDB). Unlock per session; auto-lock on idle.
 
@@ -59,6 +60,7 @@ A node carries `{ node_type, title, description, story, keywords[], x, y, parent
 - **The vault *is* the data.** Lose the password *and* the recovery code → it's unrecoverable (encrypted client-side; nothing sits on a server). The recovery sheet exists precisely to avoid the cruel "forgot password = data gone" failure.
 - **Storage is OPFS (IndexedDB fallback), per origin.** `localhost` vs `127.0.0.1` vs different ports are *separate origins* → separate vaults. Handy for testing a clean state; surprising if you forget.
 - **Auto-lock on idle** clears the in-memory key; a page reload also requires unlock (only ciphertext persists).
+- **The service worker caches the app shell.** Bump `VERSION` in `frontend/sw.js` whenever shell assets change, or returning users can be served stale JS/CSS (navigations are network-first, static assets are stale-while-revalidate). It never caches `/api` or any vault data.
 - **E2E** (Playwright, port 8089) creates fresh-context OPFS vaults; `--workers=1`, `retries:2` for crypto-load timing. The webServer prefers `.venv` Python.
 - **No server state.** A server restart changes nothing for users: their data is in the browser. The backend is stateless static serving.
 
