@@ -413,15 +413,27 @@
                 <h2>You're not alone</h2>
                 <button class="close-btn" id="close-crisis" aria-label="Close">&times;</button>
             </div>
-            <div class="modal-body">
-                <p>If you're in crisis or thinking about harming yourself, please reach out &mdash; help is available right now.</p>
+            <div class="modal-body crisis-body">
+                <p class="crisis-intro">If you're in crisis or thinking about harming yourself, please reach out. Help is available right now, and you deserve it.</p>
                 <ul class="crisis-list">
-                    <li><strong>988</strong> &mdash; Suicide &amp; Crisis Lifeline (US): call or text, 24/7</li>
-                    <li><strong>Text HOME to 741741</strong> &mdash; Crisis Text Line</li>
-                    <li><strong>911</strong> &mdash; Emergency services (US)</li>
-                    <li><a href="https://findahelpline.com" target="_blank" rel="noopener">Find a helpline in your country</a> &mdash; 175+ countries (needs internet)</li>
+                    <li class="crisis-item">
+                        <span class="crisis-key">988</span>
+                        <span class="crisis-desc">Suicide &amp; Crisis Lifeline (US): call or text, any time, day or night</span>
+                    </li>
+                    <li class="crisis-item">
+                        <span class="crisis-key">Text HOME to 741741</span>
+                        <span class="crisis-desc">Crisis Text Line</span>
+                    </li>
+                    <li class="crisis-item">
+                        <span class="crisis-key">911</span>
+                        <span class="crisis-desc">Emergency services (US)</span>
+                    </li>
+                    <li class="crisis-item">
+                        <a class="crisis-key crisis-link" href="https://findahelpline.com" target="_blank" rel="noopener">Find a helpline in your country</a>
+                        <span class="crisis-desc">175+ countries (needs internet)</span>
+                    </li>
                 </ul>
-                <p class="safety-disclaimer">Wymber can't contact anyone for you &mdash; these are external services.</p>
+                <p class="safety-disclaimer">Wymber can't contact anyone for you. These are external services you reach out to directly.</p>
             </div>
             <div class="modal-footer">
                 <button id="close-crisis-btn" class="btn btn-secondary">Close</button>
@@ -436,21 +448,25 @@
                 <h2>Take a moment to ground</h2>
                 <button class="close-btn" id="close-grounding" aria-label="Close">&times;</button>
             </div>
-            <div class="modal-body">
-                <p>If things feel overwhelming, you can pause here. Go at your own pace &mdash; there's no wrong way to do this.</p>
-                <section class="grounding-section">
+            <div class="modal-body grounding-body">
+                <p class="grounding-intro">If things feel overwhelming, you can pause here. Go at your own pace. There's no wrong way to do this.</p>
+                <section class="grounding-section grounding-breathe">
                     <h3>Breathe</h3>
-                    <div id="breathing-guide" class="breathing-guide" aria-live="polite">Breathe in&hellip;</div>
+                    <div class="breathing-orb-wrap">
+                        <div id="breathing-orb" class="breathing-orb" aria-hidden="true"></div>
+                    </div>
+                    <div id="breathing-guide" class="breathing-guide" aria-live="polite">Breathe in</div>
                     <p class="grounding-hint">In for 4, hold for 4, out for 6. Keep your eyes open if that feels safer.</p>
                 </section>
                 <section class="grounding-section">
-                    <h3>5-4-3-2-1 &mdash; notice what's around you</h3>
-                    <ul class="grounding-list">
-                        <li><strong>5</strong> things you can see</li>
-                        <li><strong>4</strong> things you can feel</li>
-                        <li><strong>3</strong> things you can hear</li>
-                        <li><strong>2</strong> things you can smell</li>
-                        <li><strong>1</strong> thing you can taste</li>
+                    <h3>Notice what's around you</h3>
+                    <p class="grounding-hint grounding-hint-left">Name them softly to yourself, in your own time.</p>
+                    <ul class="grounding-list senses-list">
+                        <li class="sense-item sense-see"><span class="sense-num">5</span><span class="sense-text">things you can see</span></li>
+                        <li class="sense-item sense-feel"><span class="sense-num">4</span><span class="sense-text">things you can feel</span></li>
+                        <li class="sense-item sense-hear"><span class="sense-num">3</span><span class="sense-text">things you can hear</span></li>
+                        <li class="sense-item sense-smell"><span class="sense-num">2</span><span class="sense-text">things you can smell</span></li>
+                        <li class="sense-item sense-taste"><span class="sense-num">1</span><span class="sense-text">thing you can taste</span></li>
                     </ul>
                 </section>
             </div>

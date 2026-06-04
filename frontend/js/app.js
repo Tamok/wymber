@@ -320,23 +320,37 @@ class WymberApp {
     }
 
     startBreathing() {
-        const el = document.getElementById('breathing-guide');
-        if (!el) return;
+        const label = document.getElementById('breathing-guide');
+        if (!label) return;
         this.stopBreathing();
-        const phases = ['Breathe in…', 'Hold…', 'Breathe out…'];
+        const orb = document.getElementById('breathing-orb');
+        // 4 in, 4 hold, 6 out: the orb's CSS transition for each class matches the phase length,
+        // so the swell and the words stay in step (and match the on-screen hint).
+        const phases = [
+            { cls: 'is-in', text: 'Breathe in', ms: 4000 },
+            { cls: 'is-hold', text: 'Hold', ms: 4000 },
+            { cls: 'is-out', text: 'Breathe out', ms: 6000 },
+        ];
         let i = 0;
-        el.textContent = phases[0];
-        this.breathingInterval = setInterval(() => {
+        const step = () => {
+            const p = phases[i];
+            if (orb) {
+                orb.classList.remove('is-in', 'is-hold', 'is-out');
+                orb.classList.add(p.cls);
+            }
+            label.textContent = p.text;
             i = (i + 1) % phases.length;
-            el.textContent = phases[i];
-        }, 4000);
+            this.breathingTimeout = setTimeout(step, p.ms);
+        };
+        step();
     }
 
     stopBreathing() {
-        if (this.breathingInterval) {
-            clearInterval(this.breathingInterval);
-            this.breathingInterval = null;
+        if (this.breathingTimeout) {
+            clearTimeout(this.breathingTimeout);
+            this.breathingTimeout = null;
         }
+        document.getElementById('breathing-orb')?.classList.remove('is-in', 'is-hold', 'is-out');
     }
 
     setupMainAppEventListeners() {

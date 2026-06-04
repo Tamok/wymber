@@ -1147,28 +1147,165 @@ body {
     background: var(--bg-primary);
 }
 
-.crisis-list,
-.grounding-list {
-    margin: var(--spacing-md) 0;
-    padding-left: var(--spacing-lg);
-    line-height: 1.9;
+/* ===== Grounding + crisis: warm, reassuring presentation (#107) ===== */
+.grounding-intro,
+.crisis-intro {
+    color: var(--text-primary);
+    line-height: 1.6;
 }
 
 .grounding-section {
     margin-bottom: var(--spacing-lg);
 }
 
-.breathing-guide {
-    font-size: 1.4rem;
+.grounding-section h3 {
+    font-size: 1.05rem;
+    color: var(--text-primary);
+    margin: 0 0 var(--spacing-sm);
+}
+
+/* Breathing: a soft orb that swells with the breath, in step with the words. */
+.grounding-breathe {
+    background: linear-gradient(180deg, rgba(178, 223, 219, 0.18), rgba(200, 230, 201, 0.12));
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: var(--spacing-lg) var(--spacing-md) var(--spacing-md);
     text-align: center;
-    padding: var(--spacing-lg);
-    color: var(--focus);
-    transition: var(--transition);
+}
+
+.breathing-orb-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 170px;
+}
+
+.breathing-orb {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 38%, #d6f0e6 0%, #b2dfdb 55%, #a5d6a7 100%);
+    box-shadow: 0 0 0 10px rgba(178, 223, 219, 0.18), 0 8px 24px rgba(120, 160, 150, 0.25);
+    transform: scale(0.7);
+    transition: transform 4s ease-in-out, box-shadow 4s ease-in-out;
+}
+
+.breathing-orb.is-in {
+    transform: scale(1);
+    transition: transform 4s ease-in-out, box-shadow 4s ease-in-out;
+}
+
+.breathing-orb.is-hold {
+    transform: scale(1);
+    transition: transform 0.4s ease;
+}
+
+.breathing-orb.is-out {
+    transform: scale(0.7);
+    transition: transform 6s ease-in-out, box-shadow 6s ease-in-out;
+}
+
+.breathing-guide {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-top: var(--spacing-sm);
+    letter-spacing: 0.02em;
 }
 
 .grounding-hint {
     color: var(--text-secondary);
     text-align: center;
+    font-size: 0.9rem;
+}
+
+.grounding-hint-left {
+    text-align: left;
+    margin: 0 0 var(--spacing-sm);
+}
+
+/* 5-4-3-2-1 senses, as gentle pastel cards. */
+.senses-list {
+    list-style: none;
+    margin: var(--spacing-sm) 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.sense-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+.sense-num {
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: #3a3a3a;
+}
+
+.sense-text { color: var(--text-primary); }
+
+.sense-see .sense-num { background: #BBDEFB; }
+.sense-feel .sense-num { background: #FFCCBC; }
+.sense-hear .sense-num { background: #D1C4E9; }
+.sense-smell .sense-num { background: #C8E6C9; }
+.sense-taste .sense-num { background: #F8BBD9; }
+
+/* Crisis resources, as calm cards with a soft accent edge. */
+.crisis-list {
+    list-style: none;
+    margin: var(--spacing-md) 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.crisis-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-left: 4px solid #B2DFDB;
+    border-radius: 10px;
+}
+
+.crisis-key {
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.crisis-link { color: var(--focus); text-decoration: none; }
+.crisis-link:hover { text-decoration: underline; }
+
+.crisis-desc {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .breathing-orb,
+    .breathing-orb.is-in,
+    .breathing-orb.is-hold,
+    .breathing-orb.is-out {
+        transition: none;
+        transform: scale(0.92);
+    }
 }
 
 /* ===== MIND MAP TOOLBAR ===== */
