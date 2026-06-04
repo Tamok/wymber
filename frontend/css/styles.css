@@ -279,6 +279,7 @@ textarea {
     border-radius: 4px;
     font-size: 0.9rem;
     color: var(--text-secondary);
+    text-align: center;
 }
 
 .setup-prompt {
@@ -1511,14 +1512,15 @@ body {
     font-size: 0.9rem;
 }
 
+/* The breathing guide is the one place we keep gentle motion under reduce-motion: the slow
+   swell and the word fade ARE the exercise (functional, calm, non-vestibular), not decoration.
+   !important is needed to win over the global reduce-motion reset above. */
 @media (prefers-reduced-motion: reduce) {
-    .breathing-orb,
-    .breathing-orb.is-in,
-    .breathing-orb.is-hold,
-    .breathing-orb.is-out {
-        transition: none;
-        transform: scale(0.92);
-    }
+    .breathing-orb { transition: transform 4s ease-in-out !important; }
+    .breathing-orb.is-in { transition: transform 4s ease-in-out !important; }
+    .breathing-orb.is-hold { transition: transform 0.4s ease !important; }
+    .breathing-orb.is-out { transition: transform 6s ease-in-out !important; }
+    .breathing-guide { transition: opacity 0.45s ease !important; }
 }
 
 /* ===== MIND MAP TOOLBAR ===== */
