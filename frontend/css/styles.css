@@ -369,6 +369,38 @@ textarea {
     line-height: 1.4;
 }
 
+/* Show/hide password toggle (added to every password field by app.js). */
+.password-wrap {
+    position: relative;
+    display: block;
+}
+
+.password-wrap input {
+    width: 100%;
+    padding-right: 42px;
+}
+
+.password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 6px;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: 6px;
+}
+
+.password-toggle:hover { color: var(--text-primary); }
+.password-toggle:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+
 .auth-restore-hint {
     text-align: center;
     font-size: 0.9rem;
