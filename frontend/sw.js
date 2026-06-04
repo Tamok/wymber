@@ -8,7 +8,7 @@
  *
  * Bump VERSION whenever the shell changes to retire the old cache.
  */
-const VERSION = 'wymber-shell-v1';
+const VERSION = 'wymber-shell-v2';
 
 const CORE = [
     '/',

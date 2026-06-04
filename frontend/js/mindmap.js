@@ -48,6 +48,24 @@ function layoutLabel(label) {
     return { w, h, tw: w - 28 };
 }
 
+// Lazy-load the (~424KB) Cytoscape bundle only when the map first opens, so the auth/unlock
+// screens stay light. The service worker precaches it, so after the first visit this is instant
+// and works offline.
+let cytoscapePromise = null;
+function ensureCytoscape() {
+    if (window.cytoscape) return Promise.resolve();
+    if (cytoscapePromise) return cytoscapePromise;
+    cytoscapePromise = new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = '/static/libs/cytoscape.min.js';
+        s.async = true;
+        s.onload = () => resolve();
+        s.onerror = () => { cytoscapePromise = null; reject(new Error('Could not load the map library')); };
+        document.head.appendChild(s);
+    });
+    return cytoscapePromise;
+}
+
 export class TrauMindMap {
     constructor(container, apiClient) {
         this.container = container; // the #mindmap div (Cytoscape host)
@@ -67,6 +85,7 @@ export class TrauMindMap {
     }
 
     async init() {
+        await ensureCytoscape();
         if (!window.cytoscape) throw new Error('Cytoscape library not loaded');
 
         this.cy = window.cytoscape({

@@ -503,8 +503,8 @@
         </div>
     </div>
 
-    <!-- Load scripts -->
-    <script src="/static/libs/cytoscape.min.js"></script>
+    <!-- The map library (Cytoscape) is lazy-loaded on demand by mindmap.js when the map first
+         opens, so the auth/unlock screens stay light. -->
     <script type="module" src="/static/js/app.js"></script>
 </body>
 </html>
