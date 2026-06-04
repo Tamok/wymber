@@ -7,7 +7,7 @@ import os
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(title="Wymber", version="3.0.0")
@@ -40,6 +40,27 @@ app.mount("/static", StaticFiles(directory="frontend"), name="static")
 async def health():
     """Liveness check for self-host/monitoring. No user data is ever served here."""
     return {"status": "ok"}
+
+
+@app.get("/sw.js")
+async def service_worker():
+    """The service worker must be served from the root so it can control the whole origin
+    (the PWA offline/installable layer). It caches only the static shell, never user data."""
+    return FileResponse(
+        "frontend/sw.js",
+        media_type="application/javascript",
+        headers={"Cache-Control": "no-cache", "Service-Worker-Allowed": "/"},
+    )
+
+
+@app.get("/manifest.webmanifest")
+async def manifest():
+    """PWA manifest at the root, with the correct manifest MIME type."""
+    return FileResponse(
+        "frontend/manifest.webmanifest",
+        media_type="application/manifest+json",
+        headers={"Cache-Control": "no-cache"},
+    )
 
 
 @app.get("/")

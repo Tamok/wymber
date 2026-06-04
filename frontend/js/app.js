@@ -1163,3 +1163,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const app = new WymberApp();
     app.init();
 });
+
+// Register the service worker (offline + installable). Best-effort; the app works without it.
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch((err) => console.warn('SW registration failed:', err));
+    });
+}
