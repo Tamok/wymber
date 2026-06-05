@@ -47,4 +47,4 @@ node_modules/
 .playwright-mcp/
 
 # Python virtual env (project-local)
-.venv/
+.venv/dist/
