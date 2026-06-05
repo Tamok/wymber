@@ -61,3 +61,25 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+  # Auto-deploy the app to web.wymber.app once everything above is green, only on a real push
+  # to develop (not PRs). Mirrors the landing's "deploy on push" but test-gated. Builds the static
+  # Pages output (scripts/build-pages.mjs) and ships it to the wymber-app project, whose production
+  # deployment serves web.wymber.app. Replaces the earlier manual `wrangler pages deploy`. See #116.
+  deploy:
+    name: Deploy app to web.wymber.app
+    needs: [lint, backend, frontend, e2e]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Build the Pages output (dist/)
+        run: node scripts/build-pages.mjs
+      - name: Deploy dist/ to Cloudflare Pages (wymber-app)
+        run: npx --yes wrangler@4 pages deploy dist --project-name=wymber-app --branch=main --commit-dirty=true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
