@@ -267,6 +267,7 @@
             <div class="keyboard-hints">
                 <span>Keyboard: <kbd>Ctrl+N</kbd> New Node | <kbd>Delete</kbd> Remove | <kbd>Tab</kbd> Navigate | <kbd>Esc</kbd> Close</span>
             </div>
+            <button id="whats-new-btn" class="app-footer-link" type="button">What's new</button>
         </footer>
     </div>
 
@@ -571,6 +572,21 @@
                     <button id="tutorial-back" class="btn btn-secondary" type="button">Back</button>
                     <button id="tutorial-next" class="btn btn-primary" type="button">Next</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- What's new (#119): a short, human changelog, surfaced so people don't have to dig.
+         Entries live in changelog.js (mirrors CHANGELOG.md). -->
+    <div id="changelog-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>What's new</h2>
+                <button class="close-btn" id="close-changelog" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="changelog-intro">A short list of what changed. Nothing here touches your map.</p>
+                <div id="changelog-list" class="changelog-list"></div>
             </div>
         </div>
     </div>

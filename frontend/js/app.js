@@ -6,6 +6,7 @@ import { analyzeMap, renderAnalysis } from './analyze.js';
 import { suggestLinks } from './suggest.js';
 import { exportAsJSON, exportAsText, importMap, exportVaultFile, importVaultFile } from './export.js';
 import { Tutorial } from './tutorial.js';
+import { CHANGELOG } from './changelog.js';
 
 // Local-first: the encrypted vault on this device IS the backend. `api` keeps the
 // same get/post/put/delete surface the rest of the app already uses.
@@ -432,6 +433,7 @@ class WymberApp {
     setupMainAppEventListeners() {
         document.getElementById('add-node-btn')?.addEventListener('click', () => this.showNodeModal());
         document.getElementById('tutorial-btn')?.addEventListener('click', () => this.openTutorial());
+        document.getElementById('whats-new-btn')?.addEventListener('click', () => this.openChangelog());
         document.getElementById('settings-btn')?.addEventListener('click', () => this.showSettingsModal());
         document.getElementById('analyze-btn')?.addEventListener('click', () => this.showAnalysis());
         document.getElementById('export-btn')?.addEventListener('click', () => this.showExportModal());
@@ -523,6 +525,21 @@ class WymberApp {
     openTutorial() {
         if (!this.tutorial) this.tutorial = new Tutorial();
         this.tutorial.open();
+    }
+
+    /** Show the short "What's new" list (changelog.js mirrors CHANGELOG.md). */
+    openChangelog() {
+        const list = document.getElementById('changelog-list');
+        if (list) {
+            list.innerHTML = CHANGELOG.map((entry) =>
+                '<section class="changelog-entry">' +
+                `<h3 class="changelog-date">${entry.date}</h3>` +
+                `<ul>${entry.items.map((i) => `<li>${i}</li>`).join('')}</ul>` +
+                '</section>'
+            ).join('');
+        }
+        const modal = document.getElementById('changelog-modal');
+        if (modal) modal.style.display = 'flex';
     }
 
     // ===== MIND MAP =====
