@@ -1573,6 +1573,29 @@ body {
     font-size: 0.9rem;
 }
 
+.crisis-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+    margin-top: 6px;
+}
+
+/* Tappable call/text actions: clear targets on a phone, harmless on desktop. */
+.crisis-action {
+    display: inline-block;
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: #B2DFDB;
+    color: #21413d;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-decoration: none;
+    transition: filter 0.18s ease;
+}
+
+.crisis-action:hover,
+.crisis-action:focus-visible { filter: brightness(0.95); text-decoration: none; }
+
 /* The breathing guide is the one place we keep gentle motion under reduce-motion: the slow
    swell and the word fade ARE the exercise (functional, calm, non-vestibular), not decoration.
    !important is needed to win over the global reduce-motion reset above. */
