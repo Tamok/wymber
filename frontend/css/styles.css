@@ -846,6 +846,35 @@ kbd {
     padding: 4px 0;
 }
 
+.detail-connection {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
+}
+
+.detail-connection-name { min-width: 0; overflow-wrap: anywhere; }
+
+/* Quiet by default, clearer on hover/focus: unlinking is reversible, so it shouldn't shout. */
+.detail-unlink {
+    flex: 0 0 auto;
+    border: 1px solid transparent;
+    background: none;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    padding: 2px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.detail-unlink:hover,
+.detail-unlink:focus-visible {
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    border-color: var(--border);
+}
+
 .detail-connections-empty {
     font-size: 0.85rem;
     color: var(--text-secondary);

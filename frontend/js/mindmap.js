@@ -317,9 +317,27 @@ export class TrauMindMap {
         this.updateToolbar();
     }
 
+    /** Are these two nodes already joined (an explicit edge either way, or a legacy parent link)? */
+    areConnected(aId, bId) {
+        const edges = this.lastData.edges || [];
+        if (edges.some((e) =>
+            (e.from_node_id === aId && e.to_node_id === bId) ||
+            (e.from_node_id === bId && e.to_node_id === aId))) return true;
+        const nodes = this.lastData.nodes || [];
+        const a = nodes.find((n) => n.id === aId);
+        const b = nodes.find((n) => n.id === bId);
+        return (a && a.parent_id === bId) || (b && b.parent_id === aId);
+    }
+
     async createConnection(fromNode, toNode) {
         if (!fromNode?.id || !toNode?.id) {
             this.showNotification('Could not identify nodes to connect', 'error');
+            return;
+        }
+        // Two nodes connect at most once. If they already are, say so gently and do nothing.
+        if (this.areConnected(fromNode.id, toNode.id)) {
+            this.showNotification(`"${fromNode.title}" and "${toNode.title}" are already connected`, 'info');
+            this.announceToScreenReader(`${fromNode.title} and ${toNode.title} are already connected`);
             return;
         }
         try {
@@ -333,6 +351,34 @@ export class TrauMindMap {
         }
     }
 
+    /**
+     * Remove a connection from the canvas. The edge element's id encodes its kind: an explicit
+     * edge is `e{id}` (delete the edge record); a legacy parent link is `p{parent}-{child}`
+     * (clear the child's parent_id). Reversible, so a single gentle confirm is enough.
+     */
+    async unlinkEdgeElement(edgeEl) {
+        const id = edgeEl.id();
+        const a = this.nodeFromEl(edgeEl.source())?.title || 'these';
+        const b = this.nodeFromEl(edgeEl.target())?.title || 'two';
+        if (!confirm(`Unlink "${a}" and "${b}"? You can reconnect them anytime.`)) return;
+        try {
+            if (id.startsWith('e')) {
+                await this.api.delete('/edge/' + id.slice(1));
+            } else if (id.startsWith('p')) {
+                const childId = parseInt(id.split('-')[1], 10);
+                await this.api.put('/node/' + childId, { parent_id: null });
+            } else {
+                return;
+            }
+            await this.loadMap();
+            this.showNotification(`Unlinked "${a}" and "${b}"`, 'success');
+            this.announceToScreenReader(`Unlinked ${a} and ${b}`);
+        } catch (error) {
+            console.error('Error unlinking:', error);
+            this.showNotification('Could not unlink', 'error');
+        }
+    }
+
     // ===== INTERACTIONS =====
 
     setupInteractions() {
@@ -343,6 +389,11 @@ export class TrauMindMap {
         this.cy.on('dbltap', 'node', (evt) => {
             const node = this.nodeFromEl(evt.target);
             if (node && this.toolbarMode !== 'link') this.editNode(node);
+        });
+        // Tap an edge (outside link mode) to remove that connection.
+        this.cy.on('tap', 'edge', (evt) => {
+            if (this.toolbarMode === 'link') return;
+            this.unlinkEdgeElement(evt.target);
         });
         this.cy.on('tap', (evt) => {
             if (evt.target === this.cy) {

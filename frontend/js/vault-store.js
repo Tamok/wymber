@@ -128,6 +128,13 @@ export class VaultStore {
         if (!ids.has(from_node_id) || !ids.has(to_node_id)) {
             throw new Error('Both endpoints must be existing nodes');
         }
+        // Linking is idempotent: two nodes can be connected at most once. If an edge already
+        // joins this pair (in either direction), return it instead of stacking a duplicate.
+        const existing = this.doc.edges.find(
+            (e) => (e.from_node_id === from_node_id && e.to_node_id === to_node_id) ||
+                   (e.from_node_id === to_node_id && e.to_node_id === from_node_id)
+        );
+        if (existing) return existing;
         const edge = {
             id: ++this._edgeSeq,
             from_node_id,
