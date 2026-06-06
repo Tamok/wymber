@@ -164,6 +164,9 @@
                 <button id="add-node-btn" class="btn btn-primary">
                     <span class="icon">+</span> Add Node
                 </button>
+                <button id="tutorial-btn" class="btn" title="A short walkthrough of how the map works">
+                    <span class="icon">&#9432;</span> How it works
+                </button>
                 <button id="analyze-btn" class="btn">
                     <span class="icon">?</span> Analyze Map
                 </button>
@@ -551,6 +554,23 @@
             </div>
             <div class="modal-footer">
                 <button id="close-grounding-btn" class="btn btn-primary">I'm okay for now</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- First-run tutorial (#118): a short, gentle, skippable walkthrough. Reopen anytime via
+         "How it works". Steps live in tutorial.js so they're easy to keep current. -->
+    <div id="tutorial-modal" class="modal" style="display:none;" role="dialog" aria-modal="true">
+        <div class="modal-content tutorial-card">
+            <button class="close-btn" id="close-tutorial" aria-label="Close walkthrough">&times;</button>
+            <div id="tutorial-step" class="tutorial-step"><!-- populated by tutorial.js --></div>
+            <div class="tutorial-foot">
+                <div id="tutorial-dots" class="tutorial-dots" aria-hidden="true"></div>
+                <div class="tutorial-nav">
+                    <button id="tutorial-skip" class="btn-link" type="button">Skip</button>
+                    <button id="tutorial-back" class="btn btn-secondary" type="button">Back</button>
+                    <button id="tutorial-next" class="btn btn-primary" type="button">Next</button>
+                </div>
             </div>
         </div>
     </div>

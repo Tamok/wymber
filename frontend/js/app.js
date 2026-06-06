@@ -5,6 +5,7 @@ import { validateNodeData, passwordStrength } from './utils.js';
 import { analyzeMap, renderAnalysis } from './analyze.js';
 import { suggestLinks } from './suggest.js';
 import { exportAsJSON, exportAsText, importMap, exportVaultFile, importVaultFile } from './export.js';
+import { Tutorial } from './tutorial.js';
 
 // Local-first: the encrypted vault on this device IS the backend. `api` keeps the
 // same get/post/put/delete surface the rest of the app already uses.
@@ -430,6 +431,7 @@ class WymberApp {
 
     setupMainAppEventListeners() {
         document.getElementById('add-node-btn')?.addEventListener('click', () => this.showNodeModal());
+        document.getElementById('tutorial-btn')?.addEventListener('click', () => this.openTutorial());
         document.getElementById('settings-btn')?.addEventListener('click', () => this.showSettingsModal());
         document.getElementById('analyze-btn')?.addEventListener('click', () => this.showAnalysis());
         document.getElementById('export-btn')?.addEventListener('click', () => this.showExportModal());
@@ -509,10 +511,18 @@ class WymberApp {
         if (ss) ss.style.display = 'none';
         try {
             await this.initMindMap();
+            // Offer the walkthrough once, gently, after the map is up (never on later visits).
+            if (!Tutorial.seen()) setTimeout(() => this.openTutorial(), 450);
         } catch (error) {
             console.error('Error initializing mind map:', error);
             this.updateSaveIndicator('Error loading mind map', 'error');
         }
+    }
+
+    /** Open the walkthrough (first-run auto-offer, or the header's "How it works"). */
+    openTutorial() {
+        if (!this.tutorial) this.tutorial = new Tutorial();
+        this.tutorial.open();
     }
 
     // ===== MIND MAP =====

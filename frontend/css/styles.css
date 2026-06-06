@@ -1596,6 +1596,49 @@ body {
 .crisis-action:hover,
 .crisis-action:focus-visible { filter: brightness(0.95); text-decoration: none; }
 
+/* ===== FIRST-RUN TUTORIAL (#118) ===== */
+.tutorial-card {
+    max-width: 420px;
+    text-align: center;
+    padding: 34px 28px 22px;
+    position: relative;
+}
+
+/* Calm fade/rise between steps; disabled under the global reduced-motion reset. */
+.tutorial-step {
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.tutorial-step.is-shown { opacity: 1; transform: none; }
+
+.tutorial-art { display: flex; justify-content: center; margin-bottom: var(--spacing-md); }
+.tutorial-title { margin: 0 0 var(--spacing-sm); font-size: 1.3rem; }
+.tutorial-body { color: var(--text-secondary); margin: 0 auto; max-width: 34ch; line-height: 1.55; }
+
+.tutorial-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    margin-top: 22px;
+}
+
+.tutorial-dots { display: flex; gap: 7px; }
+.tutorial-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--border);
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+.tutorial-dot.active { background: var(--focus); transform: scale(1.25); }
+
+.tutorial-nav { display: flex; align-items: center; gap: var(--spacing-sm); }
+
+@media (max-width: 480px) {
+    .tutorial-foot { flex-direction: column-reverse; align-items: stretch; }
+    .tutorial-nav { justify-content: space-between; }
+}
+
 /* The breathing guide is the one place we keep gentle motion under reduce-motion: the slow
    swell and the word fade ARE the exercise (functional, calm, non-vestibular), not decoration.
    !important is needed to win over the global reduce-motion reset above. */
