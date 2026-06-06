@@ -48,6 +48,18 @@ describe('VaultStore', () => {
         expect(s.getMindmap().edges).toHaveLength(0);
     });
 
+    it('links two nodes at most once (idempotent, either direction)', () => {
+        const s = new VaultStore();
+        const a = s.addNode({ node_type: 'event', title: 'a' });
+        const b = s.addNode({ node_type: 'emotion', title: 'b' });
+        const first = s.addEdge({ from_node_id: a.id, to_node_id: b.id });
+        const again = s.addEdge({ from_node_id: a.id, to_node_id: b.id });
+        const reverse = s.addEdge({ from_node_id: b.id, to_node_id: a.id });
+        expect(s.getMindmap().edges).toHaveLength(1);
+        expect(again.id).toBe(first.id);
+        expect(reverse.id).toBe(first.id);
+    });
+
     it('merges settings', () => {
         const s = new VaultStore();
         s.setSettings({ fontSize: 'large' });

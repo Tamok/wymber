@@ -15,6 +15,11 @@ async function fillVerified(page, selector, value) {
 
 /** Fresh context (no vault) → create flow → through the recovery sheet → soft-start visible. */
 export async function createVault(page) {
+    // Suppress the first-run walkthrough auto-offer so it never races the suite; tests that
+    // exercise it open it explicitly via the "How it works" button.
+    await page.addInitScript(() => {
+        try { localStorage.setItem('wymber.tutorialSeen', '1'); } catch (_) { /* ignore */ }
+    });
     await page.goto('/');
     await expect(page.locator('#create-form')).toBeVisible({ timeout: 15000 });
     await fillVerified(page, '#create-password', PASSWORD);

@@ -49,7 +49,7 @@
 
     <!-- Crisis Resources Bar -->
     <div id="crisis-bar" class="crisis-bar" style="display:none;">
-        <span>Need immediate help? Call 988 (Crisis Lifeline) or 911</span>
+        <span>Need immediate help? <a href="tel:988">Call 988</a>, <a href="sms:988">text 988</a>, or call <a href="tel:911">911</a></span>
         <button id="hide-crisis-bar" aria-label="Hide crisis resources">&times;</button>
     </div>
 
@@ -164,6 +164,9 @@
                 <button id="add-node-btn" class="btn btn-primary">
                     <span class="icon">+</span> Add Node
                 </button>
+                <button id="tutorial-btn" class="btn" title="A short walkthrough of how the map works">
+                    <span class="icon">&#9432;</span> How it works
+                </button>
                 <button id="analyze-btn" class="btn">
                     <span class="icon">?</span> Analyze Map
                 </button>
@@ -221,6 +224,7 @@
                             <li><strong>Add Node:</strong> Click "+ Add Node" button above to create entries</li>
                             <li><strong>Select:</strong> Click any node to select it</li>
                             <li><strong>Link:</strong> Use "Link Nodes" to connect related experiences</li>
+                            <li><strong>Unlink:</strong> Open a node's Connections, or tap the line between two, to remove a link</li>
                             <li><strong>Edit:</strong> Select a node, then click "Edit" to modify it</li>
                             <li><strong>Navigate:</strong> Use Tab key to move between nodes</li>
                         </ul>
@@ -263,6 +267,7 @@
             <div class="keyboard-hints">
                 <span>Keyboard: <kbd>Ctrl+N</kbd> New Node | <kbd>Delete</kbd> Remove | <kbd>Tab</kbd> Navigate | <kbd>Esc</kbd> Close</span>
             </div>
+            <button id="whats-new-btn" class="app-footer-link" type="button">What's new</button>
         </footer>
     </div>
 
@@ -485,20 +490,30 @@
                 <p class="crisis-intro">If you're in crisis or thinking about harming yourself, please reach out. Help is available right now, and you deserve it.</p>
                 <ul class="crisis-list">
                     <li class="crisis-item">
-                        <span class="crisis-key">988</span>
-                        <span class="crisis-desc">Suicide &amp; Crisis Lifeline (US): call or text, any time, day or night</span>
+                        <span class="crisis-key">988 Suicide &amp; Crisis Lifeline (US)</span>
+                        <span class="crisis-desc">Reach a counselor any time, day or night. Free and confidential.</span>
+                        <span class="crisis-actions">
+                            <a class="crisis-action" href="tel:988">Call 988</a>
+                            <a class="crisis-action" href="sms:988">Text 988</a>
+                        </span>
                     </li>
                     <li class="crisis-item">
-                        <span class="crisis-key">Text HOME to 741741</span>
-                        <span class="crisis-desc">Crisis Text Line</span>
+                        <span class="crisis-key">Crisis Text Line</span>
+                        <span class="crisis-desc">Text-based support, if talking is too much right now.</span>
+                        <span class="crisis-actions">
+                            <a class="crisis-action" href="sms:741741?&amp;body=HOME">Text HOME to 741741</a>
+                        </span>
                     </li>
                     <li class="crisis-item">
                         <span class="crisis-key">911</span>
-                        <span class="crisis-desc">Emergency services (US)</span>
+                        <span class="crisis-desc">Emergency services (US).</span>
+                        <span class="crisis-actions">
+                            <a class="crisis-action" href="tel:911">Call 911</a>
+                        </span>
                     </li>
                     <li class="crisis-item">
                         <a class="crisis-key crisis-link" href="https://findahelpline.com" target="_blank" rel="noopener">Find a helpline in your country</a>
-                        <span class="crisis-desc">175+ countries (needs internet)</span>
+                        <span class="crisis-desc">175+ countries (needs internet).</span>
                     </li>
                 </ul>
                 <p class="safety-disclaimer">Wymber can't contact anyone for you. These are external services you reach out to directly.</p>
@@ -540,6 +555,38 @@
             </div>
             <div class="modal-footer">
                 <button id="close-grounding-btn" class="btn btn-primary">I'm okay for now</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- First-run tutorial (#118): a short, gentle, skippable walkthrough. Reopen anytime via
+         "How it works". Steps live in tutorial.js so they're easy to keep current. -->
+    <div id="tutorial-modal" class="modal" style="display:none;" role="dialog" aria-modal="true">
+        <div class="modal-content tutorial-card">
+            <button class="close-btn" id="close-tutorial" aria-label="Close walkthrough">&times;</button>
+            <div id="tutorial-step" class="tutorial-step"><!-- populated by tutorial.js --></div>
+            <div class="tutorial-foot">
+                <div id="tutorial-dots" class="tutorial-dots" aria-hidden="true"></div>
+                <div class="tutorial-nav">
+                    <button id="tutorial-skip" class="btn-link" type="button">Skip</button>
+                    <button id="tutorial-back" class="btn btn-secondary" type="button">Back</button>
+                    <button id="tutorial-next" class="btn btn-primary" type="button">Next</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- What's new (#119): a short, human changelog, surfaced so people don't have to dig.
+         Entries live in changelog.js (mirrors CHANGELOG.md). -->
+    <div id="changelog-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>What's new</h2>
+                <button class="close-btn" id="close-changelog" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="changelog-intro">A short list of what changed. Nothing here touches your map.</p>
+                <div id="changelog-list" class="changelog-list"></div>
             </div>
         </div>
     </div>

@@ -846,6 +846,35 @@ kbd {
     padding: 4px 0;
 }
 
+.detail-connection {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
+}
+
+.detail-connection-name { min-width: 0; overflow-wrap: anywhere; }
+
+/* Quiet by default, clearer on hover/focus: unlinking is reversible, so it shouldn't shout. */
+.detail-unlink {
+    flex: 0 0 auto;
+    border: 1px solid transparent;
+    background: none;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    padding: 2px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.detail-unlink:hover,
+.detail-unlink:focus-visible {
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    border-color: var(--border);
+}
+
 .detail-connections-empty {
     font-size: 0.85rem;
     color: var(--text-secondary);
@@ -1543,6 +1572,92 @@ body {
     color: var(--text-secondary);
     font-size: 0.9rem;
 }
+
+.crisis-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+    margin-top: 6px;
+}
+
+/* Tappable call/text actions: clear targets on a phone, harmless on desktop. */
+.crisis-action {
+    display: inline-block;
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: #B2DFDB;
+    color: #21413d;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-decoration: none;
+    transition: filter 0.18s ease;
+}
+
+.crisis-action:hover,
+.crisis-action:focus-visible { filter: brightness(0.95); text-decoration: none; }
+
+/* ===== FIRST-RUN TUTORIAL (#118) ===== */
+.tutorial-card {
+    max-width: 420px;
+    text-align: center;
+    padding: 34px 28px 22px;
+    position: relative;
+}
+
+/* Calm fade/rise between steps; disabled under the global reduced-motion reset. */
+.tutorial-step {
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.tutorial-step.is-shown { opacity: 1; transform: none; }
+
+.tutorial-art { display: flex; justify-content: center; margin-bottom: var(--spacing-md); }
+.tutorial-title { margin: 0 0 var(--spacing-sm); font-size: 1.3rem; }
+.tutorial-body { color: var(--text-secondary); margin: 0 auto; max-width: 34ch; line-height: 1.55; }
+
+.tutorial-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    margin-top: 22px;
+}
+
+.tutorial-dots { display: flex; gap: 7px; }
+.tutorial-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--border);
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+.tutorial-dot.active { background: var(--focus); transform: scale(1.25); }
+
+.tutorial-nav { display: flex; align-items: center; gap: var(--spacing-sm); }
+
+@media (max-width: 480px) {
+    .tutorial-foot { flex-direction: column-reverse; align-items: stretch; }
+    .tutorial-nav { justify-content: space-between; }
+}
+
+/* ===== WHAT'S NEW / CHANGELOG (#119) ===== */
+.changelog-intro { color: var(--text-secondary); font-size: 0.9rem; margin: 0 0 var(--spacing-md); }
+.changelog-list { display: flex; flex-direction: column; gap: var(--spacing-md); }
+.changelog-entry h3 { margin: 0 0 6px; font-size: 0.95rem; color: var(--text-secondary); font-weight: 700; }
+.changelog-entry ul { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 4px; }
+.changelog-entry li { color: var(--text-primary); font-size: 0.92rem; line-height: 1.5; }
+
+.app-footer-link {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    text-decoration: underline;
+    padding: 4px 6px;
+    border-radius: 6px;
+}
+.app-footer-link:hover,
+.app-footer-link:focus-visible { color: var(--text-primary); }
 
 /* The breathing guide is the one place we keep gentle motion under reduce-motion: the slow
    swell and the word fade ARE the exercise (functional, calm, non-vestibular), not decoration.

@@ -5,6 +5,8 @@ import { validateNodeData, passwordStrength } from './utils.js';
 import { analyzeMap, renderAnalysis } from './analyze.js';
 import { suggestLinks } from './suggest.js';
 import { exportAsJSON, exportAsText, importMap, exportVaultFile, importVaultFile } from './export.js';
+import { Tutorial } from './tutorial.js';
+import { CHANGELOG } from './changelog.js';
 
 // Local-first: the encrypted vault on this device IS the backend. `api` keeps the
 // same get/post/put/delete surface the rest of the app already uses.
@@ -430,6 +432,8 @@ class WymberApp {
 
     setupMainAppEventListeners() {
         document.getElementById('add-node-btn')?.addEventListener('click', () => this.showNodeModal());
+        document.getElementById('tutorial-btn')?.addEventListener('click', () => this.openTutorial());
+        document.getElementById('whats-new-btn')?.addEventListener('click', () => this.openChangelog());
         document.getElementById('settings-btn')?.addEventListener('click', () => this.showSettingsModal());
         document.getElementById('analyze-btn')?.addEventListener('click', () => this.showAnalysis());
         document.getElementById('export-btn')?.addEventListener('click', () => this.showExportModal());
@@ -509,10 +513,33 @@ class WymberApp {
         if (ss) ss.style.display = 'none';
         try {
             await this.initMindMap();
+            // Offer the walkthrough once, gently, after the map is up (never on later visits).
+            if (!Tutorial.seen()) setTimeout(() => this.openTutorial(), 450);
         } catch (error) {
             console.error('Error initializing mind map:', error);
             this.updateSaveIndicator('Error loading mind map', 'error');
         }
+    }
+
+    /** Open the walkthrough (first-run auto-offer, or the header's "How it works"). */
+    openTutorial() {
+        if (!this.tutorial) this.tutorial = new Tutorial();
+        this.tutorial.open();
+    }
+
+    /** Show the short "What's new" list (changelog.js mirrors CHANGELOG.md). */
+    openChangelog() {
+        const list = document.getElementById('changelog-list');
+        if (list) {
+            list.innerHTML = CHANGELOG.map((entry) =>
+                '<section class="changelog-entry">' +
+                `<h3 class="changelog-date">${entry.date}</h3>` +
+                `<ul>${entry.items.map((i) => `<li>${i}</li>`).join('')}</ul>` +
+                '</section>'
+            ).join('');
+        }
+        const modal = document.getElementById('changelog-modal');
+        if (modal) modal.style.display = 'flex';
     }
 
     // ===== MIND MAP =====
@@ -528,7 +555,15 @@ class WymberApp {
         this.mindMap.onShowNodeModal = (node) => this.openNodeDetail(node);
         this.mindMap.onSelectNode = (node) => this.openNodeDetail(node);
         this.mindMap.onDeselect = () => this.closeNodeDetail();
-        this.mindMap.onMapLoaded = (data) => this.refreshSuggestions(data);
+        this.mindMap.onMapLoaded = (data) => {
+            this.refreshSuggestions(data);
+            // Keep the open drawer's Connections list in lockstep with the map (e.g. after an
+            // unlink from the canvas, or a new link).
+            if (this.detailNodeId != null) {
+                const fresh = (data.nodes || []).find((n) => n.id === this.detailNodeId);
+                if (fresh) this.renderDetailConnections(fresh);
+            }
+        };
 
         const success = await this.mindMap.init();
         if (success) {
@@ -714,28 +749,70 @@ class WymberApp {
         const nodes = this.mindMap?.lastData?.nodes || [];
         const edges = this.mindMap?.lastData?.edges || [];
         const byId = new Map(nodes.map((n) => [n.id, n]));
-        const names = new Set();
+
+        // Each connection carries how to undo it: an explicit edge (delete the edge record) or a
+        // legacy parent link (clear the child's parent_id). Dedupe by the other node so a pair
+        // shows once.
+        const entries = [];
+        const others = new Set();
         edges.forEach((e) => {
-            if (e.from_node_id === node.id && byId.has(e.to_node_id)) names.add(byId.get(e.to_node_id).title);
-            if (e.to_node_id === node.id && byId.has(e.from_node_id)) names.add(byId.get(e.from_node_id).title);
+            let otherId = null;
+            if (e.from_node_id === node.id) otherId = e.to_node_id;
+            else if (e.to_node_id === node.id) otherId = e.from_node_id;
+            if (otherId != null && byId.has(otherId) && !others.has(otherId)) {
+                others.add(otherId);
+                entries.push({ kind: 'edge', edgeId: e.id, other: byId.get(otherId) });
+            }
         });
+        const self = byId.get(node.id);
+        if (self && self.parent_id != null && byId.has(self.parent_id) && !others.has(self.parent_id)) {
+            others.add(self.parent_id);
+            entries.push({ kind: 'parent', childId: self.id, other: byId.get(self.parent_id) });
+        }
         nodes.forEach((n) => {
-            if (n.id === node.id && n.parent_id != null && byId.has(n.parent_id)) names.add(byId.get(n.parent_id).title);
-            if (n.parent_id === node.id) names.add(n.title);
+            if (n.parent_id === node.id && !others.has(n.id)) {
+                others.add(n.id);
+                entries.push({ kind: 'parent', childId: n.id, other: n });
+            }
         });
 
-        if (names.size === 0) {
+        if (entries.length === 0) {
             const li = document.createElement('li');
             li.className = 'detail-connections-empty';
             li.textContent = 'No connections yet. Use Link Nodes to relate this to another.';
             ul.appendChild(li);
             return;
         }
-        [...names].forEach((t) => {
+        entries.forEach((entry) => {
             const li = document.createElement('li');
-            li.textContent = t;
+            li.className = 'detail-connection';
+            const name = document.createElement('span');
+            name.className = 'detail-connection-name';
+            name.textContent = entry.other.title;
+            const unlink = document.createElement('button');
+            unlink.type = 'button';
+            unlink.className = 'detail-unlink';
+            unlink.textContent = 'Unlink';
+            unlink.setAttribute('aria-label', `Unlink from ${entry.other.title}`);
+            unlink.addEventListener('click', () => this.unlinkConnection(entry, node.id));
+            li.append(name, unlink);
             ul.appendChild(li);
         });
+    }
+
+    /** Remove one connection from the open node's detail drawer, then refresh in place. */
+    async unlinkConnection(entry, nodeId) {
+        try {
+            if (entry.kind === 'edge') await api.delete(`/edge/${entry.edgeId}`);
+            else await api.put(`/node/${entry.childId}`, { parent_id: null });
+            await this.mindMap?.loadMap();
+            const fresh = (this.mindMap?.lastData?.nodes || []).find((n) => n.id === nodeId);
+            if (fresh) this.renderDetailConnections(fresh);
+            this.showNotification(`Unlinked from "${entry.other.title}"`, 'success');
+        } catch (error) {
+            console.error('Could not unlink:', error);
+            this.showNotification('Could not unlink', 'error');
+        }
     }
 
     /** The drawer's current field values, used both to save and to detect changes. */
