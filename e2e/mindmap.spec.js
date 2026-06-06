@@ -219,4 +219,69 @@ test.describe('Mind Map Operations', () => {
         await expect(page.locator('.notification-success')).toBeVisible({ timeout: 5000 });
         await expect(page.locator('.notification-nudge')).toHaveCount(0);
     });
+
+    test('two nodes link once, refuse a duplicate, and can be unlinked (#117)', async ({ page }) => {
+        await createVaultAndOpenMap(page);
+
+        const addNode = async (type, title) => {
+            await page.click('#add-node-btn');
+            await page.selectOption('#node-type', type);
+            await page.fill('#node-title', title);
+            await page.click('#save-node');
+            await expect(page.locator('#map-outline')).toContainText(title, { timeout: 5000 });
+        };
+        await addNode('event', 'First thing');
+        await addNode('emotion', 'Second thing');
+
+        // Link them from the accessible outline (Link mode: choose two).
+        const linkPair = async () => {
+            await page.click('#link-mode-btn');
+            await page.locator('.map-outline-node', { hasText: 'First thing' }).first().click();
+            await page.locator('.map-outline-node', { hasText: 'Second thing' }).first().click();
+        };
+        await linkPair();
+        // The connection shows up in the accessible outline (the reliable source of truth).
+        await expect(page.locator('#map-outline')).toContainText('Connected to: Second thing', { timeout: 5000 });
+
+        // Linking them again is refused gently, with no duplicate.
+        await linkPair();
+        await expect(page.locator('.notification-info')).toContainText(/already connected/i, { timeout: 5000 });
+
+        // Unlink from the node's detail drawer; the connection goes away.
+        await page.click('#select-mode-btn');
+        await page.locator('.map-outline-node', { hasText: 'First thing' }).first().click();
+        await expect(page.locator('#node-detail')).toHaveClass(/open/);
+        await page.locator('#detail-connections .detail-unlink').first().click();
+        await expect(page.locator('#detail-connections')).toContainText(/no connections/i, { timeout: 5000 });
+    });
+
+    test('the "How it works" walkthrough opens, steps, and skips (#118)', async ({ page }) => {
+        await createVaultAndOpenMap(page);
+        await page.click('#tutorial-btn');
+        const modal = page.locator('#tutorial-modal');
+        await expect(modal).toBeVisible();
+        await expect(page.locator('.tutorial-title')).toContainText(/welcome/i, { timeout: 3000 });
+        await page.click('#tutorial-next');
+        await expect(page.locator('.tutorial-title')).not.toContainText(/welcome/i, { timeout: 3000 });
+        await page.click('#tutorial-skip');
+        await expect(modal).toBeHidden({ timeout: 3000 });
+    });
+
+    test('the What\'s new changelog opens from the footer (#119)', async ({ page }) => {
+        await createVaultAndOpenMap(page);
+        await page.click('#whats-new-btn');
+        const modal = page.locator('#changelog-modal');
+        await expect(modal).toBeVisible();
+        await expect(modal).toContainText(/unlink/i, { timeout: 3000 });
+    });
+
+    test('crisis support exposes real call + text links (#107)', async ({ page }) => {
+        await createVaultAndOpenMap(page);
+        await page.click('#crisis-btn');
+        await expect(page.locator('#crisis-modal')).toBeVisible();
+        await expect(page.locator('#crisis-modal a[href="tel:988"]')).toBeVisible();
+        await expect(page.locator('#crisis-modal a[href="sms:988"]')).toBeVisible();
+        await expect(page.locator('#crisis-modal a[href^="sms:741741"]')).toBeVisible();
+        await expect(page.locator('#crisis-modal a[href="tel:911"]')).toBeVisible();
+    });
 });
