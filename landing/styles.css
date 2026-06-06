@@ -163,9 +163,34 @@ h2 { font-size: clamp(1.5rem, 3vw, 2rem); margin: 0 0 8px; text-align: center; }
   border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px;
 }
 .pill-now { background: #e6f4ea; color: #2e7d52; border-color: #cfe9d8; }
+.pill-alpha { background: #fbeeda; color: #9a6a1e; border-color: #f0ddbc; }
 @media (prefers-color-scheme: dark) {
   .pill-now { background: #1e3a2a; color: #8fd6a8; border-color: #2c5440; }
+  .pill-alpha { background: #3a2f1c; color: #e6c489; border-color: #54452c; }
 }
+
+/* A look inside: a manual carousel (no auto-advance; honors reduced-motion). */
+.carousel { position: relative; display: flex; align-items: center; gap: 10px; max-width: 780px; margin: 0 auto; }
+.carousel-track {
+  list-style: none; margin: 0; padding: 4px; flex: 1 1 auto; min-width: 0;
+  display: flex; gap: 18px;
+  overflow-x: auto; scroll-snap-type: x mandatory;
+  scrollbar-width: thin; scroll-behavior: smooth;
+}
+.carousel-slide { flex: 0 0 100%; scroll-snap-align: center; min-width: 0; }
+.carousel-slide img {
+  width: 100%; height: auto; display: block;
+  border-radius: 12px; border: 1px solid var(--line); box-shadow: var(--shadow);
+}
+.carousel-cap { text-align: center; color: var(--ink-soft); font-size: 0.92rem; margin: 10px 0 0; }
+.carousel-btn {
+  flex: 0 0 auto; width: 42px; height: 42px; border-radius: 50%;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  font-size: 1.4rem; line-height: 1; cursor: pointer; transition: background var(--ease);
+}
+.carousel-btn:hover { background: var(--surface-2); }
+@media (prefers-reduced-motion: reduce) { .carousel-track { scroll-behavior: auto; } }
+@media (max-width: 640px) { .carousel-btn { display: none; } }
 
 /* Gentle list */
 .gentle-list { list-style: none; padding: 0; margin: 0 auto; display: grid; gap: 12px; max-width: 64ch; }

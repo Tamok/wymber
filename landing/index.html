@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Wymber: a private space to map and understand your experiences</title>
-  <meta name="description" content="Wymber is a privacy-first tool for gently mapping your experiences. No account, no servers. Your encrypted map never leaves your device.">
+  <meta name="description" content="Wymber is a privacy-first tool to map and make sense of your experiences. No account, no servers. Your encrypted map never leaves your device.">
 
   <!-- Open Graph / social -->
   <meta property="og:title" content="Wymber">
@@ -40,11 +40,11 @@
   <main id="main">
     <!-- Hero -->
     <section class="hero">
-      <p class="badge">Private by design · Coming soon</p>
+      <p class="badge">Private by design · Now in alpha</p>
       <h1>A private space to map and understand your experiences.</h1>
       <p class="lede">
-        Wymber helps you gently lay out what happened, how it connects, and how you're growing.
-        All at your own pace, entirely on your own device.
+        Wymber helps you lay out what happened, how it connects, and how you're growing,
+        at your own pace, entirely on your own device.
       </p>
       <div class="cta-row">
         <a class="btn btn-primary" href="#how">See how it works</a>
@@ -53,7 +53,7 @@
       <p class="microcopy">No account. No servers. Nothing leaves your hands.</p>
 
       <div class="hero-visual" role="img"
-           aria-label="A small map: soft coloured blocks connected by lines, one connection shown as a gentle dashed suggestion.">
+           aria-label="A small map: soft coloured blocks connected by lines, one connection shown as a dashed suggestion.">
         <svg viewBox="0 0 420 230" width="100%" height="100%" aria-hidden="true" focusable="false">
           <!-- links -->
           <line x1="95"  y1="70"  x2="210" y2="55"  class="edge"/>
@@ -85,15 +85,47 @@
         <article class="step">
           <span class="step-num" aria-hidden="true">2</span>
           <h3>Notice the connections</h3>
-          <p>Wymber gently surfaces links you might not have seen yet. You decide what's true for
+          <p>Wymber surfaces links you might not have seen yet. You decide what's true for
              you. A suggestion is a question, never a change.</p>
         </article>
         <article class="step">
           <span class="step-num" aria-hidden="true">3</span>
           <h3>Go at your own pace</h3>
-          <p>Nothing is urgent. Step away anytime, and your map quietly locks itself until you
+          <p>Nothing is urgent. Step away anytime, and your map locks itself until you
              come back.</p>
         </article>
+      </div>
+    </section>
+
+    <!-- A look inside (alpha) -->
+    <section class="band band-tint" aria-labelledby="look-h">
+      <h2 id="look-h">A look inside <span class="pill pill-alpha">alpha</span></h2>
+      <p class="band-lede">A few screens from the alpha. It's early and changing often.</p>
+      <div class="carousel" data-carousel>
+        <button class="carousel-btn carousel-prev" type="button" aria-label="Previous screenshot">&#8249;</button>
+        <ul class="carousel-track" tabindex="0" aria-label="App screenshots, scroll or use the arrows">
+          <li class="carousel-slide">
+            <img src="screenshots/shot-map.jpeg" loading="lazy"
+                 alt="The map: an event and a body sensation, connected, with a matching list view beside the canvas.">
+            <p class="carousel-cap">Lay out what happened, and how it connects.</p>
+          </li>
+          <li class="carousel-slide">
+            <img src="screenshots/shot-detail.jpeg" loading="lazy"
+                 alt="A node's detail panel: its type, title, story, keywords, and connections.">
+            <p class="carousel-cap">Give any node room: a story, keywords, its connections.</p>
+          </li>
+          <li class="carousel-slide">
+            <img src="screenshots/shot-walkthrough.jpeg" loading="lazy"
+                 alt="A short welcome walkthrough shown over the map on first run.">
+            <p class="carousel-cap">A short walkthrough to start. Skippable, reopen anytime.</p>
+          </li>
+          <li class="carousel-slide">
+            <img src="screenshots/shot-crisis.jpeg" loading="lazy"
+                 alt="Crisis support with call and text options for 988, Crisis Text Line, and 911.">
+            <p class="carousel-cap">Support is one tap away, to call or text, always in reach.</p>
+          </li>
+        </ul>
+        <button class="carousel-btn carousel-next" type="button" aria-label="Next screenshot">&#8250;</button>
       </div>
     </section>
 
@@ -131,11 +163,10 @@
       </div>
     </section>
 
-    <!-- Gentle by design -->
+    <!-- Design choices that stay out of your way -->
     <section class="band">
-      <h2>Gentle by design</h2>
-      <p class="band-lede">Calm, predictable, and yours to control, because how a tool
-         <em>feels</em> matters most here.</p>
+      <h2>Designed to stay out of your way</h2>
+      <p class="band-lede">Predictable, reversible, and yours to control. In practice:</p>
       <ul class="gentle-list">
         <li>Soft colours and unhurried transitions. Nothing jarring.</li>
         <li><kbd>Esc</kbd> always closes what's open. You're never trapped in a screen.</li>
@@ -150,7 +181,7 @@
     <!-- What you can map -->
     <section class="band band-tint">
       <h2>What you can map</h2>
-      <p class="band-lede">Gentle building blocks. Use as few or as many as feel right.</p>
+      <p class="band-lede">Building blocks. Use as few or as many as feel right.</p>
       <ul class="chips" aria-label="Node types">
         <li><span class="dot" style="background:#C8E6C9"></span>Event</li>
         <li><span class="dot" style="background:#BBDEFB"></span>Emotion</li>
@@ -171,8 +202,10 @@
       <h2>Ways to use Wymber</h2>
       <div class="cards">
         <article class="card">
-          <h3>Web app <span class="pill">soon</span></h3>
-          <p>The easiest way in. Open it at wymber.app, nothing to install.</p>
+          <h3>Web app <span class="pill pill-alpha">alpha</span></h3>
+          <p>The easiest way in. Open it at <a href="https://web.wymber.app">web.wymber.app</a>,
+             nothing to install. It's early, so expect rough edges.</p>
+          <a class="card-link" href="https://web.wymber.app">Open the app →</a>
         </article>
         <article class="card">
           <h3>Desktop <span class="pill">later</span></h3>
@@ -207,5 +240,15 @@
     </p>
     <p class="copyright">© 2026 Wymber · <a href="changelog.html">What's new</a> · <a href="sources.html">Sources</a></p>
   </footer>
+
+  <script>
+    // Carousel: arrows scroll one slide; scroll-snap + native scroll/swipe do the rest.
+    document.querySelectorAll('[data-carousel]').forEach((c) => {
+      const track = c.querySelector('.carousel-track');
+      const step = () => track.clientWidth + 18;
+      c.querySelector('.carousel-prev')?.addEventListener('click', () => track.scrollBy({ left: -step() }));
+      c.querySelector('.carousel-next')?.addEventListener('click', () => track.scrollBy({ left: step() }));
+    });
+  </script>
 </body>
 </html>

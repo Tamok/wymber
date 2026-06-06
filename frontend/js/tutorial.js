@@ -1,5 +1,5 @@
 /**
- * First-run tutorial — a short, gentle, skippable walkthrough of the map.
+ * First-run tutorial: a short, skippable walkthrough of the map.
  *
  * Trauma-informed onboarding (gradual, brief, validating, skippable, a soft exit, agency): a few
  * calm steps you can leave at any moment and reopen anytime from "How it works". Offered once on
@@ -43,8 +43,8 @@ export const TUTORIAL_STEPS = [
     },
     {
         art: ART.gentle,
-        title: 'Go gently',
-        body: `There's no rush. Grounding and crisis support are always one tap away in the bar above, whenever you need them.`,
+        title: 'At your own pace',
+        body: `There's no rush, and nothing here is required. Grounding and crisis support stay one tap away in the bar above, whenever you need them.`,
     },
 ];
 

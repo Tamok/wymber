@@ -2,7 +2,7 @@
 
 **A private, local-first space to map and understand your experiences.**
 
-Wymber is a privacy-first, trauma-informed tool for gently laying out what happened, how it
+Wymber is a privacy-first, trauma-informed tool for laying out what happened, how it
 connects, and how you're growing, at your own pace, on your own device. It's an active revival
 (alpha), open-sourced so its privacy claims can be independently verified.
 
@@ -18,11 +18,11 @@ connects, and how you're growing, at your own pace, on your own device. It's an 
   your password. There's no account to create and nothing is sent to a server. A printable
   **recovery sheet** means a forgotten password no longer costs you your data.
   See [ADR-0001](docs/adr/0001-local-first-encrypted-file.md).
-- **A map, not a form.** Eleven gentle building blocks (Event, Emotion, Body, Person, Place,
-  Trigger, Coping, Support, Need, Insight, Growth) connect into a web you can explore, each with a
-  gentle, optional prompt. A discovery engine is planned to surface links you might not have seen
-  yet.
-- **Trauma-informed by design.** Soft colours, gentle language, predictable UI, no jarring motion,
+- **A map, not a form.** Eleven building blocks (Event, Emotion, Body, Person, Place,
+  Trigger, Coping, Support, Need, Insight, Growth) connect into a web you can explore, each with an
+  optional, non-directive prompt. A discovery engine is planned to surface links you might not have
+  seen yet.
+- **Trauma-informed by design.** Soft colours, plain language, predictable UI, no jarring motion,
   full keyboard navigation, and WCAG 2.1 AA accessibility as a baseline.
 
 > **Status: active alpha.** The local-first encrypted-vault client is the app. The tiny FastAPI
