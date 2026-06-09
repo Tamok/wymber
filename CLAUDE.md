@@ -47,13 +47,15 @@ Run commands from the repo root.
 - `frontend/js/app.js`: orchestrator: create / unlock / recover panels, recovery sheet, auto-lock, the map, the add-node modal, and the node detail drawer (#108: type/title/description/story/keywords, edit-in-place, auto-saving).
 - `frontend/js/mindmap.js`: the graph renderer (Cytoscape, vendored in `frontend/libs/`). Draws pastel building-block nodes + first-class edges straight from `/mindmap`, theme-aware via `applyTheme()`, and keeps an accessible `#map-outline` list twin in lockstep (the keyboard-first, non-visual surface).
 - `frontend/js/{utils,analyze,export}.js`: pure utils, local map analysis, export.
+- `frontend/js/tutorial.js`: the first-run walkthrough (data-driven `TUTORIAL_STEPS`; skippable, reopenable from "How it works"). Edit the steps array, nothing else.
+- `frontend/js/changelog.js`: the in-app "What's new" (`CHANGELOG`); mirror the newest `CHANGELOG.md` entries here (short + human).
 - `frontend/js/suggest.js`: the discovery engine (`suggestLinks`): proposes *possible* links from shared keywords + an "anchor gap" type hint (a lone trigger/need with no coping/support). Pure/testable; surfaced via a quiet, opt-in "possible connections" prompt (never auto-added). A first cut meant to grow (ADR-0002).
 - `frontend/js/config.js`: `NODE_TYPES` (source of truth).
 - `backend/main.py`: the static server (+ health). That's the whole backend.
 
 The 11 node types: `event`, `emotion`, `body`, `person`, `place`, `trigger`, `coping`, `support`, `need`, `insight`, `growth`. Each has a color + a gentle, non-directive `prompt` (config.js is the source of truth).
 
-A node carries `{ node_type, title, description, story, keywords[], x, y, parent_id }` (vault schema v2; a migration backfills `story`/`keywords` on older docs). `keywords` are discovery fuel: shared keywords are the co-occurrence signal the future `suggestLinks()` uses (ADR-0002).
+A node carries `{ node_type, title, description, story, keywords[], x, y, parent_id }` (vault schema v2; a migration backfills `story`/`keywords` on older docs). `keywords` are discovery fuel: shared keywords are the co-occurrence signal `suggestLinks()` uses (ADR-0002).
 
 ## Gotchas (non-obvious)
 
@@ -74,3 +76,5 @@ A node carries `{ node_type, title, description, story, keywords[], x, y, parent
 
 - **ADR-0001**: local-first encrypted vault (the data model).
 - **ADR-0002**: graph + discovery direction (own the taxonomy, rent the renderer). Cytoscape is the live renderer (it replaced MindElixir); the map is a true graph (nodes + first-class edges), with the `#map-outline` list as its accessible twin.
+- **ADR-0003**: client integrity + anti-phishing (the official client is verifiable, never self-attesting; passkeys/desktop are the high-trust anchors).
+- **ADR-0004**: accessibility as architecture (the canvas's `#map-outline` twin is the primary a11y surface; focus model, live regions, keyboard-first, and a11y-as-tokens).
