@@ -41,10 +41,13 @@ function layoutLabel(label) {
         else { lines.push(cur); cur = word; }
     }
     if (cur) lines.push(cur);
-    const longest = lines.reduce((m, l) => Math.max(m, l.length), 1);
-    const lineCount = Math.min(lines.length, 4);
+    // The renderer wraps by width ('anywhere'), so an over-long single word still breaks;
+    // count the extra lines it produces and size the box for ALL lines (a capped height used
+    // to clip long titles vertically).
+    const lineCount = lines.reduce((n, l) => n + Math.max(1, Math.ceil(l.length / MAX)), 0);
+    const longest = lines.reduce((m, l) => Math.max(m, Math.min(l.length, MAX)), 1);
     const w = Math.min(Math.max(Math.round(longest * 7.4) + 34, 84), 210);
-    const h = lineCount * 20 + 26;
+    const h = Math.min(lineCount, 8) * 20 + 26;
     return { w, h, tw: w - 28 };
 }
 
@@ -95,6 +98,10 @@ export class TrauMindMap {
             maxZoom: 2.5,
             boxSelectionEnabled: false,
             autoungrabify: false,
+            // Render at >= 2x backing resolution so node label text stays crisp. With the
+            // default ('auto' = devicePixelRatio) a standard display, or Windows at 125%
+            // scaling (dPR 1.25), rasterizes the canvas text soft/blurry.
+            pixelRatio: Math.max(window.devicePixelRatio || 1, 2),
         });
 
         this.applyTheme();
@@ -180,15 +187,20 @@ export class TrauMindMap {
         const anyPositioned = nodes.some((n) => (n.x && n.x !== 0) || (n.y && n.y !== 0));
 
         const elements = [];
+        // Track occupied spots so a brand-new node never lands on top of an existing one.
+        const taken = nodes
+            .filter((n) => (n.x && n.x !== 0) || (n.y && n.y !== 0))
+            .map((n) => ({ x: n.x, y: n.y }));
         nodes.forEach((n, i) => {
             const size = layoutLabel(n.title);
+            const position = this.positionFor(n, i, taken);
             elements.push({
                 group: 'nodes',
                 data: {
                     id: String(n.id), label: n.title, color: typeColor(n.node_type), ntype: n.node_type,
                     w: size.w, h: size.h, tw: size.tw,
                 },
-                position: this.positionFor(n, i),
+                position,
             });
         });
 
@@ -227,12 +239,23 @@ export class TrauMindMap {
         this.fitOnce();
     }
 
-    positionFor(n, i) {
+    positionFor(n, i, taken = []) {
         if ((n.x && n.x !== 0) || (n.y && n.y !== 0)) return { x: n.x, y: n.y };
-        // Gentle golden-angle spiral for never-placed nodes so they don't stack at the origin.
+        // Golden-angle spiral for never-placed nodes, walking outward past any occupied spot
+        // (otherwise a new node could land on top of an existing block).
         const golden = 2.399963;
-        const r = 70 + 46 * Math.sqrt(i);
-        return { x: Math.round(Math.cos(i * golden) * r), y: Math.round(Math.sin(i * golden) * r) };
+        const CLEAR = 150; // min distance from any taken position
+        for (let k = i; k < i + 40; k++) {
+            const r = 70 + 46 * Math.sqrt(k);
+            const p = { x: Math.round(Math.cos(k * golden) * r), y: Math.round(Math.sin(k * golden) * r) };
+            if (!taken.some((t) => Math.hypot(t.x - p.x, t.y - p.y) < CLEAR)) {
+                taken.push(p);
+                return p;
+            }
+        }
+        const far = { x: 70 + 46 * Math.sqrt(i + 40), y: 0 };
+        taken.push(far);
+        return far;
     }
 
     fitOnce() {
@@ -403,16 +426,21 @@ export class TrauMindMap {
         });
         this.cy.on('dragfree', 'node', () => this.scheduleSave());
 
-        // Delete the selected node from the keyboard (the same gentle confirm as the toolbar).
-        document.addEventListener('keydown', (e) => {
+        // Delete removes the selected node (same confirm as the toolbar) whenever one is
+        // selected, regardless of where focus happens to sit (clicking the canvas often leaves
+        // focus on <body>, which used to swallow the key). Text fields stay untouched. The
+        // handler is kept so destroy() can remove it; re-init after lock/unlock must not stack
+        // listeners (stacked ones meant double confirms).
+        this._deleteKeyHandler = (e) => {
             if (e.key !== 'Delete') return;
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-            const inMap = this.container.contains(e.target) || (this.outlineEl && this.outlineEl.contains(e.target));
-            if (inMap && this.selectedNode) {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+            if (document.querySelector('.modal[style*="flex"]')) return; // a dialog is open
+            if (this.selectedNode) {
                 e.preventDefault();
                 this.deleteNode(this.selectedNode);
             }
-        });
+        };
+        document.addEventListener('keydown', this._deleteKeyHandler);
     }
 
     nodeFromEl(el) {
@@ -579,11 +607,22 @@ export class TrauMindMap {
 
             li.appendChild(btn);
 
-            const links = [...adj.get(n.id)].map((id) => byId.get(id)?.title).filter(Boolean);
-            if (links.length) {
+            // Connected names carry their node's type colour, so a reference in text reads the
+            // same as its block on the canvas.
+            const linked = [...adj.get(n.id)].map((id) => byId.get(id)).filter(Boolean);
+            if (linked.length) {
                 const conn = document.createElement('span');
                 conn.className = 'map-outline-connections';
-                conn.textContent = `Connected to: ${links.join(', ')}`;
+                conn.append('Connected to: ');
+                linked.forEach((other, i) => {
+                    if (i > 0) conn.append(', ');
+                    const dot = document.createElement('span');
+                    dot.className = 'legend-dot';
+                    dot.style.background = typeColor(other.node_type);
+                    dot.title = typeLabel(other.node_type);
+                    dot.setAttribute('aria-hidden', 'true');
+                    conn.append(dot, other.title);
+                });
                 li.appendChild(conn);
             }
 
@@ -651,6 +690,10 @@ export class TrauMindMap {
 
     destroy() {
         clearTimeout(this.autoSaveTimeout);
+        if (this._deleteKeyHandler) {
+            document.removeEventListener('keydown', this._deleteKeyHandler);
+            this._deleteKeyHandler = null;
+        }
         if (this.cy) {
             this.cy.destroy();
             this.cy = null;
