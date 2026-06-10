@@ -157,13 +157,9 @@
         <header class="app-header">
             <div class="header-left">
                 <h1><img src="/static/favicon.svg" alt="" width="28" height="28" style="vertical-align:-6px;margin-right:7px"> Wymber</h1>
-                <span id="save-indicator" class="save-indicator">All changes saved</span>
             </div>
 
             <nav class="header-nav">
-                <button id="add-node-btn" class="btn btn-primary">
-                    <span class="icon">+</span> Add Node
-                </button>
                 <button id="tutorial-btn" class="btn" title="A short walkthrough of how the map works">
                     <span class="icon">&#9432;</span> How it works
                 </button>
@@ -176,7 +172,10 @@
                 <button id="settings-btn" class="btn">
                     <span class="icon">&#9881;</span> Settings
                 </button>
-                <button id="logout-btn" class="btn btn-secondary">Logout</button>
+                <button id="logout-btn" class="btn btn-secondary"
+                        title="Esc does this too: when nothing is open, Escape logs you out right away">
+                    Logout <kbd class="btn-kbd">Esc</kbd>
+                </button>
             </nav>
         </header>
 
@@ -184,10 +183,16 @@
             <!-- Mind Map Toolbar -->
             <div id="mindmap-toolbar" class="mindmap-toolbar">
                 <div class="toolbar-section">
-                    <h3>Mind Map Actions</h3>
-                    <p class="toolbar-help">Select a node first, then choose an action</p>
+                    <div class="toolbar-heading">
+                        <h3>Mind Map Actions</h3>
+                        <p class="toolbar-help">Select a node first, then choose an action</p>
+                    </div>
+                    <span id="save-indicator" class="save-indicator" role="status">All changes saved</span>
                 </div>
                 <div class="toolbar-buttons">
+                    <button id="add-node-btn" class="btn btn-primary" title="Add something to your map (N)">
+                        <span class="icon">+</span> Add Node
+                    </button>
                     <button id="select-mode-btn" class="btn btn-toolbar active" title="Click to select nodes">
                         <span class="icon">&rarr;</span> Select
                     </button>
@@ -208,6 +213,12 @@
                         <span id="suggest-label">0 possible connections</span>
                     </button>
                 </div>
+                <details id="node-legend" class="node-legend">
+                    <summary>Node colours</summary>
+                    <ul id="node-legend-list" class="node-legend-list" aria-label="What each node colour means">
+                        <!-- populated from NODE_TYPES by app.js (config.js stays the source of truth) -->
+                    </ul>
+                </details>
             </div>
 
             <div id="mindmap-container" class="mindmap-container"
@@ -221,7 +232,7 @@
                     <div class="mindmap-help">
                         <h3>How to use your map:</h3>
                         <ul>
-                            <li><strong>Add Node:</strong> Click "+ Add Node" button above to create entries</li>
+                            <li><strong>Add Node:</strong> Click "+ Add Node" in Mind Map Actions (or press <kbd>N</kbd>)</li>
                             <li><strong>Select:</strong> Click any node to select it</li>
                             <li><strong>Link:</strong> Use "Link Nodes" to connect related experiences</li>
                             <li><strong>Unlink:</strong> Open a node's Connections, or tap the line between two, to remove a link</li>
@@ -265,7 +276,7 @@
 
         <footer class="app-footer">
             <div class="keyboard-hints">
-                <span>Keyboard: <kbd>Ctrl+N</kbd> New Node | <kbd>Delete</kbd> Remove | <kbd>Tab</kbd> Navigate | <kbd>Esc</kbd> Close</span>
+                <span>Keyboard: <kbd>N</kbd> New Node | <kbd>Delete</kbd> Remove | <kbd>Tab</kbd> Navigate | <kbd>Esc</kbd> Close, or logout when nothing is open</span>
             </div>
             <button id="whats-new-btn" class="app-footer-link" type="button">What's new</button>
         </footer>

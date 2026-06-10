@@ -1682,6 +1682,66 @@ body {
 
 .mindmap-toolbar .toolbar-section {
     margin-bottom: var(--spacing-sm);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+}
+
+/* The collapsible node colour key under the toolbar. */
+.node-legend { margin-top: var(--spacing-sm); }
+.node-legend summary {
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    user-select: none;
+    width: max-content;
+    padding: 2px 4px;
+    border-radius: 6px;
+}
+.node-legend summary:hover { color: var(--text-primary); }
+.node-legend-list {
+    list-style: none;
+    margin: var(--spacing-xs) 0 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px var(--spacing-md);
+}
+.node-legend-list li {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+/* A small type-colour dot used wherever a node is referenced in text. */
+.legend-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1px solid rgba(74, 69, 64, 0.25);
+    margin-right: 6px;
+    flex: 0 0 auto;
+    vertical-align: baseline;
+}
+
+/* The Esc hint inside the Logout button. */
+.btn-kbd {
+    font-size: 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    margin-left: 2px;
+    color: var(--text-secondary);
+    background: var(--bg-primary);
+}
+
+/* Readable links inside modal bodies on the dark theme (default link blue sat too dark). */
+[data-theme="dark"] .modal-body a:not(.btn):not(.crisis-action),
+[data-theme="dark"] .export-note a {
+    color: #9ec3ff;
 }
 
 .mindmap-toolbar h3 {

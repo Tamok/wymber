@@ -19,10 +19,47 @@ test.describe('Mind Map Operations', () => {
         await expect(page.locator('#map-outline')).toContainText('A difficult day', { timeout: 5000 });
     });
 
-    test('Ctrl+N opens add node modal', async ({ page }) => {
+    test('N opens the add node modal (Ctrl+N is browser-reserved)', async ({ page }) => {
         await createVaultAndOpenMap(page);
-        await page.keyboard.press('Control+n');
+        await page.keyboard.press('n');
         await expect(page.locator('#node-modal')).toBeVisible({ timeout: 3000 });
+    });
+
+    test('Escape with nothing open logs out instantly (quick exit)', async ({ page }) => {
+        await createVaultAndOpenMap(page);
+        await page.keyboard.press('Escape'); // nothing open: this is the quick exit
+        await expect(page.locator('#unlock-form')).toBeVisible({ timeout: 5000 });
+        await expect(page.locator('#main-app')).toBeHidden();
+    });
+
+    test('Escape closes an open modal first, and only logs out when nothing is open', async ({ page }) => {
+        await createVaultAndOpenMap(page);
+        await page.click('#add-node-btn');
+        await expect(page.locator('#node-modal')).toBeVisible();
+        await page.keyboard.press('Escape'); // closes the modal, stays unlocked
+        await expect(page.locator('#node-modal')).toBeHidden({ timeout: 3000 });
+        await expect(page.locator('#unlock-form')).toBeHidden();
+        await page.keyboard.press('Escape'); // now nothing is open: quick exit
+        await expect(page.locator('#unlock-form')).toBeVisible({ timeout: 5000 });
+    });
+
+    test('Delete key removes the selected node and closes its drawer (#128 #129)', async ({ page }) => {
+        await createVaultAndOpenMap(page);
+        await page.click('#add-node-btn');
+        await page.selectOption('#node-type', 'event');
+        await page.fill('#node-title', 'To be removed');
+        await page.click('#save-node');
+        await expect(page.locator('#map-outline')).toContainText('To be removed', { timeout: 5000 });
+
+        // Selecting opens the drawer; Delete (with focus on the page body) removes the node.
+        await page.locator('.map-outline-node', { hasText: 'To be removed' }).first().click();
+        await expect(page.locator('#node-detail')).toHaveClass(/open/);
+        page.once('dialog', (d) => d.accept());
+        await page.locator('body').press('Delete');
+
+        await expect(page.locator('#map-outline')).not.toContainText('To be removed', { timeout: 5000 });
+        // The drawer must close too: editing a deleted node would go nowhere.
+        await expect(page.locator('#node-detail')).not.toHaveClass(/open/, { timeout: 3000 });
     });
 
     test('Escape closes modal', async ({ page }) => {

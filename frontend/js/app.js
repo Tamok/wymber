@@ -72,17 +72,22 @@ class WymberApp {
             }
         });
 
-        // Escape closes whatever is open, from anywhere, even mid-typing in a field. Other
-        // shortcuts (Ctrl+N) stay out of text fields.
+        // Escape closes whatever is open, from anywhere, even mid-typing in a field. With
+        // nothing open it's the quick exit: an instant, no-confirmation logout (the screen is
+        // locked the moment you need it to be). N adds a node (Ctrl+N is browser-reserved, so a
+        // single key is the only shortcut that can actually work); it stays out of text fields.
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                this.closeAllOverlays();
+                if (this.anyOverlayOpen()) this.closeAllOverlays();
+                else if (this.currentUser) this.handleLogout();
                 return;
             }
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-            if ((e.ctrlKey || e.metaKey) && (e.key === 'n' || e.key === 'N')) {
-                e.preventDefault();
-                this.showNodeModal();
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+            if ((e.key === 'n' || e.key === 'N') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                if (this.currentUser && document.getElementById('main-app')?.style.display !== 'none' && !this.anyOverlayOpen()) {
+                    e.preventDefault();
+                    this.showNodeModal();
+                }
             }
         });
 
@@ -134,6 +139,15 @@ class WymberApp {
             });
             wrap.appendChild(btn);
         });
+    }
+
+    /** Is anything dismissable on screen (a modal, the detail drawer, a nudge)? Decides whether
+        Escape closes things or quick-exits. */
+    anyOverlayOpen() {
+        const modalOpen = [...document.querySelectorAll('.modal')].some((m) => m.style.display !== 'none' && m.style.display !== '');
+        const drawerOpen = document.getElementById('node-detail')?.classList.contains('open');
+        const nudgeOpen = !!document.querySelector('.notification-nudge');
+        return modalOpen || !!drawerOpen || nudgeOpen;
     }
 
     /** What Escape does: close every open overlay (modals, the detail drawer, the nudge) and
@@ -501,6 +515,25 @@ class WymberApp {
 
         document.getElementById('open-map-btn')?.addEventListener('click', () => this.openMapFromSoftStart());
         document.getElementById('soft-start-grounding-btn')?.addEventListener('click', () => this.openGrounding());
+
+        this.renderNodeLegend();
+    }
+
+    /** Fill the collapsible "Node colours" key under Mind Map Actions from NODE_TYPES. */
+    renderNodeLegend() {
+        const ul = document.getElementById('node-legend-list');
+        if (!ul || ul.childElementCount) return;
+        for (const [key, info] of Object.entries(NODE_TYPES)) {
+            const li = document.createElement('li');
+            const dot = document.createElement('span');
+            dot.className = 'legend-dot';
+            dot.style.background = info.color;
+            dot.setAttribute('aria-hidden', 'true');
+            const label = document.createElement('span');
+            label.textContent = info.label || key;
+            li.append(dot, label);
+            ul.appendChild(li);
+        }
     }
 
     showSoftStart() {
@@ -557,11 +590,13 @@ class WymberApp {
         this.mindMap.onDeselect = () => this.closeNodeDetail();
         this.mindMap.onMapLoaded = (data) => {
             this.refreshSuggestions(data);
-            // Keep the open drawer's Connections list in lockstep with the map (e.g. after an
-            // unlink from the canvas, or a new link).
+            // Keep the open drawer in lockstep with the map: refresh its Connections after a
+            // link/unlink, and close it if its node was deleted (otherwise you could keep
+            // editing a node that no longer exists, with nowhere for the edits to go).
             if (this.detailNodeId != null) {
                 const fresh = (data.nodes || []).find((n) => n.id === this.detailNodeId);
                 if (fresh) this.renderDetailConnections(fresh);
+                else this.closeNodeDetail({ skipSave: true });
             }
         };
 
@@ -786,9 +821,15 @@ class WymberApp {
         entries.forEach((entry) => {
             const li = document.createElement('li');
             li.className = 'detail-connection';
+            const dot = document.createElement('span');
+            dot.className = 'legend-dot';
+            dot.style.background = NODE_TYPES[entry.other.node_type]?.color || '#cfc7ba';
+            dot.title = NODE_TYPES[entry.other.node_type]?.label || '';
+            dot.setAttribute('aria-hidden', 'true');
             const name = document.createElement('span');
             name.className = 'detail-connection-name';
             name.textContent = entry.other.title;
+            name.prepend(dot);
             const unlink = document.createElement('button');
             unlink.type = 'button';
             unlink.className = 'detail-unlink';
