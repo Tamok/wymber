@@ -48,7 +48,7 @@ Run commands from the repo root.
 - `frontend/js/mindmap.js`: the graph renderer (Cytoscape, vendored in `frontend/libs/`). Draws pastel building-block nodes + first-class edges straight from `/mindmap`, theme-aware via `applyTheme()`, and keeps an accessible `#map-outline` list twin in lockstep (the keyboard-first, non-visual surface).
 - `frontend/js/{utils,analyze,export}.js`: pure utils, local map analysis, export.
 - `frontend/js/suggest.js`: the discovery engine (`suggestLinks`): proposes *possible* links from shared keywords + an "anchor gap" type hint (a lone trigger/need with no coping/support). Pure/testable; surfaced via a quiet, opt-in "possible connections" prompt (never auto-added). A first cut meant to grow (ADR-0002).
-- `frontend/js/config.js`: `NODE_TYPES` (source of truth).
+- `frontend/js/config.js`: `NODE_TYPES` + `PALETTES` (source of truth). Node colours resolve through `typeColor()`/`setPalette()` (persisted as `settings.palette` in the vault), never hard-coded at call sites; the landing mirrors the default palette.
 - `backend/main.py`: the static server (+ health). That's the whole backend.
 
 The 11 node types: `event`, `emotion`, `body`, `person`, `place`, `trigger`, `coping`, `support`, `need`, `insight`, `growth`. Each has a color + a gentle, non-directive `prompt` (config.js is the source of truth).

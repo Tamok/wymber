@@ -184,10 +184,12 @@
             <div id="mindmap-toolbar" class="mindmap-toolbar">
                 <div class="toolbar-section">
                     <div class="toolbar-heading">
-                        <h3>Mind Map Actions</h3>
+                        <div class="toolbar-heading-row">
+                            <h3>Mind Map Actions</h3>
+                            <span id="save-indicator" class="save-indicator" role="status">All changes saved</span>
+                        </div>
                         <p class="toolbar-help">Select a node first, then choose an action</p>
                     </div>
-                    <span id="save-indicator" class="save-indicator" role="status">All changes saved</span>
                 </div>
                 <div class="toolbar-buttons">
                     <button id="add-node-btn" class="btn btn-primary" title="Add something to your map (N)">
@@ -214,8 +216,8 @@
                     </button>
                 </div>
                 <details id="node-legend" class="node-legend">
-                    <summary>Node colours</summary>
-                    <ul id="node-legend-list" class="node-legend-list" aria-label="What each node colour means">
+                    <summary>What the colours mean</summary>
+                    <ul id="node-legend-list" class="node-legend-list" aria-label="What each colour means">
                         <!-- populated from NODE_TYPES by app.js (config.js stays the source of truth) -->
                     </ul>
                 </details>
@@ -226,6 +228,11 @@
                  aria-label="Interactive trauma mapping workspace"
                  tabindex="0">
                 <div id="mindmap" class="mindmap"></div>
+                <div class="zoom-controls" role="group" aria-label="Zoom">
+                    <button id="zoom-in-btn" class="zoom-btn" type="button" aria-label="Zoom in" title="Zoom in">+</button>
+                    <button id="zoom-out-btn" class="zoom-btn" type="button" aria-label="Zoom out" title="Zoom out">&minus;</button>
+                    <button id="zoom-fit-btn" class="zoom-btn zoom-btn-fit" type="button" aria-label="Fit the whole map" title="Fit the whole map">Fit</button>
+                </div>
                 <div id="mindmap-placeholder" class="mindmap-placeholder" style="display:none;">
                     <h2>Your map is empty for now</h2>
                     <p>This is where you map experiences and how they connect. Everything stays on this device.</p>
@@ -304,21 +311,10 @@
 
             <div class="modal-body">
                 <div class="form-group">
-                    <label for="node-type">Type of Entry</label>
-                    <select id="node-type" class="node-type-select">
-                        <option value="">Choose a type...</option>
-                        <option value="event">Event</option>
-                        <option value="emotion">Emotion</option>
-                        <option value="body">Body</option>
-                        <option value="person">Person</option>
-                        <option value="place">Place</option>
-                        <option value="trigger">Trigger</option>
-                        <option value="coping">Coping</option>
-                        <option value="support">Support</option>
-                        <option value="need">Need</option>
-                        <option value="insight">Insight</option>
-                        <option value="growth">Growth</option>
-                    </select>
+                    <span class="form-label" id="node-type-label">Type of Entry</span>
+                    <!-- All 11 types visible as colour-dotted chips (radios), rendered from
+                         NODE_TYPES so config.js stays the source of truth. -->
+                    <div id="node-type-chips" class="type-chips" role="radiogroup" aria-labelledby="node-type-label"></div>
                     <div id="type-description" class="type-description"></div>
                 </div>
 

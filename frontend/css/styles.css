@@ -515,22 +515,20 @@ textarea {
     gap: var(--spacing-sm);
 }
 
+/* Inline beside the "Mind Map Actions" heading: status as quiet coloured text, not a badge. */
 .save-indicator {
-    padding: var(--spacing-xs) var(--spacing-sm);
-    background: #2E7D32;
-    color: white;
-    border-radius: 4px;
     font-size: 0.85rem;
+    font-weight: 600;
+    color: #2E7D32;
 }
 
-.save-indicator.saving {
-    background: #FFC107;
-    color: #212121;
-}
+.save-indicator.saving { color: #9a6a1e; }
 
-.save-indicator.error {
-    background: #c62828;
-}
+.save-indicator.error { color: #c62828; }
+
+[data-theme="dark"] .save-indicator { color: #8fd6a8; }
+[data-theme="dark"] .save-indicator.saving { color: #e6c489; }
+[data-theme="dark"] .save-indicator.error { color: #f1a3a3; }
 
 /* Main app content. min-height (not a fixed height) so the map keeps filling the viewport,
    but the page can grow and scroll when the accessible outline twin sits below it. */
@@ -979,7 +977,7 @@ kbd {
 }
 
 .suggest-connect {
-    background: #B2DFDB;
+    background: #A8DAD3;
     color: #1f3b37;
     border: none;
     padding: 6px 14px;
@@ -1052,14 +1050,14 @@ kbd {
     justify-content: center;
 }
 
-.node-preview.event { background: #C8E6C9; }
-.node-preview.emotion { background: #BBDEFB; }
-.node-preview.person { background: #F8BBD9; }
-.node-preview.place { background: #D7CCC8; }
-.node-preview.trigger { background: #FFE0B2; }
-.node-preview.coping { background: #A5D6A7; }
-.node-preview.insight { background: #E1BEE7; }
-.node-preview.growth { background: #C8F7C5; }
+.node-preview.event { background: #EDDCB8; }
+.node-preview.emotion { background: #B7D5F0; }
+.node-preview.person { background: #F3BFD2; }
+.node-preview.place { background: #D9CCC3; }
+.node-preview.trigger { background: #F5DD9A; }
+.node-preview.coping { background: #A9D6AC; }
+.node-preview.insight { background: #E3BBE9; }
+.node-preview.growth { background: #D8ECB4; }
 .node-preview.support { background: var(--support-color); }
 
 /* Modals */
@@ -1227,8 +1225,8 @@ kbd {
     transition: background 0.3s ease, border-color 0.3s ease;
 }
 .notification-nudge .nudge-add {
-    background: #A5D6A7;
-    border-color: #A5D6A7;
+    background: #A9D6AC;
+    border-color: #A9D6AC;
     color: #1f3b22;
 }
 .notification-nudge .nudge-add:hover {
@@ -1458,7 +1456,7 @@ body {
     width: 120px;
     height: 120px;
     border-radius: 50%;
-    background: radial-gradient(circle at 50% 38%, #d6f0e6 0%, #b2dfdb 55%, #a5d6a7 100%);
+    background: radial-gradient(circle at 50% 38%, #d6f0e6 0%, #A8DAD3 55%, #A9D6AC 100%);
     box-shadow: 0 0 0 10px rgba(178, 223, 219, 0.18), 0 8px 24px rgba(120, 160, 150, 0.25);
     transform: scale(0.7);
     transition: transform 4s ease-in-out, box-shadow 4s ease-in-out;
@@ -1533,11 +1531,11 @@ body {
 
 .sense-text { color: var(--text-primary); }
 
-.sense-see .sense-num { background: #BBDEFB; }
-.sense-feel .sense-num { background: #FFCCBC; }
-.sense-hear .sense-num { background: #D1C4E9; }
-.sense-smell .sense-num { background: #C8E6C9; }
-.sense-taste .sense-num { background: #F8BBD9; }
+.sense-see .sense-num { background: #B7D5F0; }
+.sense-feel .sense-num { background: #F6C2AD; }
+.sense-hear .sense-num { background: #C9C3EE; }
+.sense-smell .sense-num { background: #EDDCB8; }
+.sense-taste .sense-num { background: #F3BFD2; }
 
 /* Crisis resources, as calm cards with a soft accent edge. */
 .crisis-list {
@@ -1556,7 +1554,7 @@ body {
     padding: var(--spacing-sm) var(--spacing-md);
     background: var(--bg-primary);
     border: 1px solid var(--border);
-    border-left: 4px solid #B2DFDB;
+    border-left: 4px solid #A8DAD3;
     border-radius: 10px;
 }
 
@@ -1585,7 +1583,7 @@ body {
     display: inline-block;
     padding: 7px 14px;
     border-radius: 999px;
-    background: #B2DFDB;
+    background: #A8DAD3;
     color: #21413d;
     font-weight: 600;
     font-size: 0.9rem;
@@ -1682,11 +1680,16 @@ body {
 
 .mindmap-toolbar .toolbar-section {
     margin-bottom: var(--spacing-sm);
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: var(--spacing-md);
 }
+
+.toolbar-heading-row {
+    display: flex;
+    align-items: baseline;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+}
+
+.toolbar-heading-row h3 { margin-bottom: 0; }
 
 /* The collapsible node colour key under the toolbar. */
 .node-legend { margin-top: var(--spacing-sm); }
@@ -1743,6 +1746,75 @@ body {
 [data-theme="dark"] .export-note a {
     color: #9ec3ff;
 }
+
+/* Type chips: the 11 types as colour-dotted radio chips, all visible at once. */
+.type-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: var(--spacing-sm);
+}
+
+.type-chip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    transition: var(--transition);
+}
+
+.type-chip input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.type-chip:hover { background: var(--bg-primary); }
+
+.type-chip:has(input:checked) {
+    border-color: var(--focus);
+    box-shadow: inset 0 0 0 1px var(--focus);
+    background: var(--bg-primary);
+}
+
+.type-chip:has(input:focus-visible) {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+}
+
+/* Zoom controls: explicit, always-visible map zoom (scroll/pinch still work). */
+.zoom-controls {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    z-index: 5;
+}
+
+.zoom-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 1.15rem;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    transition: var(--transition);
+}
+
+.zoom-btn:hover { background: var(--bg-primary); }
+.zoom-btn-fit { font-size: 0.75rem; font-weight: 600; }
 
 .mindmap-toolbar h3 {
     margin: 0 0 var(--spacing-xs) 0;

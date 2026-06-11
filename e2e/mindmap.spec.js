@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { createVault, createVaultAndOpenMap, unlock } from './helpers.js';
+import { createVault, createVaultAndOpenMap, unlock, pickType } from './helpers.js';
 
 test.describe('Mind Map Operations', () => {
     test('add node via modal renders it on the map', async ({ page }) => {
@@ -8,7 +8,7 @@ test.describe('Mind Map Operations', () => {
         await page.click('#add-node-btn');
         await expect(page.locator('#node-modal')).toBeVisible();
 
-        await page.selectOption('#node-type', 'event');
+        await pickType(page, 'event');
         await page.fill('#node-title', 'A difficult day');
         await page.fill('#node-description', 'A test description');
         await page.click('#save-node');
@@ -46,7 +46,7 @@ test.describe('Mind Map Operations', () => {
     test('Delete key removes the selected node and closes its drawer (#128 #129)', async ({ page }) => {
         await createVaultAndOpenMap(page);
         await page.click('#add-node-btn');
-        await page.selectOption('#node-type', 'event');
+        await pickType(page, 'event');
         await page.fill('#node-title', 'To be removed');
         await page.click('#save-node');
         await expect(page.locator('#map-outline')).toContainText('To be removed', { timeout: 5000 });
@@ -83,14 +83,14 @@ test.describe('Mind Map Operations', () => {
     test('node type description updates on selection', async ({ page }) => {
         await createVaultAndOpenMap(page);
         await page.click('#add-node-btn');
-        await page.selectOption('#node-type', 'emotion');
+        await pickType(page, 'emotion');
         await expect(page.locator('#type-description')).toContainText('Feelings', { timeout: 3000 });
     });
 
     test('cannot save node without title', async ({ page }) => {
         await createVaultAndOpenMap(page);
         await page.click('#add-node-btn');
-        await page.selectOption('#node-type', 'event');
+        await pickType(page, 'event');
         await page.click('#save-node');
         await expect(page.locator('#node-modal')).toBeVisible();
         await expect(page.locator('.notification-error')).toBeVisible({ timeout: 3000 });
@@ -101,7 +101,7 @@ test.describe('Mind Map Operations', () => {
 
         const unique = 'Persist ' + Date.now();
         await page.click('#add-node-btn');
-        await page.selectOption('#node-type', 'event');
+        await pickType(page, 'event');
         await page.fill('#node-title', unique);
         await page.click('#save-node');
         await expect(page.locator('.notification-success')).toBeVisible({ timeout: 5000 });
@@ -126,7 +126,7 @@ test.describe('Mind Map Operations', () => {
     test('selecting a node enables the toolbar Edit/Delete (#105)', async ({ page }) => {
         await createVaultAndOpenMap(page);
         await page.click('#add-node-btn');
-        await page.selectOption('#node-type', 'event');
+        await pickType(page, 'event');
         await page.fill('#node-title', 'A difficult day');
         await page.click('#save-node');
         await expect(page.locator('#map-outline')).toContainText('A difficult day', { timeout: 5000 });
@@ -150,7 +150,7 @@ test.describe('Mind Map Operations', () => {
 
         // Add a Trigger.
         await page.click('#add-node-btn');
-        await page.selectOption('#node-type', 'trigger');
+        await pickType(page, 'trigger');
         await page.fill('#node-title', 'A loud argument');
         await page.click('#save-node');
         await expect(page.locator('#map-outline')).toContainText('A loud argument', { timeout: 5000 });
@@ -163,7 +163,7 @@ test.describe('Mind Map Operations', () => {
 
         // The add-node modal reopens, pre-set to a coping anchor.
         await expect(page.locator('#node-modal')).toBeVisible();
-        await expect(page.locator('#node-type')).toHaveValue('coping');
+        await expect(page.locator('#node-type-chips input[value="coping"]')).toBeChecked();
 
         // Fill + save the anchor; it lands on the map (and is linked back to the trigger).
         await page.fill('#node-title', 'Step outside and breathe');
@@ -176,7 +176,7 @@ test.describe('Mind Map Operations', () => {
 
         // Create a node.
         await page.click('#add-node-btn');
-        await page.selectOption('#node-type', 'event');
+        await pickType(page, 'event');
         await page.fill('#node-title', 'A gentle morning');
         await page.click('#save-node');
         await expect(page.locator('#map-outline')).toContainText('A gentle morning', { timeout: 5000 });
@@ -218,14 +218,14 @@ test.describe('Mind Map Operations', () => {
 
         // Two unconnected nodes that share a keyword.
         await page.click('#add-node-btn');
-        await page.selectOption('#node-type', 'event');
+        await pickType(page, 'event');
         await page.fill('#node-title', 'A storm');
         await page.click('#save-node');
         await expect(page.locator('#map-outline')).toContainText('A storm', { timeout: 5000 });
         await giveKeyword('A storm', 'rain');
 
         await page.click('#add-node-btn');
-        await page.selectOption('#node-type', 'emotion');
+        await pickType(page, 'emotion');
         await page.fill('#node-title', 'Unease');
         await page.click('#save-node');
         await expect(page.locator('#map-outline')).toContainText('Unease', { timeout: 5000 });
@@ -250,7 +250,7 @@ test.describe('Mind Map Operations', () => {
     test('non-trigger nodes do not raise the pairing nudge', async ({ page }) => {
         await createVaultAndOpenMap(page);
         await page.click('#add-node-btn');
-        await page.selectOption('#node-type', 'emotion');
+        await pickType(page, 'emotion');
         await page.fill('#node-title', 'A quiet hope');
         await page.click('#save-node');
         await expect(page.locator('.notification-success')).toBeVisible({ timeout: 5000 });
@@ -262,7 +262,7 @@ test.describe('Mind Map Operations', () => {
 
         const addNode = async (type, title) => {
             await page.click('#add-node-btn');
-            await page.selectOption('#node-type', type);
+            await pickType(page, type);
             await page.fill('#node-title', title);
             await page.click('#save-node');
             await expect(page.locator('#map-outline')).toContainText(title, { timeout: 5000 });

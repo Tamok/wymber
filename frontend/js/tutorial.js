@@ -13,11 +13,11 @@ const LINE = (x1, y1, x2, y2) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y
 
 // Soft pastels echoing the node palette; calm, not clinical.
 const ART = {
-    map: SVG(`${LINE(38, 30, 82, 22)}${LINE(50, 46, 86, 60)}${LINE(88, 30, 86, 58)}${NODE(20, 20, '#FBE3C7')}${NODE(78, 12, '#CFE3F2')}${NODE(72, 50, '#CDE7D8')}${NODE(34, 40, '#E3D9F2')}`),
-    add: SVG(`${NODE(36, 38, '#CFE3F2')}<circle cx="92" cy="35" r="13" fill="#CDE7D8"/><path d="M92 29v12M86 35h12" stroke="#3b6b57" stroke-width="2.5" stroke-linecap="round"/>`),
-    link: SVG(`${LINE(46, 48, 94, 48)}${NODE(20, 37, '#FBE3C7')}${NODE(86, 37, '#E3D9F2')}`),
-    unlink: SVG(`${LINE(46, 48, 63, 48)}${LINE(77, 48, 94, 48)}<g stroke="#c98a8a" stroke-width="2.2" stroke-linecap="round"><line x1="66" y1="44" x2="74" y2="52"/><line x1="74" y1="44" x2="66" y2="52"/></g>${NODE(20, 37, '#FBE3C7')}${NODE(86, 37, '#E3D9F2')}`),
-    gentle: SVG(`<circle cx="70" cy="48" r="26" fill="none" stroke="#CDE7D8" stroke-width="3"/><circle cx="70" cy="48" r="16" fill="none" stroke="#E3D9F2" stroke-width="3"/><circle cx="70" cy="48" r="7" fill="#FBE3C7"/>`),
+    map: SVG(`${LINE(38, 30, 82, 22)}${LINE(50, 46, 86, 60)}${LINE(88, 30, 86, 58)}${NODE(20, 20, '#EDDCB8')}${NODE(78, 12, '#B7D5F0')}${NODE(72, 50, '#D8ECB4')}${NODE(34, 40, '#C9C3EE')}`),
+    add: SVG(`${NODE(36, 38, '#B7D5F0')}<circle cx="92" cy="35" r="13" fill="#D8ECB4"/><path d="M92 29v12M86 35h12" stroke="#3b6b57" stroke-width="2.5" stroke-linecap="round"/>`),
+    link: SVG(`${LINE(46, 48, 94, 48)}${NODE(20, 37, '#EDDCB8')}${NODE(86, 37, '#C9C3EE')}`),
+    unlink: SVG(`${LINE(46, 48, 63, 48)}${LINE(77, 48, 94, 48)}<g stroke="#c98a8a" stroke-width="2.2" stroke-linecap="round"><line x1="66" y1="44" x2="74" y2="52"/><line x1="74" y1="44" x2="66" y2="52"/></g>${NODE(20, 37, '#EDDCB8')}${NODE(86, 37, '#C9C3EE')}`),
+    gentle: SVG(`<circle cx="70" cy="48" r="26" fill="none" stroke="#D8ECB4" stroke-width="3"/><circle cx="70" cy="48" r="16" fill="none" stroke="#C9C3EE" stroke-width="3"/><circle cx="70" cy="48" r="7" fill="#EDDCB8"/>`),
 };
 
 export const TUTORIAL_STEPS = [
