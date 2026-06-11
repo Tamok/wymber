@@ -29,17 +29,17 @@ export const TUTORIAL_STEPS = [
     {
         art: ART.add,
         title: 'Add what matters',
-        body: `Use "+ Add Node" to place an experience, a feeling, a person, a place. Add as few or as many as feel right.`,
+        body: `Use "+ Add a dot" to place an experience, a feeling, a person, a place. Put down as few or as many as feel right.`,
     },
     {
         art: ART.link,
         title: 'Connect what relates',
-        body: `Choose "Link Nodes", then pick two that belong together to draw a line between them. Nothing has to connect to anything.`,
+        body: `Choose "Link dots", then pick two that belong together to draw a line between them. Nothing has to connect to anything.`,
     },
     {
         art: ART.unlink,
         title: 'Change your mind anytime',
-        body: `Open a node to see its Connections and unlink, or tap the line between two. You can edit or remove anything. Nothing here is permanent.`,
+        body: `Open a dot to see its Connections and unlink, or tap the line between two. You can edit or remove anything. Nothing here is permanent.`,
     },
     {
         art: ART.gentle,

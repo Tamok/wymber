@@ -521,18 +521,26 @@ class WymberApp {
     }
 
     /** Fill the collapsible "Node colours" key under Mind Map Actions from NODE_TYPES. */
+    /** The colour key doubles as a quick-add: choosing a colour starts a dot of that type. */
     renderNodeLegend() {
         const ul = document.getElementById('node-legend-list');
         if (!ul || ul.childElementCount) return;
         for (const [key, info] of Object.entries(NODE_TYPES)) {
             const li = document.createElement('li');
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'legend-add';
+            btn.title = `Add ${info.label === 'Event' || info.label === 'Emotion' || info.label === 'Insight' ? 'an' : 'a'} ${info.label} dot`;
+            btn.setAttribute('aria-label', btn.title);
+            btn.addEventListener('click', () => this.showNodeModal(key));
             const dot = document.createElement('span');
             dot.className = 'legend-dot';
             dot.style.background = typeColor(key);
             dot.setAttribute('aria-hidden', 'true');
             const label = document.createElement('span');
             label.textContent = info.label || key;
-            li.append(dot, label);
+            btn.append(dot, label);
+            li.appendChild(btn);
             ul.appendChild(li);
         }
     }
@@ -849,7 +857,7 @@ class WymberApp {
         if (entries.length === 0) {
             const li = document.createElement('li');
             li.className = 'detail-connections-empty';
-            li.textContent = 'No connections yet. Use Link Nodes to relate this to another.';
+            li.textContent = 'No connections yet. Use Link dots to connect this to another.';
             ul.appendChild(li);
             return;
         }
@@ -911,7 +919,7 @@ class WymberApp {
 
         const values = this.currentDetailValues();
         if (!values.title) {
-            if (!silent) this.showNotification('Please give this node a title', 'error');
+            if (!silent) this.showNotification('Please give this dot a title', 'error');
             return false;
         }
         // No change since it opened: skip the write + re-render (no flicker on plain browsing).

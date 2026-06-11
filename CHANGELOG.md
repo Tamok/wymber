@@ -4,6 +4,7 @@ A short, human list of what's new, so you don't have to go looking. For the full
 history, see the [commits](https://github.com/Tamok/wymber/commits).
 
 ## 2026-06-10
+- Nodes are now dots. You put down a dot for what matters, and connect the dots at your own pace.
 - A redesigned colour palette: every type now has its own distinguishable colour, chosen for
   calm and for colour-vision accessibility, used consistently across the app and the site.
 - Picking a type shows all eleven as colour-dotted chips, one tap, nothing hidden in a dropdown.

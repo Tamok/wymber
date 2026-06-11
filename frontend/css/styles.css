@@ -1711,11 +1711,34 @@ body {
     flex-wrap: wrap;
     gap: 6px var(--spacing-md);
 }
-.node-legend-list li {
+.node-legend-list li { display: inline-flex; }
+
+.node-legend-hint {
+    margin: var(--spacing-xs) 0 0;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+/* Each colour is a quick-add button: choosing it starts a dot of that kind. */
+.legend-add {
     display: inline-flex;
     align-items: center;
     font-size: 0.85rem;
     color: var(--text-secondary);
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    padding: 3px 9px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.legend-add:hover,
+.legend-add:focus-visible {
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    border-color: var(--border);
 }
 
 /* A small type-colour dot used wherever a node is referenced in text. */
