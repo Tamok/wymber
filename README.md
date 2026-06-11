@@ -18,9 +18,10 @@ connects, and how you're growing, at your own pace, on your own device. It's an 
   your password. There's no account to create and nothing is sent to a server. A printable
   **recovery sheet** means a forgotten password no longer costs you your data.
   See [ADR-0001](docs/adr/0001-local-first-encrypted-file.md).
-- **A map, not a form.** Eleven building blocks (Event, Emotion, Body, Person, Place,
+- **A map, not a form.** Eleven kinds of dots (Event, Emotion, Body, Person, Place,
   Trigger, Coping, Support, Need, Insight, Growth) connect into a web you can explore, each with an
-  optional, non-directive prompt. A discovery engine is planned to surface links you might not have
+  optional, non-directive prompt. You put down a dot for what matters and connect the dots at
+  your own pace. A discovery engine is planned to surface links you might not have
   seen yet.
 - **Trauma-informed by design.** Soft colours, plain language, predictable UI, no jarring motion,
   full keyboard navigation, and WCAG 2.1 AA accessibility as a baseline.

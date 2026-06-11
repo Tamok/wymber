@@ -7,6 +7,7 @@ export const CHANGELOG = [
     {
         date: '2026-06-10',
         items: [
+            "Nodes are now dots: put down a dot for what matters, connect the dots at your own pace.",
             "A redesigned colour palette: every type has its own distinguishable colour, chosen for calm and colour-vision accessibility.",
             "Picking a type shows all eleven as colour-dotted chips, nothing hidden in a dropdown.",
             "Zoom controls on the map (plus, minus, fit).",

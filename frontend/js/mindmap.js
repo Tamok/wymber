@@ -14,7 +14,7 @@ import { NODE_TYPES, typeColor } from './config.js';
  * and linking all work from the outline, so the map is usable without a pointer or sight.
  */
 
-const typeLabel = (t) => NODE_TYPES[t]?.label || (t ? t[0].toUpperCase() + t.slice(1) : 'Node');
+const typeLabel = (t) => NODE_TYPES[t]?.label || (t ? t[0].toUpperCase() + t.slice(1) : 'Dot');
 
 // Canvas + edge colors per app theme. Node fills stay the constant pastel type colors (they read
 // well on any background with the dark label text); only the surrounding canvas and the edges
@@ -353,7 +353,7 @@ export class TrauMindMap {
 
     async createConnection(fromNode, toNode) {
         if (!fromNode?.id || !toNode?.id) {
-            this.showNotification('Could not identify nodes to connect', 'error');
+            this.showNotification('Could not identify dots to connect', 'error');
             return;
         }
         // Two nodes connect at most once; point at the unlink affordance instead.
@@ -566,13 +566,13 @@ export class TrauMindMap {
 
         if (status) {
             if (this.toolbarMode === 'link' && this.connectingFrom) {
-                status.textContent = `Linking from "${this.connectingFrom.title}" - choose another node to connect`;
+                status.textContent = `Linking from "${this.connectingFrom.title}", choose another dot to connect`;
             } else if (this.toolbarMode === 'link') {
-                status.textContent = 'Link mode: choose a node to start connecting';
+                status.textContent = 'Link mode: choose a dot to start connecting';
             } else if (hasSelection) {
                 status.textContent = `Selected: "${this.selectedNode.title}"`;
             } else {
-                status.textContent = 'No node selected';
+                status.textContent = 'No dot selected';
             }
         }
     }
@@ -586,7 +586,7 @@ export class TrauMindMap {
         if (nodes.length === 0) {
             const empty = document.createElement('p');
             empty.className = 'map-outline-empty';
-            empty.textContent = 'Your map is empty for now. Add your first node to begin.';
+            empty.textContent = 'Your map is empty for now. Add your first dot to begin.';
             this.outlineEl.appendChild(empty);
             return;
         }

@@ -7,7 +7,7 @@ import { NODE_TYPES } from './config.js';
  */
 export function validateNodeData(data) {
     if (!data.node_type || !NODE_TYPES[data.node_type]) {
-        return { valid: false, error: 'Please select a valid node type' };
+        return { valid: false, error: 'Please choose what kind of dot this is' };
     }
     if (!data.title || data.title.trim().length === 0) {
         return { valid: false, error: 'Please enter a title' };

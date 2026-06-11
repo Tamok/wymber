@@ -87,6 +87,16 @@ test.describe('Mind Map Operations', () => {
         await expect(page.locator('#type-description')).toContainText('Feelings', { timeout: 3000 });
     });
 
+    test('the colour key is a quick-add: choosing a colour starts a dot of that kind', async ({ page }) => {
+        await createVaultAndOpenMap(page);
+        await page.locator('#node-legend summary').click();
+        await page.locator('.legend-add', { hasText: 'Coping' }).click();
+        await expect(page.locator('#node-modal')).toBeVisible({ timeout: 3000 });
+        await expect(page.locator('#node-type-chips input[value="coping"]')).toBeChecked();
+        // The type is pre-picked, so focus lands on the title, ready to type.
+        await expect(page.locator('#node-title')).toBeFocused({ timeout: 3000 });
+    });
+
     test('cannot save node without title', async ({ page }) => {
         await createVaultAndOpenMap(page);
         await page.click('#add-node-btn');
@@ -134,7 +144,7 @@ test.describe('Mind Map Operations', () => {
         // Before selecting: the verbs are dead and nothing is selected.
         await expect(page.locator('#edit-selected-btn')).toBeDisabled();
         await expect(page.locator('#delete-selected-btn')).toBeDisabled();
-        await expect(page.locator('#selection-status')).toHaveText('No node selected');
+        await expect(page.locator('#selection-status')).toHaveText('No dot selected');
 
         // Select the node from the accessible outline twin (the keyboard-first surface).
         await page.locator('.map-outline-node', { hasText: 'A difficult day' }).first().click();
