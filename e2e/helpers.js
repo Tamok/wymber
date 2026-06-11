@@ -37,6 +37,11 @@ export async function createVaultAndOpenMap(page) {
     await expect(page.locator('#soft-start')).toBeHidden();
 }
 
+/** Choose a node type in the add-node modal (the colour-dotted chip radiogroup). */
+export async function pickType(page, type) {
+    await page.locator(`.type-chip[data-type="${type}"]`).click();
+}
+
 export async function unlock(page, password = PASSWORD) {
     await expect(page.locator('#unlock-form')).toBeVisible({ timeout: 15000 });
     await fillVerified(page, '#unlock-password', password);

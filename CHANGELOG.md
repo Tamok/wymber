@@ -3,6 +3,16 @@
 A short, human list of what's new, so you don't have to go looking. For the full technical
 history, see the [commits](https://github.com/Tamok/wymber/commits).
 
+## 2026-06-10
+- A redesigned colour palette: every type now has its own distinguishable colour, chosen for
+  calm and for colour-vision accessibility, used consistently across the app and the site.
+- Picking a type shows all eleven as colour-dotted chips, one tap, nothing hidden in a dropdown.
+- Zoom controls on the map (plus, minus, fit), alongside scroll and pinch.
+- Crisper map text on scaled displays.
+- Keyboard: N adds a node, Delete removes the selected one, and Esc is a quick exit, it closes
+  whatever is open, and with nothing open it locks Wymber instantly.
+- Updates now reach you on your next visit, no hard refresh needed.
+
 ## 2026-06-06
 - Two nodes connect at most once now, no more accidental duplicate links.
 - Unlink connections: open a node's Connections to remove a link, or tap the line between two.

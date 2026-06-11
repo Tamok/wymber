@@ -5,6 +5,17 @@
  */
 export const CHANGELOG = [
     {
+        date: '2026-06-10',
+        items: [
+            "A redesigned colour palette: every type has its own distinguishable colour, chosen for calm and colour-vision accessibility.",
+            "Picking a type shows all eleven as colour-dotted chips, nothing hidden in a dropdown.",
+            "Zoom controls on the map (plus, minus, fit).",
+            "Crisper map text on scaled displays.",
+            "Keyboard: N adds, Delete removes, and Esc is a quick exit, locking Wymber instantly when nothing is open.",
+            "Updates reach you on your next visit, no hard refresh needed.",
+        ],
+    },
+    {
         date: '2026-06-06',
         items: [
             "Two nodes connect at most once now, no more accidental duplicate links.",

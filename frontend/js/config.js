@@ -1,6 +1,49 @@
+/**
+ * Node colour palettes. "wymber" is the signature palette, designed (not inherited): one
+ * hue-lightness slot per type so no two types share both hue family and lightness, anchored on
+ * the blue-orange axis that survives most colour-vision deficiencies, with no red-green
+ * opposition (trigger is amber: caution without alarm; red would shout). Semantics: earth tones
+ * ground what happened (event, place), blues and teal calm (emotion, support), warm corals and
+ * roses are human (body, person), the green family restores (coping, growth), violets reflect
+ * inward (need, insight). Colour never stands alone: every dot ships with its label (WCAG 1.4.1),
+ * and the dark label text keeps >= 4.5:1 on every swatch.
+ *
+ * Users will pick presets / define their own (the palette feature); colours therefore resolve
+ * through typeColor()/setPalette(), persisted in vault settings, never hard-coded at call sites.
+ */
+export const PALETTES = {
+    wymber: {
+        event:   "#EDDCB8", // sand: the neutral ground of what happened
+        emotion: "#B7D5F0", // sky blue: feelings as weather
+        body:    "#F6C2AD", // peach: physical warmth
+        person:  "#F3BFD2", // rose: relational warmth
+        place:   "#D9CCC3", // taupe: earth, location
+        trigger: "#F5DD9A", // amber: caution without alarm
+        coping:  "#A9D6AC", // green: steadying
+        support: "#A8DAD3", // teal: calm water to lean on
+        need:    "#C9C3EE", // lavender-blue: longing
+        insight: "#E3BBE9", // orchid: illumination
+        growth:  "#D8ECB4", // spring green: new growth
+    },
+};
+
+let activePalette = { ...PALETTES.wymber };
+
+/** The current colour for a node type. All UI colour lookups go through here. */
+export const typeColor = (t) => activePalette[t] || "#cfc7ba";
+
+/**
+ * Activate a palette: a preset name, or a partial { type: '#hex' } map layered over the default
+ * (how user-defined palettes will work). Call before rendering; re-render the map after.
+ */
+export function setPalette(palette) {
+    const overrides = typeof palette === "string" ? (PALETTES[palette] || {}) : (palette || {});
+    activePalette = { ...PALETTES.wymber, ...overrides };
+}
+
 export const NODE_TYPES = {
     event: {
-        color: "#C8E6C9",
+        color: "#EDDCB8",
         icon: "circle",
         label: "Event",
         description: "Something significant that happened",
@@ -8,7 +51,7 @@ export const NODE_TYPES = {
         prompt: "Something that happened. Share only as much as feels okay."
     },
     emotion: {
-        color: "#BBDEFB",
+        color: "#B7D5F0",
         icon: "heart",
         label: "Emotion",
         description: "Feelings and emotional states you've experienced",
@@ -16,7 +59,7 @@ export const NODE_TYPES = {
         prompt: "A feeling that came up. There's no wrong feeling here."
     },
     body: {
-        color: "#FFCCBC",
+        color: "#F6C2AD",
         icon: "activity",
         label: "Body",
         description: "Physical sensations you noticed",
@@ -24,7 +67,7 @@ export const NODE_TYPES = {
         prompt: "What did you notice in your body? Skip if you'd rather not."
     },
     person: {
-        color: "#F8BBD9",
+        color: "#F3BFD2",
         icon: "user",
         label: "Person",
         description: "Important people in your experiences",
@@ -32,7 +75,7 @@ export const NODE_TYPES = {
         prompt: "Someone connected to this. You can use initials or a nickname."
     },
     place: {
-        color: "#D7CCC8",
+        color: "#D9CCC3",
         icon: "map-pin",
         label: "Place",
         description: "Locations that hold significance for you",
@@ -40,7 +83,7 @@ export const NODE_TYPES = {
         prompt: "A place that's part of this."
     },
     trigger: {
-        color: "#FFE0B2",
+        color: "#F5DD9A",
         icon: "zap",
         label: "Trigger",
         description: "Things that bring up strong reactions or memories",
@@ -48,7 +91,7 @@ export const NODE_TYPES = {
         prompt: "Something that brings the feeling back. Want to add a calming anchor too?"
     },
     coping: {
-        color: "#A5D6A7",
+        color: "#A9D6AC",
         icon: "shield",
         label: "Coping",
         description: "Strategies and skills that help you",
@@ -56,7 +99,7 @@ export const NODE_TYPES = {
         prompt: "Something that helps you get through. Even small things count."
     },
     support: {
-        color: "#B2DFDB",
+        color: "#A8DAD3",
         icon: "anchor",
         label: "Support",
         description: "Someone or something you can lean on",
@@ -64,7 +107,7 @@ export const NODE_TYPES = {
         prompt: "Someone or something you can lean on."
     },
     need: {
-        color: "#D1C4E9",
+        color: "#C9C3EE",
         icon: "target",
         label: "Need",
         description: "What you needed, or need now",
@@ -72,7 +115,7 @@ export const NODE_TYPES = {
         prompt: "What did you need then, or need now?"
     },
     insight: {
-        color: "#E1BEE7",
+        color: "#E3BBE9",
         icon: "lightbulb",
         label: "Insight",
         description: "Realizations and understanding you've gained",
@@ -80,7 +123,7 @@ export const NODE_TYPES = {
         prompt: "Something you've come to understand. No pressure to have answers."
     },
     growth: {
-        color: "#C8F7C5",
+        color: "#D8ECB4",
         icon: "trending-up",
         label: "Growth",
         description: "Positive changes and progress",

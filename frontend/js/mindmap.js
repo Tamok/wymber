@@ -1,4 +1,4 @@
-import { NODE_TYPES } from './config.js';
+import { NODE_TYPES, typeColor } from './config.js';
 
 /**
  * TrauMindMap — the Wymber graph renderer (Cytoscape).
@@ -14,7 +14,6 @@ import { NODE_TYPES } from './config.js';
  * and linking all work from the outline, so the map is usable without a pointer or sight.
  */
 
-const typeColor = (t) => NODE_TYPES[t]?.color || '#cfc7ba';
 const typeLabel = (t) => NODE_TYPES[t]?.label || (t ? t[0].toUpperCase() + t.slice(1) : 'Node');
 
 // Canvas + edge colors per app theme. Node fills stay the constant pastel type colors (they read
@@ -357,10 +356,15 @@ export class TrauMindMap {
             this.showNotification('Could not identify nodes to connect', 'error');
             return;
         }
-        // Two nodes connect at most once. If they already are, say so gently and do nothing.
+        // Two nodes connect at most once; point at the unlink affordance instead.
         if (this.areConnected(fromNode.id, toNode.id)) {
-            this.showNotification(`"${fromNode.title}" and "${toNode.title}" are already connected`, 'info');
-            this.announceToScreenReader(`${fromNode.title} and ${toNode.title} are already connected`);
+            this.showNotification(
+                `"${fromNode.title}" and "${toNode.title}" are already connected. To unlink them, tap the line between them.`,
+                'info'
+            );
+            this.announceToScreenReader(
+                `${fromNode.title} and ${toNode.title} are already connected. To unlink them, choose the connection in the node's details.`
+            );
             return;
         }
         try {
@@ -519,7 +523,23 @@ export class TrauMindMap {
         if (editBtn) editBtn.addEventListener('click', () => { if (this.selectedNode) this.editNode(this.selectedNode); });
         if (deleteBtn) deleteBtn.addEventListener('click', () => { if (this.selectedNode) this.deleteNode(this.selectedNode); });
 
+        // Explicit zoom controls (scroll/pinch still work; these make zoom discoverable).
+        document.getElementById('zoom-in-btn')?.addEventListener('click', () => this.zoomBy(1.25));
+        document.getElementById('zoom-out-btn')?.addEventListener('click', () => this.zoomBy(1 / 1.25));
+        document.getElementById('zoom-fit-btn')?.addEventListener('click', () => {
+            if (this.cy && this.cy.nodes().nonempty()) this.cy.fit(undefined, 60);
+        });
+
         this.updateToolbar();
+    }
+
+    /** Zoom in/out around the centre of the viewport. */
+    zoomBy(factor) {
+        if (!this.cy) return;
+        this.cy.zoom({
+            level: this.cy.zoom() * factor,
+            renderedPosition: { x: this.container.clientWidth / 2, y: this.container.clientHeight / 2 },
+        });
     }
 
     setToolbarMode(mode) {

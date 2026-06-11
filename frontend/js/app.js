@@ -1,4 +1,4 @@
-import { NODE_TYPES } from './config.js';
+import { NODE_TYPES, typeColor, setPalette } from './config.js';
 import { LocalRepo } from './local-repo.js';
 import { TrauMindMap } from './mindmap.js';
 import { validateNodeData, passwordStrength } from './utils.js';
@@ -467,9 +467,10 @@ class WymberApp {
             document.getElementById('node-modal').style.display = 'none';
         });
 
-        // Node type description updates
-        document.getElementById('node-type')?.addEventListener('change', (e) => {
-            this.updateNodeTypeDescription(e.target.value);
+        // Type chips: all 11 types visible with their colours (one tap, nothing hidden).
+        this.renderTypeChips();
+        document.getElementById('node-type-chips')?.addEventListener('change', (e) => {
+            if (e.target.name === 'node-type') this.updateNodeTypeDescription(e.target.value);
         });
 
         // Node detail drawer (#108)
@@ -478,7 +479,7 @@ class WymberApp {
         document.getElementById('detail-delete')?.addEventListener('click', () => this.deleteFromDetail());
         document.getElementById('detail-type')?.addEventListener('change', (e) => {
             const info = NODE_TYPES[e.target.value] || {};
-            document.getElementById('detail-chip').style.background = info.color || '#cfc7ba';
+            document.getElementById('detail-chip').style.background = typeColor(e.target.value);
             document.getElementById('detail-type-name').textContent = info.label || e.target.value;
         });
         const kwInput = document.getElementById('detail-keyword-input');
@@ -527,7 +528,7 @@ class WymberApp {
             const li = document.createElement('li');
             const dot = document.createElement('span');
             dot.className = 'legend-dot';
-            dot.style.background = info.color;
+            dot.style.background = typeColor(key);
             dot.setAttribute('aria-hidden', 'true');
             const label = document.createElement('span');
             label.textContent = info.label || key;
@@ -546,8 +547,14 @@ class WymberApp {
         if (ss) ss.style.display = 'none';
         try {
             await this.initMindMap();
-            // Offer the walkthrough once, gently, after the map is up (never on later visits).
-            if (!Tutorial.seen()) setTimeout(() => this.openTutorial(), 450);
+            // Offer the walkthrough once, after the map is up. The flag lives in the vault
+            // settings (all user state travels with the .wymber); localStorage covers vaults
+            // from before the flag moved.
+            if (!this.settings?.tutorialSeen && !Tutorial.seen()) {
+                setTimeout(() => this.openTutorial(), 450);
+                this.settings = { ...(this.settings || {}), tutorialSeen: true };
+                api.put('/settings', { tutorialSeen: true }).catch(() => { /* offered again next time, harmless */ });
+            }
         } catch (error) {
             console.error('Error initializing mind map:', error);
             this.updateSaveIndicator('Error loading mind map', 'error');
@@ -614,21 +621,46 @@ class WymberApp {
 
     // ===== NODE MODAL =====
 
+    /** Fill the type radiogroup with colour-dotted chips from NODE_TYPES (idempotent). */
+    renderTypeChips() {
+        const wrap = document.getElementById('node-type-chips');
+        if (!wrap || wrap.childElementCount) return;
+        for (const [key, info] of Object.entries(NODE_TYPES)) {
+            const label = document.createElement('label');
+            label.className = 'type-chip';
+            label.dataset.type = key;
+            label.title = info.description;
+            const input = document.createElement('input');
+            input.type = 'radio';
+            input.name = 'node-type';
+            input.value = key;
+            const dot = document.createElement('span');
+            dot.className = 'legend-dot';
+            dot.style.background = typeColor(key);
+            dot.setAttribute('aria-hidden', 'true');
+            label.append(input, dot, info.label);
+            wrap.appendChild(label);
+        }
+    }
+
     // The modal is now only for creating a node; editing an existing node lives in the
     // detail drawer (#108). `presetType` pre-selects a type (used by the pairing nudge).
     showNodeModal(presetType = null) {
         const modal = document.getElementById('node-modal');
         document.getElementById('modal-title').textContent = 'Add to Your Map';
-        document.getElementById('node-type').value = presetType || '';
+        this.renderTypeChips();
+        document.querySelectorAll('#node-type-chips input[name="node-type"]')
+            .forEach((r) => { r.checked = r.value === presetType; });
         document.getElementById('node-title').value = '';
         document.getElementById('node-description').value = '';
-        document.getElementById('type-description').innerHTML = '';
-        if (presetType) this.updateNodeTypeDescription(presetType);
+        this.updateNodeTypeDescription(presetType || '');
 
         modal.style.display = 'flex';
         setTimeout(() => {
             // With a type pre-set, focus the title; otherwise the type picker.
-            (presetType ? document.getElementById('node-title') : document.getElementById('node-type')).focus();
+            (presetType
+                ? document.getElementById('node-title')
+                : document.querySelector('#node-type-chips input[name="node-type"]'))?.focus();
         }, 100);
     }
 
@@ -638,16 +670,19 @@ class WymberApp {
         if (nodeType && NODE_TYPES[nodeType]) {
             const info = NODE_TYPES[nodeType];
             el.innerHTML = `<div class="type-info"><p>${info.description}</p><small>${info.tooltip}</small></div>`;
+            el.style.display = 'block';
+            el.style.borderLeftColor = typeColor(nodeType); // the box wears the type's colour
             // A gentle, non-directive prompt for this type. Never required.
             if (desc && info.prompt) desc.placeholder = info.prompt;
         } else {
             el.innerHTML = '';
+            el.style.display = 'none';
             if (desc) desc.placeholder = '';
         }
     }
 
     async saveNode() {
-        const nodeType = document.getElementById('node-type').value;
+        const nodeType = document.querySelector('#node-type-chips input[name="node-type"]:checked')?.value || '';
         const title = document.getElementById('node-title').value.trim();
         const description = document.getElementById('node-description').value.trim();
 
@@ -726,7 +761,7 @@ class WymberApp {
         this.detailKeywords = Array.isArray(fresh.keywords) ? [...fresh.keywords] : [];
 
         const info = NODE_TYPES[fresh.node_type] || {};
-        document.getElementById('detail-chip').style.background = info.color || '#cfc7ba';
+        document.getElementById('detail-chip').style.background = typeColor(fresh.node_type);
         document.getElementById('detail-type-name').textContent = info.label || fresh.node_type || 'Details';
         document.getElementById('detail-type').value = fresh.node_type || 'event';
         document.getElementById('detail-title').value = fresh.title || '';
@@ -823,7 +858,7 @@ class WymberApp {
             li.className = 'detail-connection';
             const dot = document.createElement('span');
             dot.className = 'legend-dot';
-            dot.style.background = NODE_TYPES[entry.other.node_type]?.color || '#cfc7ba';
+            dot.style.background = typeColor(entry.other.node_type);
             dot.title = NODE_TYPES[entry.other.node_type]?.label || '';
             dot.setAttribute('aria-hidden', 'true');
             const name = document.createElement('span');
@@ -1036,7 +1071,7 @@ class WymberApp {
     suggestChip(node) {
         const chip = document.createElement('span');
         chip.className = 'suggest-chip';
-        chip.style.background = NODE_TYPES[node.node_type]?.color || '#cfc7ba';
+        chip.style.background = typeColor(node.node_type);
         chip.setAttribute('aria-hidden', 'true');
         return chip;
     }
@@ -1186,14 +1221,19 @@ class WymberApp {
         try {
             const data = await api.get('/settings');
             const settings = data.settings || {};
+            this.settings = settings; // everything user-specific rides in the encrypted vault
             if (settings.theme) {
                 document.documentElement.setAttribute('data-theme', settings.theme);
             }
             if (settings.fontSize) {
                 document.documentElement.setAttribute('data-font-size', settings.fontSize);
             }
+            // Palette: a preset name or a per-type colour map, resolved by config.setPalette.
+            setPalette(settings.palette || 'wymber');
             this.autoLockMinutes = settings.autoLockMinutes ?? 15;
         } catch {
+            this.settings = {};
+            setPalette('wymber');
             this.autoLockMinutes = 15;
         }
     }
