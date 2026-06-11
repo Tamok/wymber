@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>What's new · Wymber</title>
+  <meta name="description" content="A short, human list of what's changed in Wymber.">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .changelog-main { max-width: 700px; margin: 0 auto; padding: 36px 24px 64px; }
+    .changelog-main h1 { text-align: center; }
+    .changelog-lead { color: var(--ink-soft); text-align: center; max-width: 60ch; margin: 0 auto 36px; }
+    .clog-entry { margin-bottom: 26px; border-left: 3px solid var(--line); padding-left: 16px; }
+    .clog-entry h2 { font-size: 1.05rem; margin: 0 0 8px; }
+    .clog-entry ul { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
+    .clog-entry li { color: var(--ink-soft); }
+    .changelog-note { color: var(--ink-soft); text-align: center; font-size: 0.85rem; margin-top: 28px; }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <a class="wordmark" href="/" aria-label="Wymber home">
+      <img class="mark" src="favicon.svg" alt="" width="30" height="30">
+      <span>Wymber</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary"><a href="/">Home</a></nav>
+  </header>
+
+  <main class="changelog-main">
+    <h1>What's new</h1>
+    <p class="changelog-lead">A short, human list of what's changed, so you don't have to go
+       looking. For the full technical history, see the
+       <a href="https://github.com/Tamok/wymber/commits" target="_blank" rel="noopener">commits</a>.</p>
+
+    <section class="clog-entry">
+      <h2>2026-06-10</h2>
+      <ul>
+        <li>Nodes are now dots: put down a dot for what matters, connect the dots at your own pace.</li>
+        <li>A redesigned colour palette: every type has its own distinguishable colour, chosen for
+            calm and colour-vision accessibility, used across the app and this site.</li>
+        <li>Picking a type shows all eleven as colour-dotted chips, nothing hidden in a dropdown.</li>
+        <li>Zoom controls on the map (plus, minus, fit), alongside scroll and pinch.</li>
+        <li>Crisper map text on scaled displays.</li>
+        <li>Keyboard: N adds, Delete removes, and Esc is a quick exit, locking Wymber instantly
+            when nothing is open.</li>
+        <li>Updates reach you on your next visit, no hard refresh needed.</li>
+      </ul>
+    </section>
+
+    <section class="clog-entry">
+      <h2>2026-06-06</h2>
+      <ul>
+        <li>Two nodes connect at most once now, no more accidental duplicate links.</li>
+        <li>Unlink connections: open a node's Connections to remove a link, or tap the line between two.</li>
+        <li>Crisis support numbers are tap-to-call and tap-to-text.</li>
+        <li>A short, skippable "How it works" walkthrough you can reopen anytime.</li>
+        <li>This changelog, so changes aren't hidden away.</li>
+      </ul>
+    </section>
+
+    <section class="clog-entry">
+      <h2>2026-06-04</h2>
+      <ul>
+        <li>The app is now its own space at web.wymber.app; the landing stays at wymber.app.</li>
+        <li>A show/hide toggle on password fields.</li>
+        <li>Esc reliably closes whatever is open.</li>
+      </ul>
+    </section>
+
+    <section class="clog-entry">
+      <h2>Earlier</h2>
+      <ul>
+        <li>Private, local-first trauma mapping: an encrypted vault that lives on your device, a
+            graph you build at your own pace, grounding and crisis support always within reach,
+            installable and fully offline.</li>
+      </ul>
+    </section>
+
+    <p class="changelog-note">Wymber is alpha, so expect frequent changes.</p>
+  </main>
+
+  <footer class="site-footer">
+    <p class="copyright">© 2026 Wymber · <a href="/">Home</a> · <a href="sources.html">Sources</a></p>
+  </footer>
+</body>
+</html>

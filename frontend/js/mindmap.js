@@ -1,4 +1,4 @@
-import { NODE_TYPES } from './config.js';
+import { NODE_TYPES, typeColor } from './config.js';
 
 /**
  * TrauMindMap — the Wymber graph renderer (Cytoscape).
@@ -14,8 +14,7 @@ import { NODE_TYPES } from './config.js';
  * and linking all work from the outline, so the map is usable without a pointer or sight.
  */
 
-const typeColor = (t) => NODE_TYPES[t]?.color || '#cfc7ba';
-const typeLabel = (t) => NODE_TYPES[t]?.label || (t ? t[0].toUpperCase() + t.slice(1) : 'Node');
+const typeLabel = (t) => NODE_TYPES[t]?.label || (t ? t[0].toUpperCase() + t.slice(1) : 'Dot');
 
 // Canvas + edge colors per app theme. Node fills stay the constant pastel type colors (they read
 // well on any background with the dark label text); only the surrounding canvas and the edges
@@ -41,11 +40,17 @@ function layoutLabel(label) {
         else { lines.push(cur); cur = word; }
     }
     if (cur) lines.push(cur);
-    const longest = lines.reduce((m, l) => Math.max(m, l.length), 1);
-    const lineCount = Math.min(lines.length, 4);
-    const w = Math.min(Math.max(Math.round(longest * 7.4) + 34, 84), 210);
-    const h = lineCount * 20 + 26;
-    return { w, h, tw: w - 28 };
+    // The renderer wraps by width ('anywhere'), so an over-long single word still breaks;
+    // count the extra lines it produces and size the box for ALL lines (a capped height used
+    // to clip long titles vertically).
+    const lineCount = lines.reduce((n, l) => n + Math.max(1, Math.ceil(l.length / MAX)), 0);
+    const longest = lines.reduce((m, l) => Math.max(m, Math.min(l.length, MAX)), 1);
+    // A little extra width so text clears the rounded ends (they're dots: a one-line dot is a
+    // full pill; taller ones soften toward a lozenge with the radius capped).
+    const w = Math.min(Math.max(Math.round(longest * 7.4) + 42, 90), 216);
+    const h = Math.min(lineCount, 8) * 20 + 26;
+    const r = Math.min(Math.round(h / 2), 26);
+    return { w, h, r, tw: w - 36 };
 }
 
 // Lazy-load the (~424KB) Cytoscape bundle only when the map first opens, so the auth/unlock
@@ -95,6 +100,10 @@ export class TrauMindMap {
             maxZoom: 2.5,
             boxSelectionEnabled: false,
             autoungrabify: false,
+            // Render at >= 2x backing resolution so node label text stays crisp. With the
+            // default ('auto' = devicePixelRatio) a standard display, or Windows at 125%
+            // scaling (dPR 1.25), rasterizes the canvas text soft/blurry.
+            pixelRatio: Math.max(window.devicePixelRatio || 1, 2),
         });
 
         this.applyTheme();
@@ -112,6 +121,7 @@ export class TrauMindMap {
                 selector: 'node',
                 style: {
                     'shape': 'round-rectangle',
+                    'corner-radius': 'data(r)',
                     'background-color': 'data(color)',
                     'background-opacity': 1,
                     'border-width': 2,
@@ -180,15 +190,20 @@ export class TrauMindMap {
         const anyPositioned = nodes.some((n) => (n.x && n.x !== 0) || (n.y && n.y !== 0));
 
         const elements = [];
+        // Track occupied spots so a brand-new node never lands on top of an existing one.
+        const taken = nodes
+            .filter((n) => (n.x && n.x !== 0) || (n.y && n.y !== 0))
+            .map((n) => ({ x: n.x, y: n.y }));
         nodes.forEach((n, i) => {
             const size = layoutLabel(n.title);
+            const position = this.positionFor(n, i, taken);
             elements.push({
                 group: 'nodes',
                 data: {
                     id: String(n.id), label: n.title, color: typeColor(n.node_type), ntype: n.node_type,
-                    w: size.w, h: size.h, tw: size.tw,
+                    w: size.w, h: size.h, r: size.r, tw: size.tw,
                 },
-                position: this.positionFor(n, i),
+                position,
             });
         });
 
@@ -227,12 +242,23 @@ export class TrauMindMap {
         this.fitOnce();
     }
 
-    positionFor(n, i) {
+    positionFor(n, i, taken = []) {
         if ((n.x && n.x !== 0) || (n.y && n.y !== 0)) return { x: n.x, y: n.y };
-        // Gentle golden-angle spiral for never-placed nodes so they don't stack at the origin.
+        // Golden-angle spiral for never-placed nodes, walking outward past any occupied spot
+        // (otherwise a new node could land on top of an existing block).
         const golden = 2.399963;
-        const r = 70 + 46 * Math.sqrt(i);
-        return { x: Math.round(Math.cos(i * golden) * r), y: Math.round(Math.sin(i * golden) * r) };
+        const CLEAR = 150; // min distance from any taken position
+        for (let k = i; k < i + 40; k++) {
+            const r = 70 + 46 * Math.sqrt(k);
+            const p = { x: Math.round(Math.cos(k * golden) * r), y: Math.round(Math.sin(k * golden) * r) };
+            if (!taken.some((t) => Math.hypot(t.x - p.x, t.y - p.y) < CLEAR)) {
+                taken.push(p);
+                return p;
+            }
+        }
+        const far = { x: 70 + 46 * Math.sqrt(i + 40), y: 0 };
+        taken.push(far);
+        return far;
     }
 
     fitOnce() {
@@ -317,9 +343,32 @@ export class TrauMindMap {
         this.updateToolbar();
     }
 
+    /** Are these two nodes already joined (an explicit edge either way, or a legacy parent link)? */
+    areConnected(aId, bId) {
+        const edges = this.lastData.edges || [];
+        if (edges.some((e) =>
+            (e.from_node_id === aId && e.to_node_id === bId) ||
+            (e.from_node_id === bId && e.to_node_id === aId))) return true;
+        const nodes = this.lastData.nodes || [];
+        const a = nodes.find((n) => n.id === aId);
+        const b = nodes.find((n) => n.id === bId);
+        return (a && a.parent_id === bId) || (b && b.parent_id === aId);
+    }
+
     async createConnection(fromNode, toNode) {
         if (!fromNode?.id || !toNode?.id) {
-            this.showNotification('Could not identify nodes to connect', 'error');
+            this.showNotification('Could not identify dots to connect', 'error');
+            return;
+        }
+        // Two nodes connect at most once; point at the unlink affordance instead.
+        if (this.areConnected(fromNode.id, toNode.id)) {
+            this.showNotification(
+                `"${fromNode.title}" and "${toNode.title}" are already connected. To unlink them, tap the line between them.`,
+                'info'
+            );
+            this.announceToScreenReader(
+                `${fromNode.title} and ${toNode.title} are already connected. To unlink them, choose the connection in the node's details.`
+            );
             return;
         }
         try {
@@ -330,6 +379,34 @@ export class TrauMindMap {
         } catch (error) {
             console.error('Error creating connection:', error);
             this.showNotification('Could not create connection', 'error');
+        }
+    }
+
+    /**
+     * Remove a connection from the canvas. The edge element's id encodes its kind: an explicit
+     * edge is `e{id}` (delete the edge record); a legacy parent link is `p{parent}-{child}`
+     * (clear the child's parent_id). Reversible, so a single gentle confirm is enough.
+     */
+    async unlinkEdgeElement(edgeEl) {
+        const id = edgeEl.id();
+        const a = this.nodeFromEl(edgeEl.source())?.title || 'these';
+        const b = this.nodeFromEl(edgeEl.target())?.title || 'two';
+        if (!confirm(`Unlink "${a}" and "${b}"? You can reconnect them anytime.`)) return;
+        try {
+            if (id.startsWith('e')) {
+                await this.api.delete('/edge/' + id.slice(1));
+            } else if (id.startsWith('p')) {
+                const childId = parseInt(id.split('-')[1], 10);
+                await this.api.put('/node/' + childId, { parent_id: null });
+            } else {
+                return;
+            }
+            await this.loadMap();
+            this.showNotification(`Unlinked "${a}" and "${b}"`, 'success');
+            this.announceToScreenReader(`Unlinked ${a} and ${b}`);
+        } catch (error) {
+            console.error('Error unlinking:', error);
+            this.showNotification('Could not unlink', 'error');
         }
     }
 
@@ -344,6 +421,11 @@ export class TrauMindMap {
             const node = this.nodeFromEl(evt.target);
             if (node && this.toolbarMode !== 'link') this.editNode(node);
         });
+        // Tap an edge (outside link mode) to remove that connection.
+        this.cy.on('tap', 'edge', (evt) => {
+            if (this.toolbarMode === 'link') return;
+            this.unlinkEdgeElement(evt.target);
+        });
         this.cy.on('tap', (evt) => {
             if (evt.target === this.cy) {
                 if (this.toolbarMode !== 'link') this.clearSelection();
@@ -352,16 +434,21 @@ export class TrauMindMap {
         });
         this.cy.on('dragfree', 'node', () => this.scheduleSave());
 
-        // Delete the selected node from the keyboard (the same gentle confirm as the toolbar).
-        document.addEventListener('keydown', (e) => {
+        // Delete removes the selected node (same confirm as the toolbar) whenever one is
+        // selected, regardless of where focus happens to sit (clicking the canvas often leaves
+        // focus on <body>, which used to swallow the key). Text fields stay untouched. The
+        // handler is kept so destroy() can remove it; re-init after lock/unlock must not stack
+        // listeners (stacked ones meant double confirms).
+        this._deleteKeyHandler = (e) => {
             if (e.key !== 'Delete') return;
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-            const inMap = this.container.contains(e.target) || (this.outlineEl && this.outlineEl.contains(e.target));
-            if (inMap && this.selectedNode) {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+            if (document.querySelector('.modal[style*="flex"]')) return; // a dialog is open
+            if (this.selectedNode) {
                 e.preventDefault();
                 this.deleteNode(this.selectedNode);
             }
-        });
+        };
+        document.addEventListener('keydown', this._deleteKeyHandler);
     }
 
     nodeFromEl(el) {
@@ -440,7 +527,23 @@ export class TrauMindMap {
         if (editBtn) editBtn.addEventListener('click', () => { if (this.selectedNode) this.editNode(this.selectedNode); });
         if (deleteBtn) deleteBtn.addEventListener('click', () => { if (this.selectedNode) this.deleteNode(this.selectedNode); });
 
+        // Explicit zoom controls (scroll/pinch still work; these make zoom discoverable).
+        document.getElementById('zoom-in-btn')?.addEventListener('click', () => this.zoomBy(1.25));
+        document.getElementById('zoom-out-btn')?.addEventListener('click', () => this.zoomBy(1 / 1.25));
+        document.getElementById('zoom-fit-btn')?.addEventListener('click', () => {
+            if (this.cy && this.cy.nodes().nonempty()) this.cy.fit(undefined, 60);
+        });
+
         this.updateToolbar();
+    }
+
+    /** Zoom in/out around the centre of the viewport. */
+    zoomBy(factor) {
+        if (!this.cy) return;
+        this.cy.zoom({
+            level: this.cy.zoom() * factor,
+            renderedPosition: { x: this.container.clientWidth / 2, y: this.container.clientHeight / 2 },
+        });
     }
 
     setToolbarMode(mode) {
@@ -467,13 +570,13 @@ export class TrauMindMap {
 
         if (status) {
             if (this.toolbarMode === 'link' && this.connectingFrom) {
-                status.textContent = `Linking from "${this.connectingFrom.title}" - choose another node to connect`;
+                status.textContent = `Linking from "${this.connectingFrom.title}", choose another dot to connect`;
             } else if (this.toolbarMode === 'link') {
-                status.textContent = 'Link mode: choose a node to start connecting';
+                status.textContent = 'Link mode: choose a dot to start connecting';
             } else if (hasSelection) {
                 status.textContent = `Selected: "${this.selectedNode.title}"`;
             } else {
-                status.textContent = 'No node selected';
+                status.textContent = 'No dot selected';
             }
         }
     }
@@ -487,7 +590,7 @@ export class TrauMindMap {
         if (nodes.length === 0) {
             const empty = document.createElement('p');
             empty.className = 'map-outline-empty';
-            empty.textContent = 'Your map is empty for now. Add your first node to begin.';
+            empty.textContent = 'Your map is empty for now. Add your first dot to begin.';
             this.outlineEl.appendChild(empty);
             return;
         }
@@ -528,11 +631,22 @@ export class TrauMindMap {
 
             li.appendChild(btn);
 
-            const links = [...adj.get(n.id)].map((id) => byId.get(id)?.title).filter(Boolean);
-            if (links.length) {
+            // Connected names carry their node's type colour, so a reference in text reads the
+            // same as its block on the canvas.
+            const linked = [...adj.get(n.id)].map((id) => byId.get(id)).filter(Boolean);
+            if (linked.length) {
                 const conn = document.createElement('span');
                 conn.className = 'map-outline-connections';
-                conn.textContent = `Connected to: ${links.join(', ')}`;
+                conn.append('Connected to: ');
+                linked.forEach((other, i) => {
+                    if (i > 0) conn.append(', ');
+                    const dot = document.createElement('span');
+                    dot.className = 'legend-dot';
+                    dot.style.background = typeColor(other.node_type);
+                    dot.title = typeLabel(other.node_type);
+                    dot.setAttribute('aria-hidden', 'true');
+                    conn.append(dot, other.title);
+                });
                 li.appendChild(conn);
             }
 
@@ -600,6 +714,10 @@ export class TrauMindMap {
 
     destroy() {
         clearTimeout(this.autoSaveTimeout);
+        if (this._deleteKeyHandler) {
+            document.removeEventListener('keydown', this._deleteKeyHandler);
+            this._deleteKeyHandler = null;
+        }
         if (this.cy) {
             this.cy.destroy();
             this.cy = null;

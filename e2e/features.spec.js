@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { createVaultAndOpenMap, PASSWORD } from './helpers.js';
+import { createVaultAndOpenMap, PASSWORD, pickType } from './helpers.js';
 
 test.describe('Analyze Feature', () => {
     test('analyze button opens analysis modal', async ({ page }) => {
@@ -15,7 +15,7 @@ test.describe('Analyze Feature', () => {
 
         // Add a node first
         await page.click('#add-node-btn');
-        await page.selectOption('#node-type', 'event');
+        await pickType(page, 'event');
         await page.fill('#node-title', 'Analyze Test Node');
         await page.click('#save-node');
         await expect(page.locator('#node-modal')).toBeHidden({ timeout: 5000 });

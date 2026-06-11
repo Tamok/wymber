@@ -508,22 +508,20 @@ textarea {
     gap: var(--spacing-sm);
 }
 
+/* Inline beside the "Mind Map Actions" heading: status as quiet coloured text, not a badge. */
 .save-indicator {
-    padding: var(--spacing-xs) var(--spacing-sm);
-    background: #2E7D32;
-    color: white;
-    border-radius: 4px;
     font-size: 0.85rem;
+    font-weight: 600;
+    color: #2E7D32;
 }
 
-.save-indicator.saving {
-    background: #FFC107;
-    color: #212121;
-}
+.save-indicator.saving { color: #9a6a1e; }
 
-.save-indicator.error {
-    background: #c62828;
-}
+.save-indicator.error { color: #c62828; }
+
+[data-theme="dark"] .save-indicator { color: #8fd6a8; }
+[data-theme="dark"] .save-indicator.saving { color: #e6c489; }
+[data-theme="dark"] .save-indicator.error { color: #f1a3a3; }
 
 /* Main app content. min-height (not a fixed height) so the map keeps filling the viewport,
    but the page can grow and scroll when the accessible outline twin sits below it. */
@@ -839,6 +837,35 @@ kbd {
     padding: 4px 0;
 }
 
+.detail-connection {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
+}
+
+.detail-connection-name { min-width: 0; overflow-wrap: anywhere; }
+
+/* Quiet by default, clearer on hover/focus: unlinking is reversible, so it shouldn't shout. */
+.detail-unlink {
+    flex: 0 0 auto;
+    border: 1px solid transparent;
+    background: none;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    padding: 2px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.detail-unlink:hover,
+.detail-unlink:focus-visible {
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    border-color: var(--border);
+}
+
 .detail-connections-empty {
     font-size: 0.85rem;
     color: var(--text-secondary);
@@ -943,7 +970,7 @@ kbd {
 }
 
 .suggest-connect {
-    background: #B2DFDB;
+    background: #A8DAD3;
     color: #1f3b37;
     border: none;
     padding: 6px 14px;
@@ -1016,15 +1043,15 @@ kbd {
     justify-content: center;
 }
 
-.node-preview.event { background: #C8E6C9; }
-.node-preview.emotion { background: #BBDEFB; }
-.node-preview.person { background: #F8BBD9; }
-.node-preview.place { background: #D7CCC8; }
-.node-preview.trigger { background: #FFE0B2; }
-.node-preview.coping { background: #A5D6A7; }
-.node-preview.insight { background: #E1BEE7; }
-.node-preview.growth { background: #C8F7C5; }
-.node-preview.support { background: #B2DFDB; }
+.node-preview.event { background: #EDDCB8; }
+.node-preview.emotion { background: #B7D5F0; }
+.node-preview.person { background: #F3BFD2; }
+.node-preview.place { background: #D9CCC3; }
+.node-preview.trigger { background: #F5DD9A; }
+.node-preview.coping { background: #A9D6AC; }
+.node-preview.insight { background: #E3BBE9; }
+.node-preview.growth { background: #D8ECB4; }
+.node-preview.support { background: #A8DAD3; }
 
 /* Modals */
 .modal {
@@ -1191,8 +1218,8 @@ kbd {
     transition: background 0.3s ease, border-color 0.3s ease;
 }
 .notification-nudge .nudge-add {
-    background: #A5D6A7;
-    border-color: #A5D6A7;
+    background: #A9D6AC;
+    border-color: #A9D6AC;
     color: #1f3b22;
 }
 .notification-nudge .nudge-add:hover {
@@ -1422,7 +1449,7 @@ body {
     width: 120px;
     height: 120px;
     border-radius: 50%;
-    background: radial-gradient(circle at 50% 38%, #d6f0e6 0%, #b2dfdb 55%, #a5d6a7 100%);
+    background: radial-gradient(circle at 50% 38%, #d6f0e6 0%, #A8DAD3 55%, #A9D6AC 100%);
     box-shadow: 0 0 0 10px rgba(178, 223, 219, 0.18), 0 8px 24px rgba(120, 160, 150, 0.25);
     transform: scale(0.7);
     transition: transform 4s ease-in-out, box-shadow 4s ease-in-out;
@@ -1497,11 +1524,11 @@ body {
 
 .sense-text { color: var(--text-primary); }
 
-.sense-see .sense-num { background: #BBDEFB; }
-.sense-feel .sense-num { background: #FFCCBC; }
-.sense-hear .sense-num { background: #D1C4E9; }
-.sense-smell .sense-num { background: #C8E6C9; }
-.sense-taste .sense-num { background: #F8BBD9; }
+.sense-see .sense-num { background: #B7D5F0; }
+.sense-feel .sense-num { background: #F6C2AD; }
+.sense-hear .sense-num { background: #C9C3EE; }
+.sense-smell .sense-num { background: #EDDCB8; }
+.sense-taste .sense-num { background: #F3BFD2; }
 
 /* Crisis resources, as calm cards with a soft accent edge. */
 .crisis-list {
@@ -1520,7 +1547,7 @@ body {
     padding: var(--spacing-sm) var(--spacing-md);
     background: var(--bg-primary);
     border: 1px solid var(--border);
-    border-left: 4px solid #B2DFDB;
+    border-left: 4px solid #A8DAD3;
     border-radius: 10px;
 }
 
@@ -1536,6 +1563,92 @@ body {
     color: var(--text-secondary);
     font-size: 0.9rem;
 }
+
+.crisis-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+    margin-top: 6px;
+}
+
+/* Tappable call/text actions: clear targets on a phone, harmless on desktop. */
+.crisis-action {
+    display: inline-block;
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: #A8DAD3;
+    color: #21413d;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-decoration: none;
+    transition: filter 0.18s ease;
+}
+
+.crisis-action:hover,
+.crisis-action:focus-visible { filter: brightness(0.95); text-decoration: none; }
+
+/* ===== FIRST-RUN TUTORIAL (#118) ===== */
+.tutorial-card {
+    max-width: 420px;
+    text-align: center;
+    padding: 34px 28px 22px;
+    position: relative;
+}
+
+/* Calm fade/rise between steps; disabled under the global reduced-motion reset. */
+.tutorial-step {
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.tutorial-step.is-shown { opacity: 1; transform: none; }
+
+.tutorial-art { display: flex; justify-content: center; margin-bottom: var(--spacing-md); }
+.tutorial-title { margin: 0 0 var(--spacing-sm); font-size: 1.3rem; }
+.tutorial-body { color: var(--text-secondary); margin: 0 auto; max-width: 34ch; line-height: 1.55; }
+
+.tutorial-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    margin-top: 22px;
+}
+
+.tutorial-dots { display: flex; gap: 7px; }
+.tutorial-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--border);
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+.tutorial-dot.active { background: var(--focus); transform: scale(1.25); }
+
+.tutorial-nav { display: flex; align-items: center; gap: var(--spacing-sm); }
+
+@media (max-width: 480px) {
+    .tutorial-foot { flex-direction: column-reverse; align-items: stretch; }
+    .tutorial-nav { justify-content: space-between; }
+}
+
+/* ===== WHAT'S NEW / CHANGELOG (#119) ===== */
+.changelog-intro { color: var(--text-secondary); font-size: 0.9rem; margin: 0 0 var(--spacing-md); }
+.changelog-list { display: flex; flex-direction: column; gap: var(--spacing-md); }
+.changelog-entry h3 { margin: 0 0 6px; font-size: 0.95rem; color: var(--text-secondary); font-weight: 700; }
+.changelog-entry ul { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 4px; }
+.changelog-entry li { color: var(--text-primary); font-size: 0.92rem; line-height: 1.5; }
+
+.app-footer-link {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    text-decoration: underline;
+    padding: 4px 6px;
+    border-radius: 6px;
+}
+.app-footer-link:hover,
+.app-footer-link:focus-visible { color: var(--text-primary); }
 
 /* The breathing guide is the one place we keep gentle motion under reduce-motion: the slow
    swell and the word fade ARE the exercise (functional, calm, non-vestibular), not decoration.
@@ -1561,6 +1674,163 @@ body {
 .mindmap-toolbar .toolbar-section {
     margin-bottom: var(--spacing-sm);
 }
+
+.toolbar-heading-row {
+    display: flex;
+    align-items: baseline;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+}
+
+.toolbar-heading-row h3 { margin-bottom: 0; }
+
+/* The collapsible node colour key under the toolbar. */
+.node-legend { margin-top: var(--spacing-sm); }
+.node-legend summary {
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    user-select: none;
+    width: max-content;
+    padding: 2px 4px;
+    border-radius: 6px;
+}
+.node-legend summary:hover { color: var(--text-primary); }
+.node-legend-list {
+    list-style: none;
+    margin: var(--spacing-xs) 0 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px var(--spacing-md);
+}
+.node-legend-list li { display: inline-flex; }
+
+.node-legend-hint {
+    margin: var(--spacing-xs) 0 0;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+/* Each colour is a quick-add button: choosing it starts a dot of that kind. */
+.legend-add {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    padding: 3px 9px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.legend-add:hover,
+.legend-add:focus-visible {
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    border-color: var(--border);
+}
+
+/* A small type-colour dot used wherever a node is referenced in text. */
+.legend-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1px solid rgba(74, 69, 64, 0.25);
+    margin-right: 6px;
+    flex: 0 0 auto;
+    vertical-align: baseline;
+}
+
+/* The Esc hint inside the Logout button. */
+.btn-kbd {
+    font-size: 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    margin-left: 2px;
+    color: var(--text-secondary);
+    background: var(--bg-primary);
+}
+
+/* Readable links inside modal bodies on the dark theme (default link blue sat too dark). */
+[data-theme="dark"] .modal-body a:not(.btn):not(.crisis-action),
+[data-theme="dark"] .export-note a {
+    color: #9ec3ff;
+}
+
+/* Type chips: the 11 types as colour-dotted radio chips, all visible at once. */
+.type-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: var(--spacing-sm);
+}
+
+.type-chip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    transition: var(--transition);
+}
+
+.type-chip input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.type-chip:hover { background: var(--bg-primary); }
+
+.type-chip:has(input:checked) {
+    border-color: var(--focus);
+    box-shadow: inset 0 0 0 1px var(--focus);
+    background: var(--bg-primary);
+}
+
+.type-chip:has(input:focus-visible) {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+}
+
+/* Zoom controls: explicit, always-visible map zoom (scroll/pinch still work). */
+.zoom-controls {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    z-index: 5;
+}
+
+.zoom-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 1.15rem;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    transition: var(--transition);
+}
+
+.zoom-btn:hover { background: var(--bg-primary); }
+.zoom-btn-fit { font-size: 0.75rem; font-weight: 600; }
 
 .mindmap-toolbar h3 {
     margin: 0 0 var(--spacing-xs) 0;

@@ -15,6 +15,11 @@ async function fillVerified(page, selector, value) {
 
 /** Fresh context (no vault) → create flow → through the recovery sheet → soft-start visible. */
 export async function createVault(page) {
+    // Suppress the first-run walkthrough auto-offer so it never races the suite; tests that
+    // exercise it open it explicitly via the "How it works" button.
+    await page.addInitScript(() => {
+        try { localStorage.setItem('wymber.tutorialSeen', '1'); } catch (_) { /* ignore */ }
+    });
     await page.goto('/');
     await expect(page.locator('#create-form')).toBeVisible({ timeout: 15000 });
     await fillVerified(page, '#create-password', PASSWORD);
@@ -30,6 +35,11 @@ export async function createVaultAndOpenMap(page) {
     await createVault(page);
     await page.click('#open-map-btn');
     await expect(page.locator('#soft-start')).toBeHidden();
+}
+
+/** Choose a node type in the add-node modal (the colour-dotted chip radiogroup). */
+export async function pickType(page, type) {
+    await page.locator(`.type-chip[data-type="${type}"]`).click();
 }
 
 export async function unlock(page, password = PASSWORD) {

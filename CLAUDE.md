@@ -50,7 +50,7 @@ Run commands from the repo root.
 - `frontend/js/tutorial.js`: the first-run walkthrough (data-driven `TUTORIAL_STEPS`; skippable, reopenable from "How it works"). Edit the steps array, nothing else.
 - `frontend/js/changelog.js`: the in-app "What's new" (`CHANGELOG`); mirror the newest `CHANGELOG.md` entries here (short + human).
 - `frontend/js/suggest.js`: the discovery engine (`suggestLinks`): proposes *possible* links from shared keywords + an "anchor gap" type hint (a lone trigger/need with no coping/support). Pure/testable; surfaced via a quiet, opt-in "possible connections" prompt (never auto-added). A first cut meant to grow (ADR-0002).
-- `frontend/js/config.js`: `NODE_TYPES` (source of truth).
+- `frontend/js/config.js`: `NODE_TYPES` + `PALETTES` (source of truth). Node colours resolve through `typeColor()`/`setPalette()` (persisted as `settings.palette` in the vault), never hard-coded at call sites; the landing mirrors the default palette.
 - `backend/main.py`: the static server (+ health). That's the whole backend.
 
 The 11 node types: `event`, `emotion`, `body`, `person`, `place`, `trigger`, `coping`, `support`, `need`, `insight`, `growth`. Each has a color + a gentle, non-directive `prompt` (config.js is the source of truth).

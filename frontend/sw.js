@@ -9,7 +9,7 @@
  * VERSION is derived from a content hash of the cached shell by scripts/sw-version.mjs (run in
  * the pre-commit hook), so it bumps automatically when the shell changes. Don't hand-edit it.
  */
-const VERSION = 'wymber-shell-8a4ef94fc874';
+const VERSION = 'wymber-shell-b35e1febcc89';
 
 const CORE = [
     '/',
@@ -25,6 +25,8 @@ const CORE = [
     '/static/js/analyze.js',
     '/static/js/export.js',
     '/static/js/suggest.js',
+    '/static/js/tutorial.js',
+    '/static/js/changelog.js',
     '/static/libs/cytoscape.min.js',
     '/static/favicon.svg',
     '/static/icons/icon-192.png',
@@ -72,19 +74,19 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Static assets: stale-while-revalidate (instant + offline, refreshed in the background).
+    // Static assets: network-first, cache fallback. Stale-while-revalidate used to hand
+    // returning users one page-load of OLD scripts after every deploy (fresh HTML + stale JS:
+    // "the fix doesn't work until I hard-refresh"). The shell is small, so paying one fetch for
+    // always-current code is the right trade; offline still serves the cached copy.
     event.respondWith(
-        caches.match(req).then((cached) => {
-            const network = fetch(req)
-                .then((res) => {
-                    if (res && res.status === 200) {
-                        const copy = res.clone();
-                        caches.open(VERSION).then((c) => c.put(req, copy));
-                    }
-                    return res;
-                })
-                .catch(() => cached);
-            return cached || network;
-        })
+        fetch(req)
+            .then((res) => {
+                if (res && res.status === 200) {
+                    const copy = res.clone();
+                    caches.open(VERSION).then((c) => c.put(req, copy));
+                }
+                return res;
+            })
+            .catch(() => caches.match(req))
     );
 });

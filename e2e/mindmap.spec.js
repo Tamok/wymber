@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { createVault, createVaultAndOpenMap, unlock } from './helpers.js';
+import { createVault, createVaultAndOpenMap, unlock, pickType } from './helpers.js';
 
 test.describe('Mind Map Operations', () => {
     test('add node via modal renders it on the map', async ({ page }) => {
@@ -8,7 +8,7 @@ test.describe('Mind Map Operations', () => {
         await page.click('#add-node-btn');
         await expect(page.locator('#node-modal')).toBeVisible();
 
-        await page.selectOption('#node-type', 'event');
+        await pickType(page, 'event');
         await page.fill('#node-title', 'A difficult day');
         await page.fill('#node-description', 'A test description');
         await page.click('#save-node');
@@ -19,10 +19,47 @@ test.describe('Mind Map Operations', () => {
         await expect(page.locator('#map-outline')).toContainText('A difficult day', { timeout: 5000 });
     });
 
-    test('Ctrl+N opens add node modal', async ({ page }) => {
+    test('N opens the add node modal (Ctrl+N is browser-reserved)', async ({ page }) => {
         await createVaultAndOpenMap(page);
-        await page.keyboard.press('Control+n');
+        await page.keyboard.press('n');
         await expect(page.locator('#node-modal')).toBeVisible({ timeout: 3000 });
+    });
+
+    test('Escape with nothing open logs out instantly (quick exit)', async ({ page }) => {
+        await createVaultAndOpenMap(page);
+        await page.keyboard.press('Escape'); // nothing open: this is the quick exit
+        await expect(page.locator('#unlock-form')).toBeVisible({ timeout: 5000 });
+        await expect(page.locator('#main-app')).toBeHidden();
+    });
+
+    test('Escape closes an open modal first, and only logs out when nothing is open', async ({ page }) => {
+        await createVaultAndOpenMap(page);
+        await page.click('#add-node-btn');
+        await expect(page.locator('#node-modal')).toBeVisible();
+        await page.keyboard.press('Escape'); // closes the modal, stays unlocked
+        await expect(page.locator('#node-modal')).toBeHidden({ timeout: 3000 });
+        await expect(page.locator('#unlock-form')).toBeHidden();
+        await page.keyboard.press('Escape'); // now nothing is open: quick exit
+        await expect(page.locator('#unlock-form')).toBeVisible({ timeout: 5000 });
+    });
+
+    test('Delete key removes the selected node and closes its drawer (#128 #129)', async ({ page }) => {
+        await createVaultAndOpenMap(page);
+        await page.click('#add-node-btn');
+        await pickType(page, 'event');
+        await page.fill('#node-title', 'To be removed');
+        await page.click('#save-node');
+        await expect(page.locator('#map-outline')).toContainText('To be removed', { timeout: 5000 });
+
+        // Selecting opens the drawer; Delete (with focus on the page body) removes the node.
+        await page.locator('.map-outline-node', { hasText: 'To be removed' }).first().click();
+        await expect(page.locator('#node-detail')).toHaveClass(/open/);
+        page.once('dialog', (d) => d.accept());
+        await page.locator('body').press('Delete');
+
+        await expect(page.locator('#map-outline')).not.toContainText('To be removed', { timeout: 5000 });
+        // The drawer must close too: editing a deleted node would go nowhere.
+        await expect(page.locator('#node-detail')).not.toHaveClass(/open/, { timeout: 3000 });
     });
 
     test('Escape closes modal', async ({ page }) => {
@@ -46,14 +83,24 @@ test.describe('Mind Map Operations', () => {
     test('node type description updates on selection', async ({ page }) => {
         await createVaultAndOpenMap(page);
         await page.click('#add-node-btn');
-        await page.selectOption('#node-type', 'emotion');
+        await pickType(page, 'emotion');
         await expect(page.locator('#type-description')).toContainText('Feelings', { timeout: 3000 });
+    });
+
+    test('the colour key is a quick-add: choosing a colour starts a dot of that kind', async ({ page }) => {
+        await createVaultAndOpenMap(page);
+        await page.locator('#node-legend summary').click();
+        await page.locator('.legend-add', { hasText: 'Coping' }).click();
+        await expect(page.locator('#node-modal')).toBeVisible({ timeout: 3000 });
+        await expect(page.locator('#node-type-chips input[value="coping"]')).toBeChecked();
+        // The type is pre-picked, so focus lands on the title, ready to type.
+        await expect(page.locator('#node-title')).toBeFocused({ timeout: 3000 });
     });
 
     test('cannot save node without title', async ({ page }) => {
         await createVaultAndOpenMap(page);
         await page.click('#add-node-btn');
-        await page.selectOption('#node-type', 'event');
+        await pickType(page, 'event');
         await page.click('#save-node');
         await expect(page.locator('#node-modal')).toBeVisible();
         await expect(page.locator('.notification-error')).toBeVisible({ timeout: 3000 });
@@ -64,7 +111,7 @@ test.describe('Mind Map Operations', () => {
 
         const unique = 'Persist ' + Date.now();
         await page.click('#add-node-btn');
-        await page.selectOption('#node-type', 'event');
+        await pickType(page, 'event');
         await page.fill('#node-title', unique);
         await page.click('#save-node');
         await expect(page.locator('.notification-success')).toBeVisible({ timeout: 5000 });
@@ -89,7 +136,7 @@ test.describe('Mind Map Operations', () => {
     test('selecting a node enables the toolbar Edit/Delete (#105)', async ({ page }) => {
         await createVaultAndOpenMap(page);
         await page.click('#add-node-btn');
-        await page.selectOption('#node-type', 'event');
+        await pickType(page, 'event');
         await page.fill('#node-title', 'A difficult day');
         await page.click('#save-node');
         await expect(page.locator('#map-outline')).toContainText('A difficult day', { timeout: 5000 });
@@ -97,7 +144,7 @@ test.describe('Mind Map Operations', () => {
         // Before selecting: the verbs are dead and nothing is selected.
         await expect(page.locator('#edit-selected-btn')).toBeDisabled();
         await expect(page.locator('#delete-selected-btn')).toBeDisabled();
-        await expect(page.locator('#selection-status')).toHaveText('No node selected');
+        await expect(page.locator('#selection-status')).toHaveText('No dot selected');
 
         // Select the node from the accessible outline twin (the keyboard-first surface).
         await page.locator('.map-outline-node', { hasText: 'A difficult day' }).first().click();
@@ -113,7 +160,7 @@ test.describe('Mind Map Operations', () => {
 
         // Add a Trigger.
         await page.click('#add-node-btn');
-        await page.selectOption('#node-type', 'trigger');
+        await pickType(page, 'trigger');
         await page.fill('#node-title', 'A loud argument');
         await page.click('#save-node');
         await expect(page.locator('#map-outline')).toContainText('A loud argument', { timeout: 5000 });
@@ -126,7 +173,7 @@ test.describe('Mind Map Operations', () => {
 
         // The add-node modal reopens, pre-set to a coping anchor.
         await expect(page.locator('#node-modal')).toBeVisible();
-        await expect(page.locator('#node-type')).toHaveValue('coping');
+        await expect(page.locator('#node-type-chips input[value="coping"]')).toBeChecked();
 
         // Fill + save the anchor; it lands on the map (and is linked back to the trigger).
         await page.fill('#node-title', 'Step outside and breathe');
@@ -139,7 +186,7 @@ test.describe('Mind Map Operations', () => {
 
         // Create a node.
         await page.click('#add-node-btn');
-        await page.selectOption('#node-type', 'event');
+        await pickType(page, 'event');
         await page.fill('#node-title', 'A gentle morning');
         await page.click('#save-node');
         await expect(page.locator('#map-outline')).toContainText('A gentle morning', { timeout: 5000 });
@@ -181,14 +228,14 @@ test.describe('Mind Map Operations', () => {
 
         // Two unconnected nodes that share a keyword.
         await page.click('#add-node-btn');
-        await page.selectOption('#node-type', 'event');
+        await pickType(page, 'event');
         await page.fill('#node-title', 'A storm');
         await page.click('#save-node');
         await expect(page.locator('#map-outline')).toContainText('A storm', { timeout: 5000 });
         await giveKeyword('A storm', 'rain');
 
         await page.click('#add-node-btn');
-        await page.selectOption('#node-type', 'emotion');
+        await pickType(page, 'emotion');
         await page.fill('#node-title', 'Unease');
         await page.click('#save-node');
         await expect(page.locator('#map-outline')).toContainText('Unease', { timeout: 5000 });
@@ -213,10 +260,75 @@ test.describe('Mind Map Operations', () => {
     test('non-trigger nodes do not raise the pairing nudge', async ({ page }) => {
         await createVaultAndOpenMap(page);
         await page.click('#add-node-btn');
-        await page.selectOption('#node-type', 'emotion');
+        await pickType(page, 'emotion');
         await page.fill('#node-title', 'A quiet hope');
         await page.click('#save-node');
         await expect(page.locator('.notification-success')).toBeVisible({ timeout: 5000 });
         await expect(page.locator('.notification-nudge')).toHaveCount(0);
+    });
+
+    test('two nodes link once, refuse a duplicate, and can be unlinked (#117)', async ({ page }) => {
+        await createVaultAndOpenMap(page);
+
+        const addNode = async (type, title) => {
+            await page.click('#add-node-btn');
+            await pickType(page, type);
+            await page.fill('#node-title', title);
+            await page.click('#save-node');
+            await expect(page.locator('#map-outline')).toContainText(title, { timeout: 5000 });
+        };
+        await addNode('event', 'First thing');
+        await addNode('emotion', 'Second thing');
+
+        // Link them from the accessible outline (Link mode: choose two).
+        const linkPair = async () => {
+            await page.click('#link-mode-btn');
+            await page.locator('.map-outline-node', { hasText: 'First thing' }).first().click();
+            await page.locator('.map-outline-node', { hasText: 'Second thing' }).first().click();
+        };
+        await linkPair();
+        // The connection shows up in the accessible outline (the reliable source of truth).
+        await expect(page.locator('#map-outline')).toContainText('Connected to: Second thing', { timeout: 5000 });
+
+        // Linking them again is refused gently, with no duplicate.
+        await linkPair();
+        await expect(page.locator('.notification-info')).toContainText(/already connected/i, { timeout: 5000 });
+
+        // Unlink from the node's detail drawer; the connection goes away.
+        await page.click('#select-mode-btn');
+        await page.locator('.map-outline-node', { hasText: 'First thing' }).first().click();
+        await expect(page.locator('#node-detail')).toHaveClass(/open/);
+        await page.locator('#detail-connections .detail-unlink').first().click();
+        await expect(page.locator('#detail-connections')).toContainText(/no connections/i, { timeout: 5000 });
+    });
+
+    test('the "How it works" walkthrough opens, steps, and skips (#118)', async ({ page }) => {
+        await createVaultAndOpenMap(page);
+        await page.click('#tutorial-btn');
+        const modal = page.locator('#tutorial-modal');
+        await expect(modal).toBeVisible();
+        await expect(page.locator('.tutorial-title')).toContainText(/welcome/i, { timeout: 3000 });
+        await page.click('#tutorial-next');
+        await expect(page.locator('.tutorial-title')).not.toContainText(/welcome/i, { timeout: 3000 });
+        await page.click('#tutorial-skip');
+        await expect(modal).toBeHidden({ timeout: 3000 });
+    });
+
+    test('the What\'s new changelog opens from the footer (#119)', async ({ page }) => {
+        await createVaultAndOpenMap(page);
+        await page.click('#whats-new-btn');
+        const modal = page.locator('#changelog-modal');
+        await expect(modal).toBeVisible();
+        await expect(modal).toContainText(/unlink/i, { timeout: 3000 });
+    });
+
+    test('crisis support exposes real call + text links (#107)', async ({ page }) => {
+        await createVaultAndOpenMap(page);
+        await page.click('#crisis-btn');
+        await expect(page.locator('#crisis-modal')).toBeVisible();
+        await expect(page.locator('#crisis-modal a[href="tel:988"]')).toBeVisible();
+        await expect(page.locator('#crisis-modal a[href="sms:988"]')).toBeVisible();
+        await expect(page.locator('#crisis-modal a[href^="sms:741741"]')).toBeVisible();
+        await expect(page.locator('#crisis-modal a[href="tel:911"]')).toBeVisible();
     });
 });

@@ -49,7 +49,7 @@
 
     <!-- Crisis Resources Bar -->
     <div id="crisis-bar" class="crisis-bar" style="display:none;">
-        <span>Need immediate help? Call 988 (Crisis Lifeline) or 911</span>
+        <span>Need immediate help? <a href="tel:988">Call 988</a>, <a href="sms:988">text 988</a>, or call <a href="tel:911">911</a></span>
         <button id="hide-crisis-bar" aria-label="Hide crisis resources">&times;</button>
     </div>
 
@@ -157,12 +157,11 @@
         <header class="app-header">
             <div class="header-left">
                 <h1><img src="/static/favicon.svg" alt="" width="28" height="28" style="vertical-align:-6px;margin-right:7px"> Wymber</h1>
-                <span id="save-indicator" class="save-indicator">All changes saved</span>
             </div>
 
             <nav class="header-nav">
-                <button id="add-node-btn" class="btn btn-primary">
-                    <span class="icon">+</span> Add Node
+                <button id="tutorial-btn" class="btn" title="A short walkthrough of how the map works">
+                    <span class="icon">&#9432;</span> How it works
                 </button>
                 <button id="analyze-btn" class="btn">
                     <span class="icon">?</span> Analyze Map
@@ -173,7 +172,10 @@
                 <button id="settings-btn" class="btn">
                     <span class="icon">&#9881;</span> Settings
                 </button>
-                <button id="logout-btn" class="btn btn-secondary">Logout</button>
+                <button id="logout-btn" class="btn btn-secondary"
+                        title="Esc does this too: when nothing is open, Escape logs you out right away">
+                    Logout <kbd class="btn-kbd">Esc</kbd>
+                </button>
             </nav>
         </header>
 
@@ -181,30 +183,45 @@
             <!-- Mind Map Toolbar -->
             <div id="mindmap-toolbar" class="mindmap-toolbar">
                 <div class="toolbar-section">
-                    <h3>Mind Map Actions</h3>
-                    <p class="toolbar-help">Select a node first, then choose an action</p>
+                    <div class="toolbar-heading">
+                        <div class="toolbar-heading-row">
+                            <h3>Mind Map Actions</h3>
+                            <span id="save-indicator" class="save-indicator" role="status">All changes saved</span>
+                        </div>
+                        <p class="toolbar-help">Select a dot first, then choose an action</p>
+                    </div>
                 </div>
                 <div class="toolbar-buttons">
-                    <button id="select-mode-btn" class="btn btn-toolbar active" title="Click to select nodes">
+                    <button id="add-node-btn" class="btn btn-primary" title="Add something to your map (N)">
+                        <span class="icon">+</span> Add a dot
+                    </button>
+                    <button id="select-mode-btn" class="btn btn-toolbar active" title="Click to select dots">
                         <span class="icon">&rarr;</span> Select
                     </button>
-                    <button id="link-mode-btn" class="btn btn-toolbar" title="Connect two nodes">
-                        <span class="icon">&harr;</span> Link Nodes
+                    <button id="link-mode-btn" class="btn btn-toolbar" title="Connect two dots">
+                        <span class="icon">&harr;</span> Link dots
                     </button>
-                    <button id="edit-selected-btn" class="btn btn-toolbar" disabled title="Edit selected node">
+                    <button id="edit-selected-btn" class="btn btn-toolbar" disabled title="Edit the selected dot">
                         <span class="icon">&#9998;</span> Edit
                     </button>
-                    <button id="delete-selected-btn" class="btn btn-toolbar" disabled title="Delete selected node">
+                    <button id="delete-selected-btn" class="btn btn-toolbar" disabled title="Delete the selected dot">
                         <span class="icon">&times;</span> Delete
                     </button>
                 </div>
                 <div class="toolbar-status">
-                    <span id="selection-status">No node selected</span>
+                    <span id="selection-status">No dot selected</span>
                     <button id="suggest-btn" class="suggest-affordance" type="button" hidden>
                         <span class="suggest-spark" aria-hidden="true">&#10022;</span>
                         <span id="suggest-label">0 possible connections</span>
                     </button>
                 </div>
+                <details id="node-legend" class="node-legend">
+                    <summary>What the colours mean</summary>
+                    <p class="node-legend-hint">Choose one to add a dot of that kind.</p>
+                    <ul id="node-legend-list" class="node-legend-list" aria-label="What each colour means; choose one to add a dot of that kind">
+                        <!-- populated from NODE_TYPES by app.js (config.js stays the source of truth) -->
+                    </ul>
+                </details>
             </div>
 
             <div id="mindmap-container" class="mindmap-container"
@@ -212,17 +229,23 @@
                  aria-label="Interactive trauma mapping workspace"
                  tabindex="0">
                 <div id="mindmap" class="mindmap"></div>
+                <div class="zoom-controls" role="group" aria-label="Zoom">
+                    <button id="zoom-in-btn" class="zoom-btn" type="button" aria-label="Zoom in" title="Zoom in">+</button>
+                    <button id="zoom-out-btn" class="zoom-btn" type="button" aria-label="Zoom out" title="Zoom out">&minus;</button>
+                    <button id="zoom-fit-btn" class="zoom-btn zoom-btn-fit" type="button" aria-label="Fit the whole map" title="Fit the whole map">Fit</button>
+                </div>
                 <div id="mindmap-placeholder" class="mindmap-placeholder" style="display:none;">
                     <h2>Your map is empty for now</h2>
                     <p>This is where you map experiences and how they connect. Everything stays on this device.</p>
                     <div class="mindmap-help">
                         <h3>How to use your map:</h3>
                         <ul>
-                            <li><strong>Add Node:</strong> Click "+ Add Node" button above to create entries</li>
-                            <li><strong>Select:</strong> Click any node to select it</li>
-                            <li><strong>Link:</strong> Use "Link Nodes" to connect related experiences</li>
-                            <li><strong>Edit:</strong> Select a node, then click "Edit" to modify it</li>
-                            <li><strong>Navigate:</strong> Use Tab key to move between nodes</li>
+                            <li><strong>Add:</strong> Click "+ Add a dot" in Mind Map Actions (or press <kbd>N</kbd>)</li>
+                            <li><strong>Select:</strong> Click any dot to select it</li>
+                            <li><strong>Link:</strong> Use "Link dots" to connect related experiences</li>
+                            <li><strong>Unlink:</strong> Open a dot's Connections, or tap the line between two, to remove a link</li>
+                            <li><strong>Edit:</strong> Select a dot, then click "Edit" to modify it</li>
+                            <li><strong>Navigate:</strong> Use Tab key to move between dots</li>
                         </ul>
                         <p class="mindmap-help-note">
                             Go at your own pace. You can change or delete anything you add.
@@ -254,15 +277,16 @@
                  without a pointer or sight (a11y is architecture, not an afterthought). -->
             <section id="map-outline-region" class="map-outline-region" aria-label="Your map as a list">
                 <h3 class="map-outline-heading">Your map as a list</h3>
-                <p class="map-outline-note">A keyboard-friendly view. Choose a node to select it; in Link mode, choose two to connect them.</p>
+                <p class="map-outline-note">A keyboard-friendly view. Choose a dot to select it; in Link mode, choose two to connect them.</p>
                 <div id="map-outline" class="map-outline"></div>
             </section>
         </main>
 
         <footer class="app-footer">
             <div class="keyboard-hints">
-                <span>Keyboard: <kbd>Ctrl+N</kbd> New Node | <kbd>Delete</kbd> Remove | <kbd>Tab</kbd> Navigate | <kbd>Esc</kbd> Close</span>
+                <span>Keyboard: <kbd>N</kbd> Add a dot | <kbd>Delete</kbd> Remove | <kbd>Tab</kbd> Navigate | <kbd>Esc</kbd> Close, or logout when nothing is open</span>
             </div>
+            <button id="whats-new-btn" class="app-footer-link" type="button">What's new</button>
         </footer>
     </div>
 
@@ -288,21 +312,10 @@
 
             <div class="modal-body">
                 <div class="form-group">
-                    <label for="node-type">Type of Entry</label>
-                    <select id="node-type" class="node-type-select">
-                        <option value="">Choose a type...</option>
-                        <option value="event">Event</option>
-                        <option value="emotion">Emotion</option>
-                        <option value="body">Body</option>
-                        <option value="person">Person</option>
-                        <option value="place">Place</option>
-                        <option value="trigger">Trigger</option>
-                        <option value="coping">Coping</option>
-                        <option value="support">Support</option>
-                        <option value="need">Need</option>
-                        <option value="insight">Insight</option>
-                        <option value="growth">Growth</option>
-                    </select>
+                    <span class="form-label" id="node-type-label">Type of Entry</span>
+                    <!-- All 11 types visible as colour-dotted chips (radios), rendered from
+                         NODE_TYPES so config.js stays the source of truth. -->
+                    <div id="node-type-chips" class="type-chips" role="radiogroup" aria-labelledby="node-type-label"></div>
                     <div id="type-description" class="type-description"></div>
                 </div>
 
@@ -328,7 +341,7 @@
     <!-- Node detail drawer (#108): a selected node's home. Edit its type, title, description,
          a longer story (the user's own narrative), and keywords (tags that also feed link
          discovery). Slides in gently; Escape or the close button dismisses it, saving as it goes. -->
-    <aside id="node-detail" class="node-detail" aria-label="Node details" inert>
+    <aside id="node-detail" class="node-detail" aria-label="Dot details" inert>
         <div class="node-detail-head">
             <span id="detail-chip" class="detail-chip" aria-hidden="true"></span>
             <span id="detail-type-name" class="detail-type-name">Details</span>
@@ -371,7 +384,7 @@
                 <div id="detail-keywords" class="keyword-tags"></div>
                 <input id="detail-keyword-input" class="detail-input keyword-input" type="text"
                        placeholder="Add a keyword, then Enter" aria-label="Add a keyword" />
-                <span class="detail-hint">Tags that link related nodes. Press Enter or comma to add.</span>
+                <span class="detail-hint">Tags that link related dots. Press Enter or comma to add.</span>
             </div>
             <div class="detail-field">
                 <span class="detail-label">Connections</span>
@@ -380,7 +393,7 @@
         </div>
         <div class="node-detail-foot">
             <button id="detail-save" class="btn btn-primary" type="button">Save</button>
-            <button id="detail-delete" class="btn btn-text-danger" type="button">Remove node</button>
+            <button id="detail-delete" class="btn btn-text-danger" type="button">Remove this dot</button>
         </div>
     </aside>
 
@@ -485,20 +498,30 @@
                 <p class="crisis-intro">If you're in crisis or thinking about harming yourself, please reach out. Help is available right now, and you deserve it.</p>
                 <ul class="crisis-list">
                     <li class="crisis-item">
-                        <span class="crisis-key">988</span>
-                        <span class="crisis-desc">Suicide &amp; Crisis Lifeline (US): call or text, any time, day or night</span>
+                        <span class="crisis-key">988 Suicide &amp; Crisis Lifeline (US)</span>
+                        <span class="crisis-desc">Reach a counselor any time, day or night. Free and confidential.</span>
+                        <span class="crisis-actions">
+                            <a class="crisis-action" href="tel:988">Call 988</a>
+                            <a class="crisis-action" href="sms:988">Text 988</a>
+                        </span>
                     </li>
                     <li class="crisis-item">
-                        <span class="crisis-key">Text HOME to 741741</span>
-                        <span class="crisis-desc">Crisis Text Line</span>
+                        <span class="crisis-key">Crisis Text Line</span>
+                        <span class="crisis-desc">Text-based support, if talking is too much right now.</span>
+                        <span class="crisis-actions">
+                            <a class="crisis-action" href="sms:741741?&amp;body=HOME">Text HOME to 741741</a>
+                        </span>
                     </li>
                     <li class="crisis-item">
                         <span class="crisis-key">911</span>
-                        <span class="crisis-desc">Emergency services (US)</span>
+                        <span class="crisis-desc">Emergency services (US).</span>
+                        <span class="crisis-actions">
+                            <a class="crisis-action" href="tel:911">Call 911</a>
+                        </span>
                     </li>
                     <li class="crisis-item">
                         <a class="crisis-key crisis-link" href="https://findahelpline.com" target="_blank" rel="noopener">Find a helpline in your country</a>
-                        <span class="crisis-desc">175+ countries (needs internet)</span>
+                        <span class="crisis-desc">175+ countries (needs internet).</span>
                     </li>
                 </ul>
                 <p class="safety-disclaimer">Wymber can't contact anyone for you. These are external services you reach out to directly.</p>
@@ -540,6 +563,38 @@
             </div>
             <div class="modal-footer">
                 <button id="close-grounding-btn" class="btn btn-primary">I'm okay for now</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- First-run tutorial (#118): a short, gentle, skippable walkthrough. Reopen anytime via
+         "How it works". Steps live in tutorial.js so they're easy to keep current. -->
+    <div id="tutorial-modal" class="modal" style="display:none;" role="dialog" aria-modal="true">
+        <div class="modal-content tutorial-card">
+            <button class="close-btn" id="close-tutorial" aria-label="Close walkthrough">&times;</button>
+            <div id="tutorial-step" class="tutorial-step"><!-- populated by tutorial.js --></div>
+            <div class="tutorial-foot">
+                <div id="tutorial-dots" class="tutorial-dots" aria-hidden="true"></div>
+                <div class="tutorial-nav">
+                    <button id="tutorial-skip" class="btn-link" type="button">Skip</button>
+                    <button id="tutorial-back" class="btn btn-secondary" type="button">Back</button>
+                    <button id="tutorial-next" class="btn btn-primary" type="button">Next</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- What's new (#119): a short, human changelog, surfaced so people don't have to dig.
+         Entries live in changelog.js (mirrors CHANGELOG.md). -->
+    <div id="changelog-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>What's new</h2>
+                <button class="close-btn" id="close-changelog" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="changelog-intro">A short list of what changed. Nothing here touches your map.</p>
+                <div id="changelog-list" class="changelog-list"></div>
             </div>
         </div>
     </div>
