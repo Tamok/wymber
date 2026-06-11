@@ -45,9 +45,12 @@ function layoutLabel(label) {
     // to clip long titles vertically).
     const lineCount = lines.reduce((n, l) => n + Math.max(1, Math.ceil(l.length / MAX)), 0);
     const longest = lines.reduce((m, l) => Math.max(m, Math.min(l.length, MAX)), 1);
-    const w = Math.min(Math.max(Math.round(longest * 7.4) + 34, 84), 210);
+    // A little extra width so text clears the rounded ends (they're dots: a one-line dot is a
+    // full pill; taller ones soften toward a lozenge with the radius capped).
+    const w = Math.min(Math.max(Math.round(longest * 7.4) + 42, 90), 216);
     const h = Math.min(lineCount, 8) * 20 + 26;
-    return { w, h, tw: w - 28 };
+    const r = Math.min(Math.round(h / 2), 26);
+    return { w, h, r, tw: w - 36 };
 }
 
 // Lazy-load the (~424KB) Cytoscape bundle only when the map first opens, so the auth/unlock
@@ -118,6 +121,7 @@ export class TrauMindMap {
                 selector: 'node',
                 style: {
                     'shape': 'round-rectangle',
+                    'corner-radius': 'data(r)',
                     'background-color': 'data(color)',
                     'background-opacity': 1,
                     'border-width': 2,
@@ -197,7 +201,7 @@ export class TrauMindMap {
                 group: 'nodes',
                 data: {
                     id: String(n.id), label: n.title, color: typeColor(n.node_type), ntype: n.node_type,
-                    w: size.w, h: size.h, tw: size.tw,
+                    w: size.w, h: size.h, r: size.r, tw: size.tw,
                 },
                 position,
             });
