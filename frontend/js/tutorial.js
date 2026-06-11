@@ -8,7 +8,7 @@
  */
 
 const SVG = (inner) => `<svg viewBox="0 0 140 96" width="140" height="96" role="img">${inner}</svg>`;
-const NODE = (x, y, fill) => `<rect x="${x}" y="${y}" width="34" height="22" rx="7" fill="${fill}"/>`;
+const NODE = (x, y, fill) => `<rect x="${x}" y="${y}" width="34" height="22" rx="11" fill="${fill}"/>`;
 const LINE = (x1, y1, x2, y2) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#cfc7ba" stroke-width="2.5" stroke-linecap="round"/>`;
 
 // Soft pastels echoing the node palette; calm, not clinical.
