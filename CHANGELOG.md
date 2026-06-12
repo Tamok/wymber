@@ -3,6 +3,18 @@
 A short, human list of what's new, so you don't have to go looking. For the full technical
 history, see the [commits](https://github.com/Tamok/wymber/commits).
 
+## 2026-06-12
+- A plain-language [privacy policy](https://wymber.app/privacy) and an
+  [about page](https://wymber.app/about): who makes Wymber, why, and exactly what we
+  collect (nothing).
+- Common questions answered right on the landing page, in plain words.
+- Sharing a Wymber link now shows a proper preview card everywhere.
+- A formal stance on AI: search engines and AI assistants may cite the public site, and we
+  decline AI training on it (declared machine-readably). Your map was never readable by anyone
+  and still isn't.
+- Stricter transport security (HSTS) and a standard security contact
+  ([security.txt](https://wymber.app/.well-known/security.txt)).
+
 ## 2026-06-10
 - Nodes are now dots. You put down a dot for what matters, and connect the dots at your own pace.
 - A redesigned colour palette: every type now has its own distinguishable colour, chosen for

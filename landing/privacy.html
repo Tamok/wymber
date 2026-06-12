@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy policy · Wymber</title>
+  <meta name="description" content="Wymber's plain-language privacy policy: your map is encrypted on your device, there are no accounts, and we collect nothing. The architecture is the policy.">
+  <link rel="canonical" href="https://wymber.app/privacy">
+  <meta property="og:site_name" content="Wymber">
+  <meta property="og:title" content="Wymber privacy policy">
+  <meta property="og:description" content="Your map is encrypted on your device. No accounts, no telemetry, nothing collected. The architecture is the policy.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://wymber.app/privacy">
+  <meta property="og:image" content="https://wymber.app/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .policy-main { max-width: 720px; margin: 0 auto; padding: 36px 24px 64px; }
+    .policy-main h1 { text-align: center; }
+    .policy-lead { color: var(--ink-soft); text-align: center; max-width: 60ch; margin: 0 auto 36px; }
+    .policy-main h2 { text-align: left; font-size: 1.2rem; margin: 30px 0 10px; }
+    .policy-main p, .policy-main li { color: var(--ink-soft); }
+    .policy-main ul { padding-left: 1.2em; display: grid; gap: 6px; }
+    .policy-updated { color: var(--ink-soft); text-align: center; font-size: 0.85rem; margin-top: 32px; }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <a class="wordmark" href="/" aria-label="Wymber home">
+      <img class="mark" src="favicon.svg" alt="" width="30" height="30">
+      <span>Wymber</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary"><a href="/">Home</a></nav>
+  </header>
+
+  <main class="policy-main">
+    <h1>Privacy policy</h1>
+    <p class="policy-lead">Most privacy policies explain what a company does with your data.
+       Wymber is built so there is no data to do anything with. This page says that precisely,
+       in plain language.</p>
+
+    <h2>What we collect: nothing</h2>
+    <ul>
+      <li>There are <strong>no accounts</strong>. You never give us a name, an email, or any sign-up detail.</li>
+      <li>There is <strong>no analytics or telemetry in the app</strong>. We don't track what you do, and we set no cookies.</li>
+      <li>There is <strong>no server-side storage of user data</strong>. Nothing you write is ever transmitted to us.</li>
+    </ul>
+
+    <h2>Where your map lives</h2>
+    <p>Your map is stored in a single encrypted vault <strong>on your own device</strong>, in your
+       browser's private storage. It is sealed with AES-256-GCM using a key derived from your
+       password (or your recovery code). Only ciphertext is ever at rest. We cannot read your map,
+       reset your password, or recover your data, because we never have any of it. That is a
+       design choice, not a promise: the <a href="https://github.com/Tamok/wymber">code is open
+       source</a>, so anyone can verify it.</p>
+
+    <h2>What this means in practice</h2>
+    <ul>
+      <li>If you clear your browser's site data, your vault is deleted with it. Your <strong>recovery
+          sheet</strong> protects you from a forgotten password, not from deleted storage, so consider
+          keeping an export if your map matters to you.</li>
+      <li>Your map never syncs anywhere today. If optional encrypted sync arrives later, it will be
+          opt-in and zero-knowledge: only the sealed file would travel, and we would still never
+          hold your key. This policy will be updated before any such feature ships.</li>
+      <li>Crisis links (call or text 988, 911) use your phone's dialer or messaging app directly.
+          Nothing about using them touches us.</li>
+    </ul>
+
+    <h2>This website</h2>
+    <p>wymber.app is a set of static pages served by Cloudflare. Like any web host, Cloudflare
+       processes requests (such as IP addresses) transiently to deliver the site and protect it
+       from abuse; see the
+       <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener">Cloudflare
+       privacy policy</a>. We run no trackers and no advertising, here or in the app.</p>
+
+    <h2>AI and search engines</h2>
+    <p>Your map can never be read by anyone, including AI systems: it is encrypted on your device.
+       The public pages of this website may be indexed and cited by search engines and AI
+       assistants, and we ask AI companies not to use them for model training (declared
+       machine-readably in our <a href="robots.txt">robots.txt</a> Content Signals).</p>
+
+    <h2>If you email us</h2>
+    <p>If you write to <a href="mailto:jonathan@wymber.app">jonathan@wymber.app</a>, we see your
+       email address and what you send, and we use it only to reply. Please don't include anything
+       from your map that you'd rather keep private.</p>
+
+    <h2>Changes</h2>
+    <p>If this policy changes, the change will be visible in the
+       <a href="/changelog">changelog</a> and in the site's
+       <a href="https://github.com/Tamok/wymber">public history</a>. The policy can only get more
+       specific about the same promise: your map stays yours.</p>
+
+    <p class="policy-updated">Effective 2026-06-12 · Wymber is a self-help tool for personal
+       reflection, not therapy, diagnosis, or medical care.</p>
+  </main>
+
+  <footer class="site-footer">
+    <p class="copyright">© 2026 Wymber · <a href="/">Home</a> · <a href="/about">About</a> · Produced by <a href="https://zoignon.com">Zoignon Studio</a></p>
+  </footer>
+</body>
+</html>

@@ -5,15 +5,70 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Wymber: a private space to map and understand your experiences</title>
   <meta name="description" content="Wymber is a privacy-first tool to map and make sense of your experiences. No account, no servers. Your encrypted map never leaves your device.">
+  <link rel="canonical" href="https://wymber.app/">
 
   <!-- Open Graph / social -->
-  <meta property="og:title" content="Wymber">
-  <meta property="og:description" content="A private space to map and understand your experiences. Nothing leaves your device.">
+  <meta property="og:site_name" content="Wymber">
+  <meta property="og:title" content="Wymber: a private space to map and understand your experiences">
+  <meta property="og:description" content="Put down a dot, connect the dots. No account, no servers. Your encrypted map never leaves your device.">
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://wymber.app">
+  <meta property="og:url" content="https://wymber.app/">
+  <meta property="og:image" content="https://wymber.app/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Three soft pastel dots connected by lines, with the words: Wymber. Put down a dot, connect the dots.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Wymber: a private space to map and understand your experiences">
+  <meta name="twitter:description" content="Put down a dot, connect the dots. No account, no servers. Your encrypted map never leaves your device.">
+  <meta name="twitter:image" content="https://wymber.app/og.png">
 
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="styles.css">
+
+  <!-- Entity graph: who/what Wymber is, machine-readably (mirrors the visible page only). -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://wymber.app/#org",
+        "name": "Wymber",
+        "url": "https://wymber.app/",
+        "logo": "https://wymber.app/logo.png",
+        "email": "jonathan@wymber.app",
+        "parentOrganization": { "@type": "Organization", "name": "Zoignon Studio", "url": "https://zoignon.com" },
+        "sameAs": [
+          "https://github.com/Tamok/wymber",
+          "https://mastodon.social/@wymberapp",
+          "https://bsky.app/profile/wymberapp.bsky.social",
+          "https://www.threads.net/@wymberapp",
+          "https://instagram.com/wymberapp"
+        ]
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://wymber.app/#website",
+        "name": "Wymber",
+        "url": "https://wymber.app/",
+        "publisher": { "@id": "https://wymber.app/#org" }
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://wymber.app/#app",
+        "name": "Wymber",
+        "url": "https://web.wymber.app/",
+        "applicationCategory": "HealthApplication",
+        "operatingSystem": "Web",
+        "description": "A privacy-first, local-first tool to map and understand your experiences. Your map is encrypted on your device; no account, no servers, no tracking. A self-help tool for personal reflection, not therapy or medical care.",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "license": "https://www.gnu.org/licenses/agpl-3.0.html",
+        "publisher": { "@id": "https://wymber.app/#org" }
+      }
+    ]
+  }
+  </script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -232,6 +287,112 @@
         </article>
       </div>
     </section>
+
+    <!-- Common questions: also where the plain words live (trauma mapping, local-first, free)
+         so people and machines asking those questions can find honest answers. -->
+    <section id="faq" class="band band-tint">
+      <h2>Common questions</h2>
+      <div class="faq">
+        <article class="faq-item">
+          <h3>Is Wymber a trauma mapping tool?</h3>
+          <p>Yes. Wymber is a digital descendant of paper exercises like the trauma egg and the
+             trauma timeline: you put down dots for the events, feelings, people, triggers,
+             coping, and growth that matter, and connect them at your own pace. You can also use
+             it to map anything else you're working through. More in
+             <a href="/trauma-mapping">what is trauma mapping?</a></p>
+        </article>
+        <article class="faq-item">
+          <h3>Where does my data live?</h3>
+          <p>On your device, and only there. Your map sits in a single encrypted vault in your
+             browser, sealed with a key derived from your password. There's no account, no
+             server copy, and no tracking. Details in the <a href="/privacy">privacy
+             policy</a>.</p>
+        </article>
+        <article class="faq-item">
+          <h3>Is Wymber therapy?</h3>
+          <p>No. Wymber is a self-help tool for personal reflection, not therapy, diagnosis, or
+             a crisis service. If you're in crisis, call or text 988 (US) or call 911. The
+             research that shaped the design is on the <a href="/sources">sources</a> page.</p>
+        </article>
+        <article class="faq-item">
+          <h3>How much does it cost?</h3>
+          <p>Wymber is free and <a href="https://github.com/Tamok/wymber">open-source</a>
+             (AGPL-3.0). If optional encrypted sync arrives later it may be a paid add-on, but
+             the local, private map stays free.</p>
+        </article>
+        <article class="faq-item">
+          <h3>Can AI read my map or this site?</h3>
+          <p>Your map: never. It's encrypted on your device and unreadable to anyone but you,
+             including us and any AI. This public website: search engines and AI assistants may
+             cite it, and we decline AI training on it (stated machine-readably in our
+             robots.txt).</p>
+        </article>
+      </div>
+    </section>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Is Wymber a trauma mapping tool?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Yes. Wymber is a digital descendant of paper exercises like the trauma egg and the trauma timeline: you put down dots for the events, feelings, people, triggers, coping, and growth that matter, and connect them at your own pace. You can also use it to map anything else you're working through." }
+        },
+        {
+          "@type": "Question",
+          "name": "Where does my data live?",
+          "acceptedAnswer": { "@type": "Answer", "text": "On your device, and only there. Your map sits in a single encrypted vault in your browser, sealed with a key derived from your password. There's no account, no server copy, and no tracking." }
+        },
+        {
+          "@type": "Question",
+          "name": "Is Wymber therapy?",
+          "acceptedAnswer": { "@type": "Answer", "text": "No. Wymber is a self-help tool for personal reflection, not therapy, diagnosis, or a crisis service. If you're in crisis, call or text 988 (US) or call 911." }
+        },
+        {
+          "@type": "Question",
+          "name": "How much does it cost?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Wymber is free and open-source (AGPL-3.0). If optional encrypted sync arrives later it may be a paid add-on, but the local, private map stays free." }
+        },
+        {
+          "@type": "Question",
+          "name": "Can AI read my map or this site?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Your map: never. It's encrypted on your device and unreadable to anyone but you, including us and any AI. This public website: search engines and AI assistants may cite it, and we decline AI training on it, stated machine-readably in robots.txt." }
+        }
+      ]
+    }
+    </script>
+
+    <!-- Go deeper: the question-shaped library (each page answers one thing, with sources). -->
+    <section id="learn" class="band">
+      <h2>Go deeper</h2>
+      <div class="cards">
+        <article class="card">
+          <h3>What is trauma mapping?</h3>
+          <p>Where the practice comes from (the trauma egg, the trauma timeline) and why a map
+             can hold what a journal can't.</p>
+          <a class="card-link" href="/trauma-mapping">Read →</a>
+        </article>
+        <article class="card">
+          <h3>How Wymber encrypts your map</h3>
+          <p>AES-256-GCM in your own browser, a key only you hold, and why "we can't read it"
+             is checkable, not a promise.</p>
+          <a class="card-link" href="/encryption">Read →</a>
+        </article>
+        <article class="card">
+          <h3>Why local-first matters here</h3>
+          <p>Mental-health data on company servers has a track record. The fix is for the data
+             never to be collected.</p>
+          <a class="card-link" href="/local-first">Read →</a>
+        </article>
+        <article class="card">
+          <h3>Trauma-informed design, applied</h3>
+          <p>SAMHSA's six principles, translated into the concrete choices this software
+             actually makes.</p>
+          <a class="card-link" href="/trauma-informed-design">Read →</a>
+        </article>
+      </div>
+    </section>
   </main>
 
   <footer class="site-footer">
@@ -251,7 +412,7 @@
       Wymber is a self-help tool for personal reflection, not a medical device or a substitute for
       professional care.
     </p>
-    <p class="copyright">© 2026 Wymber · <a href="changelog.html">What's new</a> · <a href="sources.html">Sources</a></p>
+    <p class="copyright">© 2026 Wymber · <a href="/changelog">What's new</a> · <a href="/sources">Sources</a> · <a href="/privacy">Privacy</a> · <a href="/about">About</a> · Produced by <a href="https://zoignon.com">Zoignon Studio</a></p>
   </footer>
 
   <script>

@@ -8,17 +8,10 @@
     --border: #e0e0e0;
     --focus: #1976D2;
     --focus-ring: 0 0 0 3px rgba(33, 150, 243, 0.3);
-    
-    /* Node type colors (slightly muted for comfort) */
-    --trauma-color: #c62828;
-    --trigger-color: #ef6c00;
-    --response-color: #f9a825;
-    --symptom-color: #6a1b9a;
-    --emotion-color: #1565c0;
-    --belief-color: #4e342e;
-    --coping-color: #2e7d32;
-    --support-color: #00695c;
-    
+
+    /* Node-type colors live in config.js (NODE_TYPES[*].color); the .node-preview
+       swatches below mirror those pastels. No separate CSS palette to drift. */
+
     /* Spacing for readability */
     --spacing-xs: 0.25rem;
     --spacing-sm: 0.5rem;
@@ -1058,7 +1051,7 @@ kbd {
 .node-preview.coping { background: #A9D6AC; }
 .node-preview.insight { background: #E3BBE9; }
 .node-preview.growth { background: #D8ECB4; }
-.node-preview.support { background: var(--support-color); }
+.node-preview.support { background: #A8DAD3; }
 
 /* Modals */
 .modal {
@@ -1656,6 +1649,10 @@ body {
 }
 .app-footer-link:hover,
 .app-footer-link:focus-visible { color: var(--text-primary); }
+
+/* The studio credit stays demure: same muted link treatment, just smaller. */
+.app-footer-credit { font-size: 0.75rem; }
+.app-footer-sep { color: var(--text-secondary); font-size: 0.75rem; }
 
 /* The breathing guide is the one place we keep gentle motion under reduce-motion: the slow
    swell and the word fade ARE the exercise (functional, calm, non-vestibular), not decoration.

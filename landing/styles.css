@@ -216,6 +216,15 @@ kbd {
 }
 .chips .dot { width: 14px; height: 14px; border-radius: 5px; flex: none; }
 
+/* FAQ */
+.faq { max-width: 720px; margin: 0 auto; display: grid; gap: 22px; }
+.faq-item {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 20px 24px;
+}
+.faq-item h3 { margin: 0 0 8px; font-size: 1.1rem; text-align: left; }
+.faq-item p { margin: 0; color: var(--ink-soft); }
+
 /* Footer */
 .site-footer {
   border-top: 1px solid var(--line); background: var(--surface-2);

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trauma-informed design, applied · Wymber</title>
+  <meta name="description" content="What trauma-informed design means in practice: SAMHSA's six principles translated into concrete software decisions. The choices Wymber made, and why each one exists.">
+  <link rel="canonical" href="https://wymber.app/trauma-informed-design">
+  <meta property="og:site_name" content="Wymber">
+  <meta property="og:title" content="Trauma-informed design, applied">
+  <meta property="og:description" content="SAMHSA's six trauma-informed principles, translated into concrete software decisions.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://wymber.app/trauma-informed-design">
+  <meta property="og:image" content="https://wymber.app/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .article-main { max-width: 720px; margin: 0 auto; padding: 36px 24px 64px; }
+    .article-main h1 { text-align: center; }
+    .article-byline { color: var(--ink-soft); text-align: center; font-size: 0.9rem; margin: 0 auto 36px; }
+    .article-main h2 { text-align: left; font-size: 1.25rem; margin: 30px 0 10px; }
+    .article-main p, .article-main li { color: var(--ink-soft); }
+    .article-main ul { padding-left: 1.2em; display: grid; gap: 6px; }
+    .article-note { border-left: 3px solid var(--line); padding-left: 14px; font-size: 0.92rem; }
+  </style>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "Trauma-informed design, applied",
+    "description": "What trauma-informed design means in practice: SAMHSA's six principles translated into concrete software decisions.",
+    "url": "https://wymber.app/trauma-informed-design",
+    "datePublished": "2026-06-12",
+    "dateModified": "2026-06-12",
+    "image": "https://wymber.app/og.png",
+    "author": { "@type": "Organization", "name": "Zoignon Studio", "url": "https://zoignon.com" },
+    "publisher": { "@id": "https://wymber.app/#org" }
+  }
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="wordmark" href="/" aria-label="Wymber home">
+      <img class="mark" src="favicon.svg" alt="" width="30" height="30">
+      <span>Wymber</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary"><a href="/">Home</a></nav>
+  </header>
+
+  <main class="article-main">
+    <h1>Trauma-informed design, applied</h1>
+    <p class="article-byline">By <a href="/about">Zoignon Studio</a> · Last updated 2026-06-12</p>
+
+    <p>Trauma-informed design means building software on the assumption that some of your users
+       carry trauma, and making sure the product never re-creates the dynamics that hurt them:
+       surprise, pressure, loss of control, being trapped. The reference framework is
+       <a href="https://www.samhsa.gov/resource/dbhis/infographic-6-guiding-principles-trauma-informed-approach"
+       target="_blank" rel="noopener">SAMHSA's six guiding principles</a>: safety; trust and
+       transparency; peer support; collaboration; empowerment, voice and choice; and cultural
+       humility. Principles are easy to cite and hard to ship, so here is what they actually
+       become in Wymber, decision by decision.</p>
+
+    <h2>Safety: nothing sudden, nothing loud</h2>
+    <ul>
+      <li>Soft pastels, generous spacing, and slow (0.3s) transitions; no jarring motion, and
+          <code>prefers-reduced-motion</code> is honoured throughout.</li>
+      <li><kbd>Esc</kbd> always closes what's open. You're never trapped in a screen, and with
+          nothing open it locks Wymber instantly: a quick exit that's always available.</li>
+      <li>Crisis support (call or text 988, 911) is one tap away on every screen, without ever
+          being pushed at you.</li>
+    </ul>
+
+    <h2>Trust and transparency: claims you can check</h2>
+    <ul>
+      <li>The privacy promise is <a href="/encryption">architecture, not policy</a>: encrypted on
+          your device, no account, nothing transmitted, all of it auditable in the
+          <a href="https://github.com/Tamok/wymber" target="_blank" rel="noopener">open code</a>.</li>
+      <li>Honest limits are stated where they matter (what encryption protects you from and what
+          it can't), because reassurance that overpromises is its own harm.</li>
+    </ul>
+
+    <h2>Empowerment, voice and choice: you set the pace</h2>
+    <ul>
+      <li>Nothing is mandatory and nothing nags. There are no streaks, reminders, or guilt
+          mechanics; <a href="https://uxcontent.com/a-guide-to-trauma-informed-content-design/"
+          target="_blank" rel="noopener">trauma-informed content design</a> calls these out as
+          quiet coercion, and they have no place here.</li>
+      <li>Prompts are optional and non-directive ("What happened, in your words?" never "Describe
+          your trauma"). A discovery suggestion is a question, never a change to your map.</li>
+      <li>Onboarding is brief, skippable, and reopenable, following
+          <a href="https://www.smashingmagazine.com/2026/02/building-empathy-centred-ux-framework-mental-health-apps/"
+          target="_blank" rel="noopener">empathy-centred UX guidance for mental-health apps</a>;
+          stepping away is treated as normal, not as churn. The
+          <a href="https://positivepsychology.com/window-of-tolerance/" target="_blank"
+          rel="noopener">window of tolerance</a> shapes this: the tool should help you stay
+          regulated, not push you past it.</li>
+    </ul>
+
+    <h2>Accessibility as part of safety</h2>
+    <p>Predictability is an accessibility property too. Wymber is built to
+       <a href="https://www.w3.org/TR/WCAG21/" target="_blank" rel="noopener">WCAG 2.1 AA</a>:
+       fully keyboard-navigable, screen-reader friendly (the canvas has a synchronized list twin,
+       so the map is never visual-only), with three themes including a low-contrast soft mode.
+       For someone overwhelmed, a UI that behaves exactly as expected is not a nicety; it's what
+       makes the tool usable at all.</p>
+
+    <p class="article-note">The full research list is on the <a href="/sources">sources</a> page.
+       See also: <a href="/trauma-mapping">what is trauma mapping?</a> ·
+       <a href="/local-first">why local-first matters for mental-health data</a>.</p>
+  </main>
+
+  <footer class="site-footer">
+    <p class="copyright">© 2026 Wymber · <a href="/">Home</a> · <a href="/privacy">Privacy</a> · <a href="/about">About</a> · Produced by <a href="https://zoignon.com">Zoignon Studio</a></p>
+  </footer>
+</body>
+</html>

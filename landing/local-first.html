@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Why your mental-health data shouldn't live on someone's server · Wymber</title>
+  <meta name="description" content="Local-first means the data lives on your device and the software comes to it. For mental-health data, the most sensitive data there is, that architecture is the only privacy promise that doesn't depend on trust.">
+  <link rel="canonical" href="https://wymber.app/local-first">
+  <meta property="og:site_name" content="Wymber">
+  <meta property="og:title" content="Local-first: why your mental-health data shouldn't live on someone's server">
+  <meta property="og:description" content="A privacy policy can change. An architecture can't quietly betray you. Why Wymber keeps your map on your device.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://wymber.app/local-first">
+  <meta property="og:image" content="https://wymber.app/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .article-main { max-width: 720px; margin: 0 auto; padding: 36px 24px 64px; }
+    .article-main h1 { text-align: center; }
+    .article-byline { color: var(--ink-soft); text-align: center; font-size: 0.9rem; margin: 0 auto 36px; }
+    .article-main h2 { text-align: left; font-size: 1.25rem; margin: 30px 0 10px; }
+    .article-main p, .article-main li { color: var(--ink-soft); }
+    .article-main ul { padding-left: 1.2em; display: grid; gap: 6px; }
+    .article-note { border-left: 3px solid var(--line); padding-left: 14px; font-size: 0.92rem; }
+  </style>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "Local-first: why your mental-health data shouldn't live on someone's server",
+    "description": "Local-first means the data lives on your device and the software comes to it. For mental-health data, that architecture is the only privacy promise that doesn't depend on trust.",
+    "url": "https://wymber.app/local-first",
+    "datePublished": "2026-06-12",
+    "dateModified": "2026-06-12",
+    "image": "https://wymber.app/og.png",
+    "author": { "@type": "Organization", "name": "Zoignon Studio", "url": "https://zoignon.com" },
+    "publisher": { "@id": "https://wymber.app/#org" }
+  }
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="wordmark" href="/" aria-label="Wymber home">
+      <img class="mark" src="favicon.svg" alt="" width="30" height="30">
+      <span>Wymber</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary"><a href="/">Home</a></nav>
+  </header>
+
+  <main class="article-main">
+    <h1>Local-first: why your mental-health data shouldn't live on someone's server</h1>
+    <p class="article-byline">By <a href="/about">Zoignon Studio</a> · Last updated 2026-06-12</p>
+
+    <p><strong>Local-first</strong> software inverts the usual cloud arrangement: your data lives
+       on your device, and the software comes to the data, instead of your data living on a
+       company's servers where you visit it. The term comes from
+       <a href="https://www.inkandswitch.com/essay/local-first/" target="_blank" rel="noopener">Ink
+       &amp; Switch's local-first essay</a>, which frames it as a question of ownership: whose
+       data is it, really, if a company can read it, lose it, or lock you out of it?</p>
+
+    <h2>Why it matters most for mental-health data</h2>
+    <p>A map of your hardest experiences is about as sensitive as data gets. The track record of
+       app companies holding such data is not reassuring: Mozilla's
+       <a href="https://foundation.mozilla.org/en/privacynotincluded/articles/are-mental-health-apps-better-or-worse-at-privacy-in-2023/"
+       target="_blank" rel="noopener"><em>Privacy Not Included</em> reviews of mental-health apps</a>
+       found the category among the worst they'd studied for data sharing and weak policies, and
+       in the US the FTC has had to act against health apps under the
+       <a href="https://www.ftc.gov/legal-library/browse/rules/health-breach-notification-rule"
+       target="_blank" rel="noopener">Health Breach Notification Rule</a>. The pattern repeats
+       because the incentive exists: collected data can be monetized, subpoenaed, breached, or
+       "anonymized" and shared. The only durable fix is for the data never to be collected.</p>
+
+    <h2>A policy is a promise; an architecture is a fact</h2>
+    <ul>
+      <li>A privacy policy can change with an acquisition, a pivot, or a quiet update. An
+          architecture with no server-side data has nothing to change its mind about.</li>
+      <li>A server can be breached. A server that holds nothing can leak nothing.</li>
+      <li>A company can shut down and take your data with it. A local file, in an
+          <a href="https://github.com/Tamok/wymber" target="_blank" rel="noopener">open
+          format with open code</a>, outlives the company.</li>
+    </ul>
+
+    <h2>How Wymber does local-first</h2>
+    <p>Your map lives in a single <a href="/encryption">encrypted vault</a> in your browser's
+       private storage: no account, no telemetry, no server copy, and the app keeps working
+       offline. The trade-offs are stated plainly rather than hidden: clearing the browser's site
+       data deletes the vault (keep the recovery sheet, and an export if it's precious), and sync
+       across devices doesn't exist yet; when it arrives it will be opt-in and zero-knowledge.
+       The <a href="/privacy">privacy policy</a> is short because the architecture already is the
+       policy.</p>
+
+    <p class="article-note">See also: <a href="/trauma-mapping">what is trauma mapping?</a> ·
+       <a href="/trauma-informed-design">trauma-informed design, applied</a> ·
+       the <a href="/sources">sources</a> behind the design.</p>
+  </main>
+
+  <footer class="site-footer">
+    <p class="copyright">© 2026 Wymber · <a href="/">Home</a> · <a href="/privacy">Privacy</a> · <a href="/about">About</a> · Produced by <a href="https://zoignon.com">Zoignon Studio</a></p>
+  </footer>
+</body>
+</html>

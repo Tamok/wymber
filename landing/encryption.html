@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>How Wymber encrypts your map (and why we can't read it) · Wymber</title>
+  <meta name="description" content="Wymber seals your map with AES-256-GCM in your own browser, with a key derived from your password. No account, no server copy, nothing we could read or leak. Here's exactly how, in plain language.">
+  <link rel="canonical" href="https://wymber.app/encryption">
+  <meta property="og:site_name" content="Wymber">
+  <meta property="og:title" content="How Wymber encrypts your map (and why we can't read it)">
+  <meta property="og:description" content="AES-256-GCM in your own browser, a key derived from your password, only ciphertext at rest. Plain-language detail, verifiable in the open code.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://wymber.app/encryption">
+  <meta property="og:image" content="https://wymber.app/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .article-main { max-width: 720px; margin: 0 auto; padding: 36px 24px 64px; }
+    .article-main h1 { text-align: center; }
+    .article-byline { color: var(--ink-soft); text-align: center; font-size: 0.9rem; margin: 0 auto 36px; }
+    .article-main h2 { text-align: left; font-size: 1.25rem; margin: 30px 0 10px; }
+    .article-main p, .article-main li { color: var(--ink-soft); }
+    .article-main ul, .article-main ol { padding-left: 1.2em; display: grid; gap: 6px; }
+    .article-note { border-left: 3px solid var(--line); padding-left: 14px; font-size: 0.92rem; }
+  </style>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "How Wymber encrypts your map (and why we can't read it)",
+    "description": "Wymber seals your map with AES-256-GCM in your own browser, with a key derived from your password. Only ciphertext is ever at rest.",
+    "url": "https://wymber.app/encryption",
+    "datePublished": "2026-06-12",
+    "dateModified": "2026-06-12",
+    "image": "https://wymber.app/og.png",
+    "author": { "@type": "Organization", "name": "Zoignon Studio", "url": "https://zoignon.com" },
+    "publisher": { "@id": "https://wymber.app/#org" }
+  }
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="wordmark" href="/" aria-label="Wymber home">
+      <img class="mark" src="favicon.svg" alt="" width="30" height="30">
+      <span>Wymber</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary"><a href="/">Home</a></nav>
+  </header>
+
+  <main class="article-main">
+    <h1>How Wymber encrypts your map (and why we can't read it)</h1>
+    <p class="article-byline">By <a href="/about">Zoignon Studio</a> · Last updated 2026-06-12</p>
+
+    <p>Short version: your map is encrypted <strong>in your own browser</strong> with
+       AES-256-GCM, using a key derived from your password. Only the sealed (encrypted) form is
+       ever stored. There is no account, no server copy, and no key anywhere but with you, so
+       "trust us" never enters into it. We couldn't read your map if we wanted to, and neither
+       could anyone who compromised us.</p>
+
+    <h2>What happens when you create a vault</h2>
+    <ol>
+      <li>Your browser generates a random <strong>data key</strong> (AES-256-GCM), the key that
+          actually seals your map.</li>
+      <li>Your password is stretched into a <strong>wrapping key</strong> using PBKDF2 with
+          600,000 iterations, which makes guessing attacks expensive.</li>
+      <li>The data key is wrapped (encrypted) by that wrapping key, and separately by a key from
+          your <strong>recovery code</strong>, so a forgotten password doesn't cost you your map.
+          This pattern is called envelope encryption.</li>
+      <li>Everything at rest, in your browser's private storage, is ciphertext. Unlocking
+          decrypts the data key into memory for the session; stepping away locks it again.</li>
+    </ol>
+
+    <h2>Why you can verify this instead of believing us</h2>
+    <p>All of it runs on the browser's built-in
+       <a href="https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto" target="_blank"
+       rel="noopener">Web Crypto API</a> (no home-rolled cryptography), and the
+       <a href="https://github.com/Tamok/wymber" target="_blank" rel="noopener">code is open
+       source</a> under AGPL-3.0: the vault logic is one readable file
+       (<a href="https://github.com/Tamok/wymber/blob/main/frontend/js/crypto.js" target="_blank"
+       rel="noopener">crypto.js</a>), and the architecture decision is documented in
+       <a href="https://github.com/Tamok/wymber/blob/main/docs/adr/0001-local-first-encrypted-file.md"
+       target="_blank" rel="noopener">ADR-0001</a>. A privacy claim you can't audit is just
+       marketing; this one you can check.</p>
+
+    <h2>What this protects you from, honestly</h2>
+    <ul>
+      <li><strong>Us, and anyone who breaches us:</strong> there is nothing on our side to leak,
+          subpoena, sell, or train AI on. Not as policy, as architecture.</li>
+      <li><strong>A stolen or shared device, while locked:</strong> at rest there is only
+          ciphertext; without your password or recovery code it stays that way.</li>
+      <li><strong>Not from everything:</strong> someone watching your unlocked screen, malware on
+          your device, or you clearing the browser's site data (which deletes the vault). Honest
+          limits matter; keep your recovery sheet, and an export if your map is precious.</li>
+    </ul>
+
+    <h2>What about sync, or losing my password?</h2>
+    <p>Your <strong>recovery sheet</strong> (a printable one-time code) reopens the vault if the
+       password is gone. If optional sync ships later, it will be zero-knowledge: only the sealed
+       file would ever travel, and the key would still never leave you. The
+       <a href="/privacy">privacy policy</a> will say so before any such feature exists.</p>
+
+    <p class="article-note">See also: <a href="/local-first">why local-first matters for
+       mental-health data</a> · <a href="/trauma-mapping">what is trauma mapping?</a> ·
+       the <a href="/sources">sources</a> behind the design.</p>
+  </main>
+
+  <footer class="site-footer">
+    <p class="copyright">© 2026 Wymber · <a href="/">Home</a> · <a href="/privacy">Privacy</a> · <a href="/about">About</a> · Produced by <a href="https://zoignon.com">Zoignon Studio</a></p>
+  </footer>
+</body>
+</html>

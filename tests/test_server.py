@@ -50,3 +50,27 @@ def test_pwa_icons_served():
         r = client.get(f"/static/icons/icon-{size}.png")
         assert r.status_code == 200
         assert r.headers["content-type"] == "image/png"
+
+
+def test_robots_txt_states_the_crawl_posture():
+    # Citation welcome, no AI training: the Content Signals line + a real text/plain file.
+    r = client.get("/robots.txt")
+    assert r.status_code == 200
+    assert "text/plain" in r.headers["content-type"]
+    assert "Content-Signal: search=yes, ai-input=yes, ai-train=no" in r.text
+    assert "User-agent: GPTBot" in r.text  # training crawlers stay opted out
+
+
+def test_security_txt_served():
+    r = client.get("/.well-known/security.txt")
+    assert r.status_code == 200
+    assert "Contact:" in r.text
+
+
+def test_app_shell_is_noindex_with_correct_share_card():
+    # The landing (wymber.app) is the indexed surface; the app shell asks not to be indexed
+    # and its share card must point at its own origin (a wrong-origin og:image serves HTML).
+    r = client.get("/")
+    assert '<meta name="robots" content="noindex">' in r.text
+    assert 'content="https://web.wymber.app/static/og-image.png"' in r.text
+    assert 'property="og:url" content="https://web.wymber.app/"' in r.text
