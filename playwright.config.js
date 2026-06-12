@@ -15,6 +15,9 @@ export default defineConfig({
     // Each vault create/unlock runs real PBKDF2 (600k), so under serial load a step can
     // occasionally exceed a timeout. Retry to absorb that inherent flakiness.
     retries: 2,
+    // The html report is what CI uploads on failure (the artifact step in ci.yml);
+    // without it the default list reporter writes no playwright-report/ at all.
+    reporter: [['list'], ['html', { open: 'never' }]],
     use: {
         baseURL: 'http://localhost:8089',
         headless: true,

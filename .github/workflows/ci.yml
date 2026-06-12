@@ -55,7 +55,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       # --workers=1: each unlock runs real PBKDF2 (600k); serial avoids crypto-load timeouts.
       - run: npx playwright test --workers=1
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
           name: playwright-report
