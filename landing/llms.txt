@@ -11,10 +11,10 @@ Citation is welcome; we decline AI training (see /robots.txt Content Signals).
 ## Pages
 
 - [Home](https://wymber.app/): what Wymber is, how it works, the privacy promise
-- [Privacy](https://wymber.app/privacy.html): the plain-language privacy policy
-- [About](https://wymber.app/about.html): who makes Wymber and why
-- [Sources](https://wymber.app/sources.html): the trauma-informed research behind the design
-- [What's new](https://wymber.app/changelog.html): the human changelog
+- [Privacy](https://wymber.app/privacy): the plain-language privacy policy
+- [About](https://wymber.app/about): who makes Wymber and why
+- [Sources](https://wymber.app/sources): the trauma-informed research behind the design
+- [What's new](https://wymber.app/changelog): the human changelog
 
 ## Code
 

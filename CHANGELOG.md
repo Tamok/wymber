@@ -4,8 +4,8 @@ A short, human list of what's new, so you don't have to go looking. For the full
 history, see the [commits](https://github.com/Tamok/wymber/commits).
 
 ## 2026-06-12
-- A plain-language [privacy policy](https://wymber.app/privacy.html) and an
-  [about page](https://wymber.app/about.html): who makes Wymber, why, and exactly what we
+- A plain-language [privacy policy](https://wymber.app/privacy) and an
+  [about page](https://wymber.app/about): who makes Wymber, why, and exactly what we
   collect (nothing).
 - Common questions answered right on the landing page, in plain words.
 - Sharing a Wymber link now shows a proper preview card everywhere.
