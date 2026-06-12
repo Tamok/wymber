@@ -5,6 +5,14 @@
  */
 export const CHANGELOG = [
     {
+        date: '2026-06-12',
+        items: [
+            "A plain-language privacy policy and an about page on wymber.app: who makes Wymber, why, and exactly what we collect (nothing).",
+            "Sharing a Wymber link now shows a proper preview card everywhere.",
+            "A formal stance on AI: assistants may cite the public site, and we decline AI training on it. Your map was never readable by anyone and still isn't.",
+        ],
+    },
+    {
         date: '2026-06-10',
         items: [
             "Nodes are now dots: put down a dot for what matters, connect the dots at your own pace.",
