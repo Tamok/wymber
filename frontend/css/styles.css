@@ -1650,6 +1650,10 @@ body {
 .app-footer-link:hover,
 .app-footer-link:focus-visible { color: var(--text-primary); }
 
+/* The studio credit stays demure: same muted link treatment, just smaller. */
+.app-footer-credit { font-size: 0.75rem; }
+.app-footer-sep { color: var(--text-secondary); font-size: 0.75rem; }
+
 /* The breathing guide is the one place we keep gentle motion under reduce-motion: the slow
    swell and the word fade ARE the exercise (functional, calm, non-vestibular), not decoration.
    !important is needed to win over the global reduce-motion reset above. */
