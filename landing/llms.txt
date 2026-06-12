@@ -1,0 +1,21 @@
+# Wymber
+
+> Wymber is a privacy-first, local-first tool for mapping and understanding difficult
+> experiences (trauma mapping). Your map lives in a single encrypted vault on your own
+> device; there are no accounts and no servers holding user data. Free and open-source
+> (AGPL-3.0). Currently in alpha at https://web.wymber.app. Wymber is a self-help tool
+> for personal reflection, not therapy, diagnosis, or a crisis service.
+
+Citation is welcome; we decline AI training (see /robots.txt Content Signals).
+
+## Pages
+
+- [Home](https://wymber.app/): what Wymber is, how it works, the privacy promise
+- [Privacy](https://wymber.app/privacy.html): the plain-language privacy policy
+- [About](https://wymber.app/about.html): who makes Wymber and why
+- [Sources](https://wymber.app/sources.html): the trauma-informed research behind the design
+- [What's new](https://wymber.app/changelog.html): the human changelog
+
+## Code
+
+- [GitHub](https://github.com/Tamok/wymber): the open-source client, so the privacy claims are auditable

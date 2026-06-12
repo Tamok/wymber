@@ -26,18 +26,22 @@
     <meta name="apple-mobile-web-app-title" content="Wymber">
     <meta name="mobile-web-app-capable" content="yes">
 
-    <!-- Description + social sharing -->
+    <!-- Description + social sharing. The landing (wymber.app) is the indexed surface; this
+         app shell is an empty vault screen with nothing to rank, so it asks not to be indexed
+         (robots.txt still allows crawling here, or the noindex would never be seen). -->
+    <meta name="robots" content="noindex">
     <meta name="description" content="A private, local-first space to map and understand what you've been through. Your data stays on your device, encrypted.">
     <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png">
+    <meta property="og:site_name" content="Wymber">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://wymber.app/">
+    <meta property="og:url" content="https://web.wymber.app/">
     <meta property="og:title" content="Wymber: private, local-first reflection">
     <meta property="og:description" content="A private, local-first space to map and understand what you've been through. Your data stays on your device, encrypted.">
-    <meta property="og:image" content="https://wymber.app/static/og-image.png">
+    <meta property="og:image" content="https://web.wymber.app/static/og-image.png">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Wymber: private, local-first reflection">
     <meta name="twitter:description" content="A private, local-first space to map and understand what you've been through.">
-    <meta name="twitter:image" content="https://wymber.app/static/og-image.png">
+    <meta name="twitter:image" content="https://web.wymber.app/static/og-image.png">
 </head>
 <body>
     <noscript>

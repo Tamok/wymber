@@ -63,6 +63,19 @@ async def manifest():
     )
 
 
+@app.get("/robots.txt")
+async def robots():
+    """Crawl posture, same as the hosted app: citation welcome, no AI training (Content
+    Signals + per-bot Disallows). Self-hosters keep the same default."""
+    return FileResponse("frontend/robots.txt", media_type="text/plain")
+
+
+@app.get("/.well-known/security.txt")
+async def security_txt():
+    """RFC 9116 security contact, so vulnerability reports have a standard front door."""
+    return FileResponse("frontend/.well-known/security.txt", media_type="text/plain")
+
+
 @app.get("/")
 async def root():
     with open("frontend/index.html", encoding="utf-8") as f:

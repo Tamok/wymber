@@ -1,0 +1,33 @@
+# Wymber app (web.wymber.app)
+# The landing (https://wymber.app) is the indexed surface; this app shell carries a noindex
+# meta tag, so crawling stays allowed here (a robots.txt block would hide the noindex).
+# Same posture as the landing: citation welcome, no AI training (Content Signals).
+
+User-agent: *
+Content-Signal: search=yes, ai-input=yes, ai-train=no
+Allow: /
+
+# Training crawlers (no model training).
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: meta-externalagent
+Disallow: /
+
+User-agent: Applebot-Extended
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /
+
+User-agent: Amazonbot
+Disallow: /

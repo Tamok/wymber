@@ -18,10 +18,13 @@ const dist = join(root, 'dist');
 rmSync(dist, { recursive: true, force: true });
 mkdirSync(join(dist, 'static'), { recursive: true });
 
-// Root files (served from / by backend/main.py; same paths here).
-for (const f of ['index.html', 'sw.js', 'manifest.webmanifest']) {
+// Root files (served from / by backend/main.py; same paths here). 404.html makes Pages serve
+// real 404s instead of SPA-fallbacking every path to the shell (soft-404s, #139); robots.txt
+// states the crawl posture (citation welcome, no AI training).
+for (const f of ['index.html', 'sw.js', 'manifest.webmanifest', 'robots.txt', '404.html']) {
     copyFileSync(join(frontend, f), join(dist, f));
 }
+cpSync(join(frontend, '.well-known'), join(dist, '.well-known'), { recursive: true });
 // Everything the app references as /static/...
 for (const d of ['css', 'js', 'libs', 'icons']) {
     cpSync(join(frontend, d), join(dist, 'static', d), { recursive: true });
@@ -29,13 +32,21 @@ for (const d of ['css', 'js', 'libs', 'icons']) {
 copyFileSync(join(frontend, 'favicon.svg'), join(dist, 'static', 'favicon.svg'));
 copyFileSync(join(frontend, 'og-image.png'), join(dist, 'static', 'og-image.png'));
 
-// Cloudflare Pages headers: keep the SW's root scope + correct manifest MIME.
+// Cloudflare Pages headers: keep the SW's root scope + correct manifest MIME, and baseline
+// security headers (the strict CSP is #112; frame-ancestors here blocks clickjacking now).
 writeFileSync(join(dist, '_headers'), [
+    '/*',
+    '  X-Frame-Options: DENY',
+    "  Content-Security-Policy: frame-ancestors 'none'",
+    '  X-Content-Type-Options: nosniff',
+    '  Permissions-Policy: camera=(), microphone=(), geolocation=()',
     '/sw.js',
     '  Service-Worker-Allowed: /',
     '  Cache-Control: no-cache',
     '/manifest.webmanifest',
     '  Content-Type: application/manifest+json',
+    '/.well-known/security.txt',
+    '  Content-Type: text/plain; charset=utf-8',
     '',
 ].join('\n'));
 

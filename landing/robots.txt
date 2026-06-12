@@ -1,0 +1,37 @@
+# Wymber (wymber.app)
+# Posture: search engines and AI assistants may index and cite these public pages.
+# We decline AI training: this site's words should not be absorbed into model weights.
+# Content Signals (https://contentsignals.org/) state that preference machine-readably;
+# the Disallow groups below opt out the major training crawlers that honor robots.txt.
+# User vaults are never at stake here: they are client-side ciphertext on user devices.
+
+User-agent: *
+Content-Signal: search=yes, ai-input=yes, ai-train=no
+Allow: /
+
+# Training crawlers (no model training; search/answer crawlers above stay welcome).
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: meta-externalagent
+Disallow: /
+
+User-agent: Applebot-Extended
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /
+
+User-agent: Amazonbot
+Disallow: /
+
+Sitemap: https://wymber.app/sitemap.xml
