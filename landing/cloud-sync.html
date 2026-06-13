@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Can I sync my map with Google Drive or another cloud? · Wymber</title>
+  <meta name="description" content="Wymber has no automatic sync yet, but your map exports as a single encrypted .wymber file you can keep in any cloud to back it up or move it between devices. How to do it safely, and the real risks to weigh first.">
+  <link rel="canonical" href="https://wymber.app/cloud-sync">
+  <meta property="og:site_name" content="Wymber">
+  <meta property="og:title" content="Can I sync my map with Google Drive or another cloud?">
+  <meta property="og:description" content="No automatic sync yet, but your encrypted .wymber file can live in any cloud. How to back up or move your map safely, and the risks.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://wymber.app/cloud-sync">
+  <meta property="og:image" content="https://wymber.app/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .article-main { max-width: 720px; margin: 0 auto; padding: 36px 24px 64px; }
+    .article-main h1 { text-align: center; }
+    .article-byline { color: var(--ink-soft); text-align: center; font-size: 0.9rem; margin: 0 auto 36px; }
+    .article-main h2 { text-align: left; font-size: 1.25rem; margin: 30px 0 10px; }
+    .article-main p, .article-main li { color: var(--ink-soft); }
+    .article-main ul, .article-main ol { padding-left: 1.2em; display: grid; gap: 6px; }
+    .article-callout {
+      background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--accent);
+      border-radius: var(--radius); padding: 16px 20px; margin: 24px 0;
+    }
+    .article-callout p { margin: 0; color: var(--ink); }
+    .article-note { border-left: 3px solid var(--line); padding-left: 14px; font-size: 0.92rem; }
+  </style>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "Can I sync my map with Google Drive or another cloud?",
+    "description": "Wymber has no automatic sync yet, but your map exports as a single encrypted .wymber file you can keep in any cloud to back it up or move it between devices. How to do it safely, and the risks.",
+    "url": "https://wymber.app/cloud-sync",
+    "datePublished": "2026-06-13",
+    "dateModified": "2026-06-13",
+    "image": "https://wymber.app/og.png",
+    "author": { "@type": "Person", "name": "JELL", "url": "https://wymber.app/about" },
+    "publisher": { "@type": "Organization", "name": "Zoignon Studio", "url": "https://zoignon.com", "logo": { "@type": "ImageObject", "url": "https://wymber.app/logo.png" } }
+  }
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="wordmark" href="/" aria-label="Wymber home">
+      <img class="mark" src="favicon.svg" alt="" width="30" height="30">
+      <span>Wymber</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary"><a href="/">Home</a></nav>
+  </header>
+
+  <main class="article-main">
+    <h1>Can I sync my map with Google Drive or another cloud?</h1>
+    <p class="article-byline">By JELL, <a href="/about">Wymber</a> · Last updated 2026-06-13</p>
+
+    <p>Short answer: not as <em>automatic, live</em> sync, not yet. But your whole map exports as a
+       single <strong>encrypted file</strong> (a <code>.wymber</code> file), and that file is
+       yours to keep anywhere, including a cloud drive like Google Drive, Dropbox, or iCloud. You
+       can use that to keep a backup, or to move your map from one device to another by hand. It
+       works, and because the file is encrypted it's reasonably safe to store in a cloud, but
+       there are real trade-offs to understand first. This page is the honest version.</p>
+
+    <div class="article-callout">
+      <p><strong>The one thing to remember:</strong> this is a manual <em>copy</em>, not a live
+         sync. Nothing merges. If you edit your map on two devices and then restore one over the
+         other, the changes you didn't restore are gone. Edit in one place at a time.</p>
+    </div>
+
+    <h2>How to back up or move your map</h2>
+    <ol>
+      <li><strong>Export the encrypted file.</strong> In <a href="https://web.wymber.app/"
+          target="_blank" rel="noopener">the app</a>, open <em>Export &amp; backup</em> and choose
+          <em>Download encrypted vault (.wymber)</em>. You'll get a file named something like
+          <code>wymber-vault-2026-06-13.wymber</code>. It's ciphertext only; it still needs your
+          password to open.</li>
+      <li><strong>Put it in your cloud.</strong> Upload that file to your cloud drive, the same
+          way you'd upload any document. (If your cloud has a sync folder, let the upload finish
+          completely before you close the lid or switch devices.)</li>
+      <li><strong>Restore it on the other device.</strong> Download the <code>.wymber</code> file
+          there, open Wymber, and use <em>Restore a <code>.wymber</code> backup</em> on the unlock
+          screen. On a brand-new device it restores straight away; on a device that already has a
+          map, Wymber treats restoring as replacing and asks for that device's current password
+          first (and offers to export what's there before it's overwritten).</li>
+      <li><strong>Unlock with the file's password.</strong> A restored vault opens with the
+          password it had when you exported it, not the device's old one.</li>
+    </ol>
+    <p>To keep two devices roughly in step, treat it like a single notebook you carry: finish on
+       one device, re-export, re-upload, and only then open the other. There is no automatic
+       reconciliation underneath.</p>
+
+    <h2>The risks, plainly</h2>
+    <ul>
+      <li><strong>Overwriting your own work (the big one).</strong> No merge happens on restore.
+          Editing in two places and restoring one over the other loses the other side's changes.
+          This is the most likely way to lose data, and it's entirely in how you use it.</li>
+      <li><strong>A cloud breach exposes the file, but only as ciphertext.</strong> If your cloud
+          account or the provider is breached, the attacker gets your <code>.wymber</code> file,
+          which is AES-256-GCM encrypted (<a href="/encryption">how that works</a>). They can't
+          read it without your password. But they <em>can</em> try to guess it offline, forever,
+          so a <strong>strong, unique password matters much more</strong> once the file leaves
+          your device. Weak password plus leaked file is the one combination that fails.</li>
+      <li><strong>Keep the key away from the file.</strong> Don't store your password or your
+          recovery code in the same cloud account as the backup. If both leak together, the
+          encryption protected nothing.</li>
+      <li><strong>A cloud copy is not a guaranteed copy.</strong> Accounts get locked, files get
+          deleted, providers change. Keep more than one copy in more than one place (the old
+          "two backups, one off-site" habit). An export saved to your own disk is a good second
+          copy.</li>
+      <li><strong>You're accepting the provider's terms.</strong> Storing the file in Google Drive
+          means Google's terms apply to that (encrypted) blob. Since Wymber never uploads anything
+          itself, this is a choice you're making, with eyes open, not something the app does for
+          you. Our <a href="/privacy">privacy policy</a> still holds: nothing leaves your device
+          unless you move it.</li>
+    </ul>
+
+    <h2>Doing it as safely as possible</h2>
+    <ul>
+      <li>Use a long, unique password you don't use anywhere else.</li>
+      <li>Store your recovery code somewhere separate from the cloud holding the backup.</li>
+      <li>Edit in one place at a time; re-export after a session rather than mid-edit.</li>
+      <li>Keep at least two copies (cloud plus a local export), and re-export periodically so a
+          backup doesn't quietly grow stale.</li>
+      <li>If you share a device or cloud account, remember a restore can overwrite a map, which is
+          why Wymber asks for the current password before replacing one.</li>
+    </ul>
+
+    <h2>What's coming instead</h2>
+    <p>Proper multi-device sync is on the way, and it will be built the careful way:
+       <a href="/local-first">local-first</a> and zero-knowledge, opt-in, with only the sealed
+       file ever travelling and the key never leaving you. Until then, the manual backup above is
+       the honest stopgap if you need your map in more than one place today. The
+       <a href="/privacy">privacy policy</a> will be updated before any sync feature ships.</p>
+
+    <p class="article-note">See also: <a href="/encryption">how Wymber encrypts your map</a> ·
+       <a href="/local-first">why local-first matters for mental-health data</a> ·
+       <a href="/privacy">the privacy policy</a>.</p>
+  </main>
+
+  <footer class="site-footer">
+    <p class="copyright">© 2026 Wymber · <a href="/">Home</a> · <a href="/privacy">Privacy</a> · <a href="/about">About</a> · Produced by <a href="https://zoignon.com">Zoignon Studio</a></p>
+  </footer>
+</body>
+</html>
