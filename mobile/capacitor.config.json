@@ -1,0 +1,14 @@
+{
+  "appId": "app.wymber",
+  "appName": "Wymber",
+  "webDir": "../frontend",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false
+  },
+  "ios": {
+    "contentInset": "always"
+  }
+}
