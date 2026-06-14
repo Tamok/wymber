@@ -1,0 +1,15 @@
+# Dependencies
+/node_modules/
+
+# Generated native projects.
+# Capacitor regenerates these from `npx cap add android|ios`. They are ignored while the shell is
+# bare scaffolding. Once you start customizing them (signing, splash, AndroidManifest permissions,
+# Info.plist), REMOVE the two lines below and commit android/ and ios/ so the customizations stick.
+/android/
+/ios/
+
+# Build + tooling output
+/dist/
+*.log
+.gradle/
+.DS_Store
