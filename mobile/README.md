@@ -59,10 +59,9 @@ const api = isNativeShell()
     : new LocalRepo();
 ```
 
-> **Service-worker follow-up (app owner):** when the web shell is next deployed, add
-> `/static/js/native-persistence.js` to the precache list in `frontend/sw.js` and regenerate
-> `VERSION` (`scripts/sw-version.mjs`), so returning PWA users get the new module offline. Not done
-> here, that is an app-shell change.
+> **Service worker:** `/static/js/native-persistence.js` is in the precache list in `frontend/sw.js`,
+> and `VERSION` is regenerated automatically by the pre-commit hook (`scripts/sw-version.mjs`), so
+> returning PWA users get the new module offline.
 
 ## Conventions / decisions to confirm
 
