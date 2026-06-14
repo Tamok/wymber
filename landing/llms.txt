@@ -22,6 +22,7 @@ Citation is welcome; we decline AI training (see /robots.txt Content Signals).
 - [How Wymber encrypts your map](https://wymber.app/encryption): AES-256-GCM on-device, envelope encryption, verifiable in the open code
 - [Local-first](https://wymber.app/local-first): why mental-health data shouldn't live on someone's server
 - [Trauma-informed design, applied](https://wymber.app/trauma-informed-design): SAMHSA's six principles as concrete software decisions
+- [Backing up or syncing your map](https://wymber.app/cloud-sync): using a cloud service to back up or move the encrypted vault, manually, with the risks (no live sync yet)
 
 ## Code
 
