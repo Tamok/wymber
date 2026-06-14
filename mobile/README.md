@@ -41,35 +41,28 @@ then re-run from Android Studio / Xcode. (No build step: the frontend is plain E
 
 ## The native vault backend
 
-[src/native-persistence.js](src/native-persistence.js) is the mobile storage backend. It implements
-the same interface `LocalRepo` already injects (`hasVault` / `loadVault` / `saveVault` /
-`clearVault`, see `frontend/js/local-repo.js`) and writes the **sealed** vault blob to app-private
-native storage via the Capacitor Filesystem plugin, instead of OPFS/IndexedDB. Why: ADR-0005 (the
-WKWebView 10 MB OPFS cap, weak `persist()` on iOS, and WebView storage eviction make browser
-storage unsafe as the system of record). Only ciphertext is written; the WebView still does all the
-crypto, so zero-knowledge holds. Tracked in **#145**.
+[`frontend/js/native-persistence.js`](../frontend/js/native-persistence.js) is the native storage
+backend. It lives under `frontend/` because the WebView only serves `webDir`, but it activates only
+on the native shell. It implements the same interface `LocalRepo` injects (`hasVault` / `loadVault`
+/ `saveVault` / `clearVault`, see `frontend/js/local-repo.js`) and writes the **sealed** vault blob
+to app-private native storage via the Capacitor Filesystem plugin, instead of OPFS/IndexedDB. Why:
+ADR-0005 (the WKWebView 10 MB OPFS cap, weak `persist()` on iOS, and WebView storage eviction make
+browser storage unsafe as the system of record). Only ciphertext is written; the WebView still does
+all the crypto, so zero-knowledge holds. Tracked in **#145**.
 
-### The one app-side change this needs (handoff)
-
-The web core is owned by the app, not by this folder, so wiring the backend in is an **app change**,
-not a mobile-only one. It is a single line at the `new LocalRepo()` construction site in
-`frontend/js/app.js`:
+It is wired in at the `new LocalRepo()` site in `frontend/js/app.js`, guarded by `isNativeShell()`,
+so the web build is unchanged and only the native shell uses it:
 
 ```js
-import { NativePersistence, isNativeShell } from '<wherever this module is served from>';
-
 const api = isNativeShell()
     ? new LocalRepo({ persistence: new NativePersistence() })
     : new LocalRepo();
 ```
 
-Two open questions for that change (both for the app owner, deliberately not done here):
-
-1. **Where the module is served from.** The WebView only serves `webDir` (`../frontend`), so to be
-   importable at runtime `native-persistence.js` has to live under `frontend/` (e.g.
-   `frontend/js/native-persistence.js`) or be exposed via an import map. This copy in `mobile/src/`
-   is the source of truth; the app integration decides how it is served.
-2. **The injection line** in `app.js` above.
+> **Service-worker follow-up (app owner):** when the web shell is next deployed, add
+> `/static/js/native-persistence.js` to the precache list in `frontend/sw.js` and regenerate
+> `VERSION` (`scripts/sw-version.mjs`), so returning PWA users get the new module offline. Not done
+> here, that is an app-shell change.
 
 ## Conventions / decisions to confirm
 
