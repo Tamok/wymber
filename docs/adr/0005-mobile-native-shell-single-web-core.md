@@ -1,6 +1,6 @@
 # ADR-0005: Mobile delivery, a native shell over the single web core
 
-- Status: Proposed (2026-06-14)
+- Status: Accepted (2026-06-14)
 - Decider: [@tamok](https://github.com/tamok)
 
 ## Context
