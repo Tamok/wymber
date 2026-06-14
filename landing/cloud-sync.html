@@ -27,6 +27,11 @@
       border-radius: var(--radius); padding: 16px 20px; margin: 24px 0;
     }
     .article-callout p { margin: 0; color: var(--ink); }
+    .article-warning {
+      background: var(--surface); border: 1px solid var(--line); border-left: 4px solid #d2603a;
+      border-radius: var(--radius); padding: 16px 20px; margin: 0 0 26px;
+    }
+    .article-warning p { margin: 0; color: var(--ink); }
     .article-note { border-left: 3px solid var(--line); padding-left: 14px; font-size: 0.92rem; }
   </style>
   <script type="application/ld+json">
@@ -37,7 +42,7 @@
     "description": "Wymber has no automatic sync yet, but your map exports as a single encrypted .wymber file you can keep in any cloud to back it up or move it between devices. How to do it safely, and the risks.",
     "url": "https://wymber.app/cloud-sync",
     "datePublished": "2026-06-13",
-    "dateModified": "2026-06-13",
+    "dateModified": "2026-06-14",
     "image": "https://wymber.app/og.png",
     "author": { "@type": "Person", "name": "JELL", "url": "https://wymber.app/about" },
     "publisher": { "@type": "Organization", "name": "Zoignon Studio", "url": "https://zoignon.com", "logo": { "@type": "ImageObject", "url": "https://wymber.app/logo.png" } }
@@ -55,17 +60,26 @@
 
   <main class="article-main">
     <h1>Can I sync my map with Google Drive or another cloud?</h1>
-    <p class="article-byline">By JELL, <a href="/about">Wymber</a> · Last updated 2026-06-13</p>
+    <p class="article-byline">By JELL, <a href="/about">Wymber</a> · Last updated 2026-06-14</p>
+
+    <div class="article-warning">
+      <p><strong>Read this first: you can erase your whole map.</strong> Restoring a backup
+         <strong>replaces</strong> the map on that device with the contents of the file. Restore
+         the wrong file, an older one, or a file that got corrupted in transit, and everything
+         currently on that device can be wiped out, with no undo. This is a manual process with
+         sharp edges. Don't trust your only copy to it; read the risks below before you rely on
+         it at all.</p>
+    </div>
 
     <p>Short answer: not as <em>automatic, live</em> sync, not yet. But your whole map exports as a
        single <strong>encrypted file</strong> (a <code>.wymber</code> file), and that file is
        yours to keep anywhere, including a cloud drive like Google Drive, Dropbox, or iCloud. You
        can use that to keep a backup, or to move your map from one device to another by hand. It
-       works, and because the file is encrypted it's reasonably safe to store in a cloud, but
-       there are real trade-offs to understand first. This page is the honest version.</p>
+       works, and because the file is encrypted it's reasonably safe to store in a cloud, but it
+       is manual, easy to get wrong, and carries real risks you should weigh first.</p>
 
     <div class="article-callout">
-      <p><strong>The one thing to remember:</strong> this is a manual <em>copy</em>, not a live
+      <p><strong>The other thing to remember:</strong> this is a manual <em>copy</em>, not a live
          sync. Nothing merges. If you edit your map on two devices and then restore one over the
          other, the changes you didn't restore are gone. Edit in one place at a time.</p>
     </div>
@@ -97,6 +111,14 @@
       <li><strong>Overwriting your own work (the big one).</strong> No merge happens on restore.
           Editing in two places and restoring one over the other loses the other side's changes.
           This is the most likely way to lose data, and it's entirely in how you use it.</li>
+      <li><strong>Restoring an older backup wipes newer work.</strong> Because restore replaces,
+          opening yesterday's file over today's map silently erases everything you added today.
+          There is no version history to fall back on. Label every backup with its date and be
+          certain which one is newest before you restore it.</li>
+      <li><strong>A file can corrupt in transit.</strong> If a cloud client grabs the
+          <code>.wymber</code> while it's still being written, or an upload or download is
+          interrupted, you can end up with a file that won't open. Let every transfer finish
+          completely, and always keep at least one copy you've confirmed still opens.</li>
       <li><strong>A cloud breach exposes the file, but only as ciphertext.</strong> If your cloud
           account or the provider is breached, the attacker gets your <code>.wymber</code> file,
           which is AES-256-GCM encrypted (<a href="/encryption">how that works</a>). They can't
@@ -132,8 +154,9 @@
     <p>Proper multi-device sync is on the way, and it will be built the careful way:
        <a href="/local-first">local-first</a> and zero-knowledge, opt-in, with only the sealed
        file ever travelling and the key never leaving you. Until then, the manual backup above is
-       the honest stopgap if you need your map in more than one place today. The
-       <a href="/privacy">privacy policy</a> will be updated before any sync feature ships.</p>
+       the only solution if you need your map in more than one place today, with all the care that
+       demands. The <a href="/privacy">privacy policy</a> will be updated before any sync feature
+       ships.</p>
 
     <p class="article-note">See also: <a href="/encryption">how Wymber encrypts your map</a> ·
        <a href="/local-first">why local-first matters for mental-health data</a> ·
