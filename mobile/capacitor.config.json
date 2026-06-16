@@ -1,7 +1,7 @@
 {
   "appId": "app.wymber",
   "appName": "Wymber",
-  "webDir": "../frontend",
+  "webDir": "www",
   "server": {
     "androidScheme": "https"
   },

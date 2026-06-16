@@ -6,8 +6,12 @@ unlock, share/export) only where it genuinely beats web. The decision and ration
 [ADR-0005](../docs/adr/0005-mobile-native-shell-single-web-core.md); the plan is in
 [docs/mobile/roadmap.md](../docs/mobile/roadmap.md).
 
-One Capacitor project targets **both** platforms. `webDir` points at `../frontend`, so the shell
-and the web core move together with no copy ritual and no build step.
+One Capacitor project targets **both** platforms. The web core stays the single source of truth in
+`frontend/`; a thin staging step (`npm run prepare:web`, run automatically by the `sync`/`copy`/`add`
+scripts) mirrors it into `mobile/www/` (the `webDir`). Staging exists for one reason: the web app
+uses absolute `/static/...` asset URLs (the server maps `/static` -> `frontend/`), so `www/` mirrors
+`frontend/` at **both** the root and under `static/`, so `/` and `/static/` resolve inside the
+WebView. `frontend/` itself is never modified. (See [scripts/prepare-web.mjs](scripts/prepare-web.mjs).)
 
 ## Prerequisites
 
@@ -20,13 +24,14 @@ and the web core move together with no copy ritual and no build step.
 ```bash
 cd mobile
 npm install
-npx cap add android        # generates mobile/android/ (needs the Android SDK)
-npx cap sync               # copies ../frontend into the native project + installs plugins
+npm run add:android        # stages www/, generates mobile/android/ (needs the Android SDK)
+npm run sync               # stages www/, copies into the native project + installs plugins
 npx cap open android       # opens Android Studio; Run onto a device/emulator
 ```
 
-`android/` and `ios/` are generated and currently git-ignored. Once you start customizing them
-(signing, splash, permissions, `Info.plist`), un-ignore and commit them, see [.gitignore](.gitignore).
+`android/`, `ios/`, and the generated `www/` are git-ignored. Once you start customizing the native
+projects (signing, splash, permissions, `Info.plist`), un-ignore and commit them, see
+[.gitignore](.gitignore).
 
 ## Dev loop
 
@@ -34,10 +39,11 @@ After any change to `frontend/`:
 
 ```bash
 cd mobile
-npx cap sync      # or: npx cap copy   (web assets only, faster)
+npm run sync      # re-stages www/ from frontend/, then cap sync   (use: npm run copy for web assets only)
 ```
 
-then re-run from Android Studio / Xcode. (No build step: the frontend is plain ES modules.)
+then re-run from Android Studio / Xcode. (No bundler: the frontend is plain ES modules; `prepare:web`
+is just a copy.)
 
 ## The native vault backend
 

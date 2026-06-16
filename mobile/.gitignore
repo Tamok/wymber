@@ -1,6 +1,9 @@
 # Dependencies
 /node_modules/
 
+# Staged web root (generated from ../frontend by scripts/prepare-web.mjs)
+/www/
+
 # Generated native projects.
 # Capacitor regenerates these from `npx cap add android|ios`. They are ignored while the shell is
 # bare scaffolding. Once you start customizing them (signing, splash, AndroidManifest permissions,
