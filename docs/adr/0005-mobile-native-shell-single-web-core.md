@@ -38,8 +38,8 @@ Capacitor over the alternatives: a Trusted Web Activity is Android-only and runs
 user's Chrome (no native unlock, vault stranded in browser storage). Tauri 2 mobile is promising
 but its own team says mobile is not yet first-class, too much risk for a sensitive-data app in
 App Review. A full native rewrite is the duplication trap above. Capacitor is the mature
-web-to-both-stores path, and it is happy with our no-build, vanilla-ES-module `frontend/` (its
-`webDir` points straight at it).
+web-to-both-stores path, and it is happy with our no-build, vanilla-ES-module `frontend/` (a thin
+staging step feeds its `webDir`, see "Repo layout" below).
 
 ### The one architectural change: native owns the sealed vault at rest
 
@@ -74,11 +74,19 @@ native export ("back up your vault") story matters *more* here, not less.
 
 ### Repo layout: monorepo
 
-The mobile shell lives in `mobile/` inside this repo, not a separate one. Capacitor's `webDir`
-points at `../frontend`, so shell and web core move atomically with zero sync ritual, and the
-`VaultPersistence` native backend sits next to the code it extends. A separate repo would need a
-git-subtree of `frontend/` and a standing drift risk aimed straight at the single-core promise.
-(For a two-person team the daily sync tax outweighs toolchain isolation.)
+The mobile shell lives in `mobile/` inside this repo, not a separate one. The web core stays the
+single source of truth in `frontend/`; a thin staging step (`scripts/prepare-web.mjs`) mirrors it
+into `mobile/www/` (the `webDir`). This is **the same pattern the web app already uses**: the app
+references its assets as absolute `/static/...` URLs, so the FastAPI dev server mounts `frontend/`
+at `/static`, and the production Cloudflare Pages build (`scripts/build-pages.mjs`) stages
+`frontend/` into `dist/static/`. Mobile mirrors `frontend/` at both `/` and `/static/` for the same
+reason, so it is consistent with prod, not a special case. (An earlier draft of this ADR claimed
+`webDir` pointed straight at `../frontend` with "zero sync ritual"; the `/static` convention makes a
+one-line copy unavoidable in every environment. The single-source-of-truth property still holds
+because `frontend/` is never edited.) The `VaultPersistence` native backend sits next to the code it
+extends. A separate repo would need a git-subtree of `frontend/` and a standing drift risk aimed
+straight at the single-core promise. (For a two-person team the daily sync tax outweighs toolchain
+isolation.)
 
 ## Consequences
 
