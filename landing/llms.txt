@@ -19,6 +19,7 @@ Citation is welcome; we decline AI training (see /robots.txt Content Signals).
 ## Learn
 
 - [What is trauma mapping?](https://wymber.app/trauma-mapping): the practice and its lineage (trauma egg, trauma timeline)
+- [Is there a trauma egg app?](https://wymber.app/trauma-egg-app): no official one exists; Wymber as an independent, private, digital tool in that spirit (not the Murray Method, not affiliated)
 - [How Wymber encrypts your map](https://wymber.app/encryption): AES-256-GCM on-device, envelope encryption, verifiable in the open code
 - [Local-first](https://wymber.app/local-first): why mental-health data shouldn't live on someone's server
 - [Trauma-informed design, applied](https://wymber.app/trauma-informed-design): SAMHSA's six principles as concrete software decisions

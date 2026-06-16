@@ -81,5 +81,9 @@ If you're in crisis, please reach out:
 
 ## License
 
-[AGPL-3.0](LICENSE). The copyleft keeps network-deployed forks open; the maintainer may offer an
-official hosted or sync product separately.
+The **code** is [AGPL-3.0](LICENSE). The copyleft keeps network-deployed forks open; the
+maintainer may offer an official hosted or sync product separately.
+
+The **Wymber name, logo, and written content are not covered by AGPL-3.0.** They belong to
+Zoignon Studio LLC; see [TRADEMARK.md](TRADEMARK.md). Short version: the code is yours to fork,
+but give your fork its own name and logo.
