@@ -30,7 +30,7 @@ jobs:
           cache: gradle
       - uses: actions/setup-node@v5
         with:
-          node-version: "20"
+          node-version: "22"
       - name: Accept Android SDK licenses
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
       - name: Install mobile deps
@@ -61,7 +61,7 @@ jobs:
           cache: gradle
       - uses: actions/setup-node@v5
         with:
-          node-version: "20"
+          node-version: "22"
       - name: Accept Android SDK licenses
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
       - name: Install mobile deps
