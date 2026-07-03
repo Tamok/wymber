@@ -5,7 +5,7 @@ import {
     biometricAvailable, biometricEnrolled, biometricEnroll, biometricUnlock, biometricDisable,
 } from './native-biometric.js';
 import { TrauMindMap } from './mindmap.js';
-import { validateNodeData, passwordStrength } from './utils.js';
+import { validateNodeData, passwordStrength, shouldNudgeBackup } from './utils.js';
 import { analyzeMap, renderAnalysis } from './analyze.js';
 import { suggestLinks } from './suggest.js';
 import { exportAsJSON, exportAsText, importMap, exportVaultFile, importVaultFile } from './export.js';
@@ -60,6 +60,9 @@ class WymberApp {
         document.getElementById('biometric-unlock-btn')?.addEventListener('click', () => this.handleBiometricUnlock());
         document.getElementById('biometric-enable-btn')?.addEventListener('click', () => this.enableBiometrics());
         document.getElementById('biometric-dismiss-btn')?.addEventListener('click', () => this.dismissBiometricOffer());
+        // Backup nudge (#147)
+        document.getElementById('backup-now-btn')?.addEventListener('click', () => { this.hideBackupNudge(); this.doExportVault(); });
+        document.getElementById('backup-later-btn')?.addEventListener('click', () => this.snoozeBackupNudge());
         document.getElementById('restore-vault-file')?.addEventListener('change', (e) => this.doRestoreVault(e));
         document.getElementById('restore-confirm-btn')?.addEventListener('click', () => this.confirmRestore());
         document.getElementById('restore-cancel-btn')?.addEventListener('click', () => this.closeRestoreConfirm());
@@ -235,7 +238,8 @@ class WymberApp {
         try {
             await api.unlock(password);
             this.enterApp();
-            this.maybeOfferBiometrics(password); // native shell only; quiet no-op on web
+            // Quiet post-unlock prompts, at most one: biometrics first (native only), else backup.
+            this.maybeOfferBiometrics(password).then(() => this.maybeNudgeBackup());
         } catch {
             this.showError('Incorrect password. Please try again, or use your recovery code.');
         }
@@ -260,6 +264,7 @@ class WymberApp {
                 dek.fill(0);
             }
             this.enterApp();
+            this.maybeNudgeBackup();
         } catch (e) {
             if (e?.code === 'CANCELLED') return; // user chose "Use password" — no error needed
             if (e?.code === 'INVALIDATED' || e?.code === 'NOT_ENROLLED') {
@@ -316,6 +321,38 @@ class WymberApp {
         this.hideBiometricOffer();
         try {
             await api.put('/settings', { biometricDismissed: true }); // don't ask again
+        } catch { /* non-fatal */ }
+    }
+
+    // ===== Backup nudge (#147: milestone-based, quiet, 30-day cooldown) =====
+
+    /** After an unlock: nudge only if the map has grown and isn't safely backed up. */
+    async maybeNudgeBackup() {
+        try {
+            // One quiet thing at a time: the biometric offer wins the slot.
+            if (document.getElementById('biometric-offer')?.style.display === 'block') return;
+            const [{ nodes }, { settings }] = await Promise.all([api.get('/mindmap'), api.get('/settings')]);
+            const show = shouldNudgeBackup({
+                nodeCount: nodes?.length ?? 0,
+                lastBackupAt: settings?.lastBackupAt,
+                lastEditAt: api.vaultUpdatedAt,
+                lastNudgeAt: settings?.backupNudgeAt,
+            });
+            if (!show) return;
+            const nudge = document.getElementById('backup-nudge');
+            if (nudge) nudge.style.display = 'block';
+        } catch { /* never let the nudge interfere with unlocking */ }
+    }
+
+    hideBackupNudge() {
+        const nudge = document.getElementById('backup-nudge');
+        if (nudge) nudge.style.display = 'none';
+    }
+
+    async snoozeBackupNudge() {
+        this.hideBackupNudge();
+        try {
+            await api.put('/settings', { backupNudgeAt: new Date().toISOString() }); // ~30d cooldown
         } catch { /* non-fatal */ }
     }
 
@@ -1428,7 +1465,11 @@ class WymberApp {
         try {
             const delivered = await exportVaultFile(api);
             document.getElementById('export-modal').style.display = 'none';
-            if (delivered) this.showNotification('Encrypted vault saved', 'success');
+            if (delivered) {
+                this.showNotification('Encrypted vault saved', 'success');
+                // Remember the backup so the #147 nudge knows the map is covered.
+                api.put('/settings', { lastBackupAt: new Date().toISOString() }).catch(() => {});
+            }
         } catch (error) {
             console.error('Vault export failed:', error);
             this.showNotification('Could not export your vault', 'error');

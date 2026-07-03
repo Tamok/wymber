@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateNodeData, passwordStrength } from '../js/utils.js';
+import { validateNodeData, passwordStrength, shouldNudgeBackup } from '../js/utils.js';
 
 describe('validateNodeData', () => {
     it('accepts valid node data', () => {
@@ -65,5 +65,46 @@ describe('passwordStrength', () => {
         const result = passwordStrength('aB3$aB3$aB3$aB3$');
         expect(result.score).toBeLessThanOrEqual(4);
         expect(typeof result.label).toBe('string');
+    });
+});
+
+describe('shouldNudgeBackup (#147 backup nudge policy)', () => {
+    const DAY = 24 * 60 * 60 * 1000;
+    const now = Date.parse('2026-07-03T12:00:00Z');
+    const iso = (t) => new Date(t).toISOString();
+
+    it('stays quiet below the growth milestone', () => {
+        expect(shouldNudgeBackup({ nodeCount: 9, now })).toBe(false);
+        expect(shouldNudgeBackup({ nodeCount: 0, now })).toBe(false);
+    });
+
+    it('nudges at 10+ entries when never backed up', () => {
+        expect(shouldNudgeBackup({ nodeCount: 10, now })).toBe(true);
+    });
+
+    it('stays quiet when the last backup covers the last edit', () => {
+        expect(shouldNudgeBackup({
+            nodeCount: 25, lastBackupAt: iso(now - DAY), lastEditAt: iso(now - 2 * DAY), now,
+        })).toBe(false);
+    });
+
+    it('nudges again when edits postdate the backup and the cooldown passed', () => {
+        expect(shouldNudgeBackup({
+            nodeCount: 25, lastBackupAt: iso(now - 45 * DAY), lastEditAt: iso(now - DAY),
+            lastNudgeAt: iso(now - 31 * DAY), now,
+        })).toBe(true);
+    });
+
+    it('respects the cooldown after "Later"', () => {
+        expect(shouldNudgeBackup({
+            nodeCount: 25, lastNudgeAt: iso(now - 5 * DAY), now,
+        })).toBe(false);
+        expect(shouldNudgeBackup({
+            nodeCount: 25, lastNudgeAt: iso(now - 30 * DAY), now,
+        })).toBe(true);
+    });
+
+    it('treats missing lastEditAt as backed-up (no false alarms)', () => {
+        expect(shouldNudgeBackup({ nodeCount: 25, lastBackupAt: iso(now - 100 * DAY), now })).toBe(false);
     });
 });

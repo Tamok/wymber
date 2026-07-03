@@ -24,6 +24,11 @@ export class LocalRepo {
         return this.store != null;
     }
 
+    /** When the vault was last sealed (any save). Null while locked. */
+    get vaultUpdatedAt() {
+        return this.vault?.updatedAt ?? null;
+    }
+
     async hasVault() {
         return this.persistence.hasVault();
     }
