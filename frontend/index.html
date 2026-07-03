@@ -118,6 +118,8 @@
                         <input type="password" id="unlock-password" autocomplete="current-password" required>
                     </div>
                     <button type="submit" class="btn btn-primary">Unlock</button>
+                    <!-- Shown only on the native shell when biometric unlock is enrolled -->
+                    <button type="button" id="biometric-unlock-btn" class="btn" style="display:none;">Unlock with fingerprint or face</button>
                     <button type="button" id="show-recover" class="btn-link">Forgot your password?</button>
                 </form>
 
@@ -304,6 +306,14 @@
             <div class="soft-start-actions">
                 <button id="open-map-btn" class="btn btn-primary" type="button">Open my map</button>
                 <button id="soft-start-grounding-btn" class="btn" type="button">Grounding</button>
+            </div>
+            <!-- Quiet, once-only offer on the native shell (never a modal, never nags) -->
+            <div id="biometric-offer" style="display:none;">
+                <p class="settings-note">Next time, unlock with your fingerprint or face? It stays on this device.</p>
+                <div class="soft-start-actions">
+                    <button id="biometric-enable-btn" class="btn btn-primary" type="button">Enable</button>
+                    <button id="biometric-dismiss-btn" class="btn" type="button">No thanks</button>
+                </div>
             </div>
         </div>
     </div>
