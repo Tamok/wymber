@@ -1396,13 +1396,11 @@ class WymberApp {
     async doExport(format) {
         try {
             const mapData = await api.get('/mindmap');
-            if (format === 'json') {
-                exportAsJSON(mapData.nodes || [], mapData.edges || []);
-            } else {
-                exportAsText(mapData.nodes || [], mapData.edges || []);
-            }
+            const delivered = format === 'json'
+                ? await exportAsJSON(mapData.nodes || [], mapData.edges || [])
+                : await exportAsText(mapData.nodes || [], mapData.edges || []);
             document.getElementById('export-modal').style.display = 'none';
-            this.showNotification('Export downloaded', 'success');
+            if (delivered) this.showNotification('Export saved', 'success');
         } catch (error) {
             console.error('Error exporting:', error);
             this.showNotification('Could not export map', 'error');
@@ -1428,9 +1426,9 @@ class WymberApp {
 
     async doExportVault() {
         try {
-            await exportVaultFile(api);
+            const delivered = await exportVaultFile(api);
             document.getElementById('export-modal').style.display = 'none';
-            this.showNotification('Encrypted vault downloaded', 'success');
+            if (delivered) this.showNotification('Encrypted vault saved', 'success');
         } catch (error) {
             console.error('Vault export failed:', error);
             this.showNotification('Could not export your vault', 'error');
