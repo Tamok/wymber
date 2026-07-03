@@ -15,9 +15,8 @@ quota** blocking production. The schedule is dominated by one item: the **D-U-N-
 
 ## 1. Account setup (Zoignon Studio LLC), start the D-U-N-S first
 
-- [ ] **D-U-N-S number** (mandatory for org accounts; a CA LLC cannot skip it). Free via D&B,
-      **up to 30 days**; paid expedite exists (~$229, ~8 business days, confirm on dnb.com).
-      First check whether the LLC already has one (D&B free lookup).
+- [x] **D-U-N-S number: obtained** (owner-provided 2026-07-03: 124827854). The former 30-day
+      long pole is gone; the account can be registered as soon as the address check below passes.
       [support.google.com/googleplay/android-developer/answer/13628312]
 - [ ] **Address consistency**: D&B record, Google payments profile, and state registration must
       all show the **current Bakersfield address** (not the old Clovis one). Google re-checks and
@@ -30,7 +29,10 @@ quota** blocking production. The schedule is dominated by one item: the **D-U-N-
       [answer/10841920]
 - [ ] **Identity verification**: person's government ID + possibly an official org document;
       payment-method verification up to 5 days; budget 1-2 weeks after D-U-N-S exists.
-- **Realistic lead time: 1-5 weeks, dominated by D-U-N-S.**
+- **Realistic lead time (updated): ~1-2 weeks** — D-U-N-S already in hand; remaining time is the
+  D&B address check + Google identity/payment verification.
+- **applicationId locked (owner decision 2026-07-03): `app.wymber`** — brand-rooted (reverse of
+  wymber.app), becomes permanent at first Play upload.
 
 ## 2. Internal-testing preview (the "private preview")
 
