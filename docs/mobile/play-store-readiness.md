@@ -60,12 +60,37 @@ quota** blocking production. The schedule is dominated by one item: the **D-U-N-
 - From **2026-08-31**: target **API 36** for new apps/updates. **We already target 36** (Capacitor
   8 default), so no action, just don't regress. [answer/11926878]
 
-## Open items (pending verification / research)
+## 5. Health-app policy (researched 2026-07-02, official policy pages)
+
+- **The Health apps declaration is mandatory for ALL apps** (since 2024-08-31, testing tracks
+  included). Wymber has health features, so it cannot pick "no health features". **Declare under
+  Health and Fitness → "Stress Management, Relaxation, Mental Acuity"**, NOT Medical ("Mental and
+  Behavioral Health" is for counseling/treatment tools, which Wymber deliberately is not). Selecting
+  a Medical category also triggers org-account enforcement; irrelevant if we stay Health & Fitness,
+  and we are an org account anyway. An inaccurate declaration blocks releases. [answer/14738291]
+- **Listing disclaimer, verbatim requirement**: non-medical-device health apps must state in the
+  description that the app is "not a medical device and does not diagnose, treat, cure, or prevent
+  any medical condition". [answer/16679511]
+- **Consult-a-professional reminder** required in-app and/or listing — aligns with the existing
+  "not therapy or a crisis service" bar; make it explicit. [answer/16679511]
+- **Privacy policy required despite zero collection** (User Data policy), in the Play field AND
+  in-app, public non-PDF URL, with contact info + data-handling + retention/deletion. Health apps
+  must additionally address how sensitive content is handled — ours should say plainly: encrypted
+  on-device, never transmitted, deleted by deleting the app or "Delete everything".
+  [answer/10144311, answer/16679511]
+- **Data safety = honestly "No data collected"**: locally processed data that never leaves the
+  device is not "collection" by Google's definition. Form still mandatory (from first closed test).
+  [answer/10787469]
+- **WymberSync note (monetization)**: Google exempts end-to-end-encrypted transfers unreadable by
+  the developer from "collection" — a ciphertext-only zero-knowledge sync can preserve the
+  "No data collected" label. Carry this constraint into WymberSync's design. [answer/10787469]
+- **Content rating (IARC)**: mandatory; the questionnaire has no mental-health/journaling item, and
+  crisis-line links do not raise the rating. Expect Everyone. [answer/9859655, 6209544]
+- April 2026 policy round: nothing material for a no-permission, no-collection app. [answer/16926792]
+
+## Open items (pending verification)
 
 - The **org-exemption from the 12/14 rule** is stated by scoping on Google's page + third-party
   corroboration; no official sentence says "organizations are exempt." Confidence high, not absolute.
-- **Health Content & Services policy / health-apps declaration**: research incomplete (rate-limited).
-  Must confirm whether a self-help wellness journal needs the health declaration, and what the
-  medical-disclaimer expectations are. The in-app "not therapy or a crisis service" framing likely
-  helps; verify against the current policy text.
-- Adversarial verification of all load-bearing claims above (workflow resumes with cached research).
+- Adversarial verification of the load-bearing claims (research is cached in the workflow; the
+  verify + synthesis passes keep hitting session limits and can re-run anytime).
