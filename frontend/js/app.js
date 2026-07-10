@@ -1,5 +1,6 @@
 import { NODE_TYPES, typeColor, setPalette } from './config.js';
 import { LocalRepo } from './local-repo.js';
+import { NativePersistence, isNativeShell } from './native-persistence.js';
 import { TrauMindMap } from './mindmap.js';
 import { validateNodeData, passwordStrength } from './utils.js';
 import { analyzeMap, renderAnalysis } from './analyze.js';
@@ -9,8 +10,12 @@ import { Tutorial } from './tutorial.js';
 import { CHANGELOG } from './changelog.js';
 
 // Local-first: the encrypted vault on this device IS the backend. `api` keeps the
-// same get/post/put/delete surface the rest of the app already uses.
-const api = new LocalRepo();
+// same get/post/put/delete surface the rest of the app already uses. On the native
+// (Capacitor) shell the sealed vault is stored app-private instead of in WebView
+// storage (see mobile/ and ADR-0005); the web build is unchanged.
+const api = isNativeShell()
+    ? new LocalRepo({ persistence: new NativePersistence() })
+    : new LocalRepo();
 
 class WymberApp {
     constructor() {
