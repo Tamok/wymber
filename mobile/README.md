@@ -69,6 +69,28 @@ const api = isNativeShell()
 > and `VERSION` is regenerated automatically by the pre-commit hook (`scripts/sw-version.mjs`), so
 > returning PWA users get the new module offline.
 
+## Release signing (upload key)
+
+Release builds are signed with an **upload key** for Play App Signing (Google holds the
+distribution key; a lost upload key is resettable via Play Console support, back it up anyway).
+The key lives OUTSIDE the repo:
+
+- `.secrets/android/wymber-upload.keystore` (RSA-4096, alias `wymber-upload`)
+- `.secrets/android/keystore.properties` (storeFile/storePassword/keyAlias/keyPassword)
+
+`android/app/build.gradle` resolves signing in this order: **CI env vars** (`KEYSTORE_FILE`,
+`KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`, or point `WYMBER_KEYSTORE_PROPERTIES` at a
+properties file) → **local `.secrets` file** → **unsigned release** (still buildable, not
+installable). Build:
+
+```bash
+cd mobile/android
+./gradlew :app:bundleRelease     # AAB for Play (app/build/outputs/bundle/release/)
+./gradlew :app:assembleRelease   # APK for direct sideload (app/build/outputs/apk/release/)
+```
+
+Store readiness / Play Console plan: [docs/mobile/play-store-readiness.md](../docs/mobile/play-store-readiness.md).
+
 ## Conventions / decisions to confirm
 
 - **App ID** is `app.wymber` (reverse of the `wymber.app` domain). It becomes the Android
