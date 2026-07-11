@@ -1,7 +1,9 @@
 import { NODE_TYPES } from './config.js';
+import { isNativeShell, nativeSaveFile } from './native-share.js';
 
 /**
  * Export map data as a JSON file download.
+ * Returns false only when a native share sheet was dismissed (see downloadBlob).
  */
 export function exportAsJSON(nodes, edges) {
     const data = {
@@ -24,7 +26,7 @@ export function exportAsJSON(nodes, edges) {
     };
 
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    downloadBlob(blob, `wymber-export-${dateStamp()}.json`);
+    return downloadBlob(blob, `wymber-export-${dateStamp()}.json`);
 }
 
 /**
@@ -72,7 +74,7 @@ export function exportAsText(nodes, edges) {
     }
 
     const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
-    downloadBlob(blob, `wymber-export-${dateStamp()}.txt`);
+    return downloadBlob(blob, `wymber-export-${dateStamp()}.txt`);
 }
 
 /**
@@ -83,7 +85,7 @@ export function exportAsText(nodes, edges) {
 export async function exportVaultFile(api) {
     const serialized = await api.exportVault();
     const blob = new Blob([serialized], { type: 'application/octet-stream' });
-    downloadBlob(blob, `wymber-vault-${dateStamp()}.wymber`);
+    return downloadBlob(blob, `wymber-vault-${dateStamp()}.wymber`);
 }
 
 /**
@@ -136,7 +138,17 @@ export async function importMap(data, api) {
     return { nodeCount: idMap.size, edgeCount: edges.length };
 }
 
-function downloadBlob(blob, filename) {
+/**
+ * Deliver a file to the user. Web: anchor download (sync, fire-and-forget). Native shell:
+ * the anchor path silently does NOTHING in the WebView, so route through the OS share
+ * sheet instead (#147). Resolves true when delivered, false when the user dismissed the
+ * native sheet (callers skip the success toast — a false "downloaded" over a missing
+ * backup is the one lie this app must never tell).
+ */
+async function downloadBlob(blob, filename) {
+    if (isNativeShell()) {
+        return nativeSaveFile(filename, await blob.text());
+    }
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -145,6 +157,7 @@ function downloadBlob(blob, filename) {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    return true;
 }
 
 function dateStamp() {
