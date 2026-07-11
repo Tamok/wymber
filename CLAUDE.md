@@ -38,6 +38,20 @@ npx playwright test                             # E2E vault flow (port 8089)
 
 Run commands from the repo root.
 
+## Parallel work (multiple Claude agents)
+
+More than one agent may run against this repo at once. The repo is a single local checkout, so sharing it means agents fight over the checked-out branch, the git index, and the same files on disk. To work in unison, not collision:
+
+- **One worktree per agent.** Each parallel agent gets its own git worktree: its own directory and branch, sharing the same `.git`. Create on demand when launching an agent; tear down when done:
+  ```bash
+  git worktree add ../wymber-<stream> <branch>   # e.g. ../wymber-landing feat/landing-...
+  git worktree remove ../wymber-<stream>          # when the stream is merged/abandoned
+  ```
+  The primary checkout (`wymber/`) is the **mobile** stream. The harness can also spawn agents with `isolation: "worktree"`, which does this automatically.
+- **Path ownership (one owner at a time).** Mobile agent owns `mobile/`; the frontend/landing agent owns `frontend/` + the landing/marketing pages. Shared seam files (`frontend/js/app.js`, `frontend/js/local-repo.js`) belong to one stream at a time. Ask the owner before a cross-boundary edit (e.g. mobile code reaching into `frontend/`).
+- **Branch discipline.** Verify `git branch --show-current` before any commit/push. Never commit to a branch another stream owns. Worktrees make this near-automatic since each directory is pinned to its branch.
+- **Merge stacked PRs bottom-up.** When PRs are stacked (base → head), land the base first (e.g. the mobile stream landed its Capacitor foundation, #154, into `develop` before stacking the native persistence wiring, #156, on top). Branch new parallel streams off an up-to-date `develop`.
+
 ## Key files
 
 - `frontend/js/crypto.js`: vault crypto (`createVault`/`unlockVault`/`sealDocument`/`changePassword`/`resetPassword`, recovery codes). Tested by Vitest (WebCrypto via `// @vitest-environment node`).
