@@ -63,6 +63,10 @@ repositories {
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+<<<<<<< HEAD
+    implementation "androidx.biometric:biometric:1.1.0" // BiometricVaultPlugin (issue #146)
+=======
+>>>>>>> origin/develop
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')

@@ -55,6 +55,28 @@ export class LocalRepo {
         this.dekKey = null;
     }
 
+    /**
+     * Raw DEK bytes for enrolling a device unlock method (e.g. biometrics). Requires the
+     * secret (an explicit consent moment); never stored — the caller wipes the bytes.
+     */
+    async getRawDek(secret, method = 'password') {
+        const str = await this.persistence.loadVault();
+        if (!str) throw new Error('No vault on this device yet.');
+        return vaultCrypto.unwrapDekRaw(vaultCrypto.parseVault(str), secret, method);
+    }
+
+    /** Unlock with a raw DEK released by a device unlock method (e.g. biometrics). */
+    async unlockWithDek(dekBytes) {
+        const str = await this.persistence.loadVault();
+        if (!str) throw new Error('No vault on this device yet.');
+        const vault = vaultCrypto.parseVault(str);
+        const { document, dekKey } = await vaultCrypto.unlockVaultWithDek(vault, dekBytes);
+        this.vault = vault;
+        this.dekKey = dekKey;
+        this.store = VaultStore.fromDocument(document);
+        return true;
+    }
+
     async changePassword(oldPassword, newPassword) {
         this._assertUnlocked();
         this.vault = await vaultCrypto.changePassword(this.vault, oldPassword, newPassword);

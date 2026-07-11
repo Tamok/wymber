@@ -1,6 +1,9 @@
 import { NODE_TYPES, typeColor, setPalette } from './config.js';
 import { LocalRepo } from './local-repo.js';
 import { NativePersistence, isNativeShell } from './native-persistence.js';
+import {
+    biometricAvailable, biometricEnrolled, biometricEnroll, biometricUnlock, biometricDisable,
+} from './native-biometric.js';
 import { TrauMindMap } from './mindmap.js';
 import { validateNodeData, passwordStrength } from './utils.js';
 import { analyzeMap, renderAnalysis } from './analyze.js';
@@ -53,6 +56,10 @@ class WymberApp {
         document.getElementById('create-password')?.addEventListener('input', () => this.updateStrengthMeter());
         document.getElementById('show-recover')?.addEventListener('click', () => this.showAuthPanel('recover'));
         document.getElementById('back-to-unlock')?.addEventListener('click', () => this.showAuthPanel('unlock'));
+        // Biometric unlock (native shell only; all three are hidden on the web build)
+        document.getElementById('biometric-unlock-btn')?.addEventListener('click', () => this.handleBiometricUnlock());
+        document.getElementById('biometric-enable-btn')?.addEventListener('click', () => this.enableBiometrics());
+        document.getElementById('biometric-dismiss-btn')?.addEventListener('click', () => this.dismissBiometricOffer());
         document.getElementById('restore-vault-file')?.addEventListener('change', (e) => this.doRestoreVault(e));
         document.getElementById('restore-confirm-btn')?.addEventListener('click', () => this.confirmRestore());
         document.getElementById('restore-cancel-btn')?.addEventListener('click', () => this.closeRestoreConfirm());
@@ -185,6 +192,7 @@ class WymberApp {
         document.getElementById('main-app').style.display = 'none';
         document.getElementById('login-screen').style.display = 'block';
 
+        if (name === 'unlock') this.updateBiometricUnlockButton(); // async; hidden until enrolled
         if (name === 'create') this.updateStrengthMeter();
         setTimeout(() => {
             const focusId = { create: 'create-password', unlock: 'unlock-password', recover: 'recover-code' }[name];
@@ -227,9 +235,88 @@ class WymberApp {
         try {
             await api.unlock(password);
             this.enterApp();
+            this.maybeOfferBiometrics(password); // native shell only; quiet no-op on web
         } catch {
             this.showError('Incorrect password. Please try again, or use your recovery code.');
         }
+    }
+
+    // ===== Biometric unlock (#146, native shell only — see native-biometric.js) =====
+
+    /** Show the "unlock with fingerprint/face" button only when actually enrolled. */
+    async updateBiometricUnlockButton() {
+        const btn = document.getElementById('biometric-unlock-btn');
+        if (!btn) return;
+        btn.style.display = (await biometricEnrolled()) ? '' : 'none';
+    }
+
+    async handleBiometricUnlock() {
+        this.showError('', false);
+        try {
+            const dek = await biometricUnlock();
+            try {
+                await api.unlockWithDek(dek);
+            } finally {
+                dek.fill(0);
+            }
+            this.enterApp();
+        } catch (e) {
+            if (e?.code === 'CANCELLED') return; // user chose "Use password" — no error needed
+            if (e?.code === 'INVALIDATED' || e?.code === 'NOT_ENROLLED') {
+                this.updateBiometricUnlockButton();
+                this.showError('Biometric unlock was reset because this device’s biometrics changed. Please use your password.');
+                return;
+            }
+            this.showError('Biometric unlock did not work. Please use your password.');
+        }
+    }
+
+    /**
+     * After a password unlock on the native shell: offer biometrics once, quietly, on the
+     * soft-start card. The password is held only while the offer is visible (enrolling
+     * re-derives the DEK from it), and dropped on any exit.
+     */
+    async maybeOfferBiometrics(password) {
+        try {
+            if (!(await biometricAvailable()) || (await biometricEnrolled())) return;
+            const { settings } = await api.get('/settings');
+            if (settings?.biometricDismissed) return;
+            this._biometricOfferPassword = password;
+            const offer = document.getElementById('biometric-offer');
+            if (offer) offer.style.display = 'block';
+        } catch {
+            /* never let the offer interfere with unlocking */
+        }
+    }
+
+    hideBiometricOffer() {
+        this._biometricOfferPassword = null;
+        const offer = document.getElementById('biometric-offer');
+        if (offer) offer.style.display = 'none';
+    }
+
+    async enableBiometrics() {
+        const password = this._biometricOfferPassword;
+        this.hideBiometricOffer();
+        if (!password) return;
+        try {
+            const dek = await api.getRawDek(password);
+            try {
+                await biometricEnroll(dek);
+            } finally {
+                dek.fill(0);
+            }
+            this.showNotification('Biometric unlock is on for this device.', 'success');
+        } catch (e) {
+            if (e?.code !== 'CANCELLED') this.showNotification('Could not set up biometric unlock. Your password still works.', 'error');
+        }
+    }
+
+    async dismissBiometricOffer() {
+        this.hideBiometricOffer();
+        try {
+            await api.put('/settings', { biometricDismissed: true }); // don't ask again
+        } catch { /* non-fatal */ }
     }
 
     async handleRecover(e) {
@@ -556,6 +643,7 @@ class WymberApp {
     }
 
     async openMapFromSoftStart() {
+        this.hideBiometricOffer(); // leaving the soft start drops the held password
         const ss = document.getElementById('soft-start');
         if (ss) ss.style.display = 'none';
         try {
@@ -1186,7 +1274,40 @@ class WymberApp {
         `;
 
         document.getElementById('delete-account-btn')?.addEventListener('click', () => this.deleteAccount());
+        this.renderBiometricSettings(); // async; appends a section on the native shell only
         document.getElementById('settings-modal').style.display = 'flex';
+    }
+
+    /** Biometric unlock section of Settings — only rendered inside the native shell. */
+    async renderBiometricSettings() {
+        if (!(await biometricAvailable())) return;
+        const panel = document.querySelector('#settings-content .settings-panel');
+        if (!panel || document.getElementById('biometric-settings')) return;
+        const enrolled = await biometricEnrolled();
+        const section = document.createElement('section');
+        section.id = 'biometric-settings';
+        if (enrolled) {
+            section.innerHTML = `
+                <h3>Biometric unlock</h3>
+                <p class="settings-note">Unlocking with your fingerprint or face is on for this device. Your password and recovery code always work too.</p>
+                <button id="biometric-off-btn" class="btn btn-secondary" type="button">Turn off biometric unlock</button>`;
+        } else {
+            section.innerHTML = `
+                <h3>Biometric unlock</h3>
+                <p class="settings-note">You'll be offered fingerprint or face unlock after your next password unlock.</p>
+                <button id="biometric-reoffer-btn" class="btn btn-secondary" type="button">Offer it next time I unlock</button>`;
+        }
+        panel.appendChild(section);
+        document.getElementById('biometric-off-btn')?.addEventListener('click', async () => {
+            await biometricDisable();
+            section.remove();
+            this.renderBiometricSettings();
+            this.showNotification('Biometric unlock is off. Your password still works.', 'success');
+        });
+        document.getElementById('biometric-reoffer-btn')?.addEventListener('click', async () => {
+            try { await api.put('/settings', { biometricDismissed: false }); } catch { /* non-fatal */ }
+            this.showNotification("Okay — you'll be asked after your next password unlock.", 'success');
+        });
     }
 
     async deleteAccount() {
@@ -1197,6 +1318,7 @@ class WymberApp {
         if (!confirmed) return;
         try {
             await api.destroyVault();
+            biometricDisable(); // hygiene: no orphaned wrapped key for a deleted vault
             this.stopIdleTimer();
             if (this.mindMap) { this.mindMap.destroy(); this.mindMap = null; }
             this.currentUser = null;
