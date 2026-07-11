@@ -5,7 +5,7 @@ import {
     biometricAvailable, biometricEnrolled, biometricEnroll, biometricUnlock, biometricDisable,
 } from './native-biometric.js';
 import { TrauMindMap } from './mindmap.js';
-import { validateNodeData, passwordStrength } from './utils.js';
+import { validateNodeData, passwordStrength, shouldNudgeBackup } from './utils.js';
 import { analyzeMap, renderAnalysis } from './analyze.js';
 import { suggestLinks } from './suggest.js';
 import { exportAsJSON, exportAsText, importMap, exportVaultFile, importVaultFile } from './export.js';
@@ -60,6 +60,9 @@ class WymberApp {
         document.getElementById('biometric-unlock-btn')?.addEventListener('click', () => this.handleBiometricUnlock());
         document.getElementById('biometric-enable-btn')?.addEventListener('click', () => this.enableBiometrics());
         document.getElementById('biometric-dismiss-btn')?.addEventListener('click', () => this.dismissBiometricOffer());
+        // Backup nudge (#147)
+        document.getElementById('backup-now-btn')?.addEventListener('click', () => { this.hideBackupNudge(); this.doExportVault(); });
+        document.getElementById('backup-later-btn')?.addEventListener('click', () => this.snoozeBackupNudge());
         document.getElementById('restore-vault-file')?.addEventListener('change', (e) => this.doRestoreVault(e));
         document.getElementById('restore-confirm-btn')?.addEventListener('click', () => this.confirmRestore());
         document.getElementById('restore-cancel-btn')?.addEventListener('click', () => this.closeRestoreConfirm());
@@ -235,7 +238,8 @@ class WymberApp {
         try {
             await api.unlock(password);
             this.enterApp();
-            this.maybeOfferBiometrics(password); // native shell only; quiet no-op on web
+            // Quiet post-unlock prompts, at most one: biometrics first (native only), else backup.
+            this.maybeOfferBiometrics(password).then(() => this.maybeNudgeBackup());
         } catch {
             this.showError('Incorrect password. Please try again, or use your recovery code.');
         }
@@ -260,6 +264,7 @@ class WymberApp {
                 dek.fill(0);
             }
             this.enterApp();
+            this.maybeNudgeBackup();
         } catch (e) {
             if (e?.code === 'CANCELLED') return; // user chose "Use password" — no error needed
             if (e?.code === 'INVALIDATED' || e?.code === 'NOT_ENROLLED') {
@@ -316,6 +321,50 @@ class WymberApp {
         this.hideBiometricOffer();
         try {
             await api.put('/settings', { biometricDismissed: true }); // don't ask again
+        } catch { /* non-fatal */ }
+    }
+
+    // ===== Backup nudge (#147: milestone-based, quiet, 30-day cooldown) =====
+
+    /** After an unlock: nudge only if the map has grown and isn't safely backed up. */
+    async maybeNudgeBackup() {
+        try {
+            // One quiet thing at a time: the biometric offer wins the slot.
+            if (document.getElementById('biometric-offer')?.style.display === 'block') return;
+            const [{ nodes }, { settings }] = await Promise.all([api.get('/mindmap'), api.get('/settings')]);
+            const show = shouldNudgeBackup({
+                nodeCount: nodes?.length ?? 0,
+                lastBackupAt: settings?.lastBackupAt,
+                // Content watermark, not the vault seal time: settings writes (incl. recording
+                // this very backup) must not read as an unbacked edit (#147).
+                lastEditAt: api.contentUpdatedAt,
+                lastNudgeAt: settings?.backupNudgeAt,
+            });
+            // Clear any leftover visible nudge when the policy no longer holds (e.g. entries
+            // deleted back below the milestone, or the map is now backed up) so a stale
+            // display:block state can't resurface on the next soft start.
+            if (!show) { this.hideBackupNudge(); return; }
+            const nudge = document.getElementById('backup-nudge');
+            if (nudge) nudge.style.display = 'block';
+        } catch { /* never let the nudge interfere with unlocking */ }
+    }
+
+    hideBackupNudge() {
+        const nudge = document.getElementById('backup-nudge');
+        if (nudge) nudge.style.display = 'none';
+    }
+
+    /** Drop the transient soft-start prompts (the briefly-held password + any visible
+     * offer/nudge) so they never linger past a lock. Mirrors the biometric-offer pattern. */
+    teardownSoftStartPrompts() {
+        this.hideBiometricOffer(); // also clears the briefly-held password
+        this.hideBackupNudge();
+    }
+
+    async snoozeBackupNudge() {
+        this.hideBackupNudge();
+        try {
+            await api.put('/settings', { backupNudgeAt: new Date().toISOString() }); // ~30d cooldown
         } catch { /* non-fatal */ }
     }
 
@@ -382,6 +431,7 @@ class WymberApp {
 
     async handleLogout() {
         this.stopIdleTimer();
+        this.teardownSoftStartPrompts();
         if (this.mindMap) {
             this.mindMap.destroy();
             this.mindMap = null;
@@ -461,6 +511,7 @@ class WymberApp {
 
     autoLock() {
         this.stopIdleTimer();
+        this.teardownSoftStartPrompts();
         if (this.mindMap) {
             this.mindMap.destroy();
             this.mindMap = null;
@@ -643,7 +694,7 @@ class WymberApp {
     }
 
     async openMapFromSoftStart() {
-        this.hideBiometricOffer(); // leaving the soft start drops the held password
+        this.teardownSoftStartPrompts(); // leaving the soft start drops the held password + any nudge
         const ss = document.getElementById('soft-start');
         if (ss) ss.style.display = 'none';
         try {
@@ -1428,7 +1479,14 @@ class WymberApp {
         try {
             const delivered = await exportVaultFile(api);
             document.getElementById('export-modal').style.display = 'none';
-            if (delivered) this.showNotification('Encrypted vault saved', 'success');
+            if (delivered) {
+                this.showNotification('Encrypted vault saved', 'success');
+                // Remember the backup so the #147 nudge knows the map is covered. Awaited so
+                // it's committed before we return; a dropped write would let the nudge reappear.
+                try {
+                    await api.put('/settings', { lastBackupAt: new Date().toISOString() });
+                } catch { /* non-fatal: the backup itself succeeded; at worst we re-nudge later */ }
+            }
         } catch (error) {
             console.error('Vault export failed:', error);
             this.showNotification('Could not export your vault', 'error');
