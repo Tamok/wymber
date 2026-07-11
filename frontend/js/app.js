@@ -1,6 +1,6 @@
 import { NODE_TYPES, typeColor, setPalette } from './config.js';
 import { LocalRepo } from './local-repo.js';
-import { NativePersistence, isNativeShell } from './native-persistence.js';
+import { NativePersistence, isNativeShell, isStorageUnavailableError } from './native-persistence.js';
 import {
     biometricAvailable, biometricEnrolled, biometricEnroll, biometricUnlock, biometricDisable,
 } from './native-biometric.js';
@@ -38,10 +38,26 @@ class WymberApp {
 
     async init() {
         this.setupEventListeners();
+        await this.bootAuth();
+    }
+
+    /**
+     * Choose the opening panel from what's on disk. A read that fails for a reason other than
+     * "no vault yet" (I/O, storage pressure) must NOT fall through to Create: on the native shell
+     * that would let the app overwrite a vault still on the device but momentarily unreadable
+     * (#165). We show an honest, retryable "storage unavailable" state instead. On the web build
+     * hasVault() never throws StorageUnavailableError, so its behaviour is unchanged: an unknown
+     * error still lands on Create exactly as before.
+     */
+    async bootAuth() {
         let hasVault = false;
         try {
             hasVault = await api.hasVault();
-        } catch {
+        } catch (err) {
+            if (isStorageUnavailableError(err)) {
+                this.showAuthPanel('storage-error');
+                return;
+            }
             hasVault = false;
         }
         this.showAuthPanel(hasVault ? 'unlock' : 'create');
@@ -56,6 +72,8 @@ class WymberApp {
         document.getElementById('create-password')?.addEventListener('input', () => this.updateStrengthMeter());
         document.getElementById('show-recover')?.addEventListener('click', () => this.showAuthPanel('recover'));
         document.getElementById('back-to-unlock')?.addEventListener('click', () => this.showAuthPanel('unlock'));
+        // Retry after a "storage unavailable" boot (#165): re-check what's on disk, don't assume fresh.
+        document.getElementById('storage-retry-btn')?.addEventListener('click', () => this.bootAuth());
         // Biometric unlock (native shell only; all three are hidden on the web build)
         document.getElementById('biometric-unlock-btn')?.addEventListener('click', () => this.handleBiometricUnlock());
         document.getElementById('biometric-enable-btn')?.addEventListener('click', () => this.enableBiometrics());
@@ -181,6 +199,7 @@ class WymberApp {
             unlock: 'unlock-form',
             recover: 'recover-form',
             'recovery-sheet': 'recovery-sheet',
+            'storage-error': 'storage-error',
         };
         document.querySelectorAll('.auth-panel').forEach((p) => { p.style.display = 'none'; });
         const el = document.getElementById(panels[name]);
@@ -198,7 +217,7 @@ class WymberApp {
         if (name === 'unlock') this.updateBiometricUnlockButton(); // async; hidden until enrolled
         if (name === 'create') this.updateStrengthMeter();
         setTimeout(() => {
-            const focusId = { create: 'create-password', unlock: 'unlock-password', recover: 'recover-code' }[name];
+            const focusId = { create: 'create-password', unlock: 'unlock-password', recover: 'recover-code', 'storage-error': 'storage-retry-btn' }[name];
             document.getElementById(focusId)?.focus();
         }, 50);
     }
