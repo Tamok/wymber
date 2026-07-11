@@ -51,6 +51,9 @@ quota** blocking production. The schedule is dominated by one item: the **D-U-N-
 - [ ] Store listing (name, descriptions, screenshots, feature graphic)
 - [ ] **Content rating questionnaire** (mental-health themes, crisis links)
 - [ ] **Data Safety form** ("collects no data" — still must be filled deliberately)
+- **INTERNET permission, pre-answered**: the manifest declares `android.permission.INTERNET`
+  because the Capacitor WebView bridge requires it to serve the app shell locally; there is no
+  network egress — the vault never leaves the device.
 - [ ] **Privacy policy URL** (wymber.app/privacy exists)
 - [ ] Target audience declaration; app review happens here
 - Org account => no 12/14 quota (that rule is scoped to personal accounts created after
