@@ -335,10 +335,15 @@ class WymberApp {
             const show = shouldNudgeBackup({
                 nodeCount: nodes?.length ?? 0,
                 lastBackupAt: settings?.lastBackupAt,
-                lastEditAt: api.vaultUpdatedAt,
+                // Content watermark, not the vault seal time: settings writes (incl. recording
+                // this very backup) must not read as an unbacked edit (#147).
+                lastEditAt: api.contentUpdatedAt,
                 lastNudgeAt: settings?.backupNudgeAt,
             });
-            if (!show) return;
+            // Clear any leftover visible nudge when the policy no longer holds (e.g. entries
+            // deleted back below the milestone, or the map is now backed up) so a stale
+            // display:block state can't resurface on the next soft start.
+            if (!show) { this.hideBackupNudge(); return; }
             const nudge = document.getElementById('backup-nudge');
             if (nudge) nudge.style.display = 'block';
         } catch { /* never let the nudge interfere with unlocking */ }
@@ -347,6 +352,13 @@ class WymberApp {
     hideBackupNudge() {
         const nudge = document.getElementById('backup-nudge');
         if (nudge) nudge.style.display = 'none';
+    }
+
+    /** Drop the transient soft-start prompts (the briefly-held password + any visible
+     * offer/nudge) so they never linger past a lock. Mirrors the biometric-offer pattern. */
+    teardownSoftStartPrompts() {
+        this.hideBiometricOffer(); // also clears the briefly-held password
+        this.hideBackupNudge();
     }
 
     async snoozeBackupNudge() {
@@ -419,6 +431,7 @@ class WymberApp {
 
     async handleLogout() {
         this.stopIdleTimer();
+        this.teardownSoftStartPrompts();
         if (this.mindMap) {
             this.mindMap.destroy();
             this.mindMap = null;
@@ -498,6 +511,7 @@ class WymberApp {
 
     autoLock() {
         this.stopIdleTimer();
+        this.teardownSoftStartPrompts();
         if (this.mindMap) {
             this.mindMap.destroy();
             this.mindMap = null;
@@ -680,7 +694,7 @@ class WymberApp {
     }
 
     async openMapFromSoftStart() {
-        this.hideBiometricOffer(); // leaving the soft start drops the held password
+        this.teardownSoftStartPrompts(); // leaving the soft start drops the held password + any nudge
         const ss = document.getElementById('soft-start');
         if (ss) ss.style.display = 'none';
         try {
@@ -1467,8 +1481,11 @@ class WymberApp {
             document.getElementById('export-modal').style.display = 'none';
             if (delivered) {
                 this.showNotification('Encrypted vault saved', 'success');
-                // Remember the backup so the #147 nudge knows the map is covered.
-                api.put('/settings', { lastBackupAt: new Date().toISOString() }).catch(() => {});
+                // Remember the backup so the #147 nudge knows the map is covered. Awaited so
+                // it's committed before we return; a dropped write would let the nudge reappear.
+                try {
+                    await api.put('/settings', { lastBackupAt: new Date().toISOString() });
+                } catch { /* non-fatal: the backup itself succeeded; at worst we re-nudge later */ }
             }
         } catch (error) {
             console.error('Vault export failed:', error);

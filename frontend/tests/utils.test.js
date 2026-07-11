@@ -107,4 +107,22 @@ describe('shouldNudgeBackup (#147 backup nudge policy)', () => {
     it('treats missing lastEditAt as backed-up (no false alarms)', () => {
         expect(shouldNudgeBackup({ nodeCount: 25, lastBackupAt: iso(now - 100 * DAY), now })).toBe(false);
     });
+
+    it('treats an edit exactly at the backup time as covered', () => {
+        const t = iso(now - 10 * DAY);
+        expect(shouldNudgeBackup({ nodeCount: 25, lastBackupAt: t, lastEditAt: t, now })).toBe(false);
+    });
+
+    it('keeps a backed-up, untouched map quiet even long after the cooldown (#147 regression)', () => {
+        // The bug: recording the backup bumped the "edit" signal, so this re-fired once the
+        // cooldown lapsed. With a content watermark, the last real edit predates the backup,
+        // so an untouched map stays quiet no matter how much time passes.
+        expect(shouldNudgeBackup({
+            nodeCount: 40,
+            lastBackupAt: iso(now - 60 * DAY),
+            lastEditAt: iso(now - 61 * DAY),   // last real map edit predates the backup
+            lastNudgeAt: iso(now - 59 * DAY),  // cooldown long since lapsed
+            now,
+        })).toBe(false);
+    });
 });
