@@ -143,6 +143,16 @@
                     <button type="button" id="back-to-unlock" class="btn-link">Back</button>
                 </form>
 
+                <!-- Storage temporarily unavailable (native shell). Shown when reading the vault
+                     failed for a reason other than "no vault yet" (#165). We deliberately do NOT
+                     drop to Create here: your vault is still on the device, just unreadable this
+                     moment, and creating over it would lose it. Gentle, honest, retryable. -->
+                <div id="storage-error" class="auth-panel" style="display:none;" role="alert">
+                    <h2 class="auth-heading">We couldn't open your space just now</h2>
+                    <p class="auth-sub">Your data is safe on this device. We just couldn't read it this time, which can happen when storage is briefly busy. Nothing has changed, and nothing has been lost.</p>
+                    <button type="button" id="storage-retry-btn" class="btn btn-primary">Try again</button>
+                </div>
+
                 <p class="auth-restore-hint">Moving from another device?
                     <label for="restore-vault-file" class="restore-link">Restore a <code>.wymber</code> backup</label></p>
                 <input type="file" id="restore-vault-file" accept=".wymber" style="display:none;" aria-label="Choose a .wymber backup to restore">
