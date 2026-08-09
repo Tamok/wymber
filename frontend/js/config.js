@@ -33,13 +33,32 @@ let activePalette = { ...PALETTES.wymber };
 export const typeColor = (t) => activePalette[t] || "#cfc7ba";
 
 /**
+ * Publish the active palette as CSS custom properties (--type-event, --type-emotion, ...) so
+ * styles.css never hard-codes a pastel: it reads var(--type-*) and stays in lockstep with
+ * whatever palette is active. Guarded because config.js is also imported by Vitest under the
+ * node environment, where `document` doesn't exist.
+ */
+function publishPaletteVars() {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    for (const [type, hex] of Object.entries(activePalette)) {
+        root.style.setProperty(`--type-${type}`, hex);
+    }
+}
+
+/**
  * Activate a palette: a preset name, or a partial { type: '#hex' } map layered over the default
  * (how user-defined palettes will work). Call before rendering; re-render the map after.
  */
 export function setPalette(palette) {
     const overrides = typeof palette === "string" ? (PALETTES[palette] || {}) : (palette || {});
     activePalette = { ...PALETTES.wymber, ...overrides };
+    publishPaletteVars();
 }
+
+// Publish the default palette immediately, so the --type-* tokens exist for CSS before the
+// vault unlocks and setPalette() is called with the user's actual settings.
+publishPaletteVars();
 
 export const NODE_TYPES = {
     event: {

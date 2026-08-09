@@ -6,11 +6,52 @@
     --text-primary: #424242;
     --text-secondary: #616161;
     --border: #e0e0e0;
-    --focus: #1976D2;
-    --focus-ring: 0 0 0 3px rgba(33, 150, 243, 0.3);
 
-    /* Node-type colors live in config.js (NODE_TYPES[*].color); the .node-preview
-       swatches below mirror those pastels. No separate CSS palette to drift. */
+    /* Accent: the muted plum already latent in the app (discovery violet, canvas selection
+       ring) promoted to the one accent identity, replacing the stock Material blue that
+       failed AA (4.41:1 on --bg-primary; see docs/adr/0004). Roles are split so links/borders
+       (--accent) and filled surfaces (--accent-surface) can diverge later without a rename;
+       today they're the same colour per theme. Every ratio here is asserted by
+       frontend/tests/contrast.test.js, not just eyeballed. */
+    --accent: #5F5185;
+    --accent-hover: #4A3E6B;
+    --accent-surface: #5F5185;
+    --accent-surface-hover: #4A3E6B;
+    --accent-on-surface: #FFFFFF;
+    --accent-soft: rgba(95, 81, 133, 0.10);
+
+    /* --focus is kept as an alias so nothing that already reads it breaks; all *semantic*
+       uses below (links, active borders, filled buttons) read the named --accent-* tokens
+       directly instead. */
+    --focus: var(--accent);
+
+    /* Focus treatment as tokens (ADR-0004 pillar 2): one ring, expressed once. */
+    --focus-width: 2px;
+    --focus-offset: 2px;
+    --focus-ring-color: var(--accent);
+    --focus-ring: 0 0 0 3px rgba(95, 81, 133, 0.3);
+
+    /* Status tokens: each text colour is checked against the surface it actually sits on
+       (frontend/tests/contrast.test.js), not chosen by eye. */
+    --danger-text: #b3261e;
+    --danger-surface: #b3261e;
+    --danger-surface-hover: #9c2018;
+    --danger-on-surface: #ffffff;
+    --danger-soft: #ffebee;
+    --success-text: #2E7D32;
+    --success-soft: #E8F5E9;
+    --warning-text: #8A5E14;
+
+    /* Password-strength meter fill, checked against --border (its own track) per theme:
+       dark's track is dark enough that the light theme's darker reds/greens vanish into it,
+       so dark gets its own brighter set below. */
+    --strength-1: #B23B32;
+    --strength-2: #8f4815;
+    --strength-3: #4f6b16;
+    --strength-4: #1f5c22;
+
+    /* Node-type colors live in config.js (NODE_TYPES[*].color / PALETTES.wymber); setPalette()
+       publishes them here as --type-* custom properties, so CSS never hard-codes a pastel. */
 
     /* Spacing for readability */
     --spacing-xs: 0.25rem;
@@ -18,9 +59,14 @@
     --spacing-md: 1rem;
     --spacing-lg: 1.5rem;
     --spacing-xl: 2rem;
-    
-    /* Transitions - gentle and predictable */
-    --transition: all 0.3s ease;
+
+    /* Motion - gentle and predictable, as tokens so it's inherited rather than re-declared
+       per component. prefers-reduced-motion (below) collapses these to ~0. */
+    --motion-fast: 0.18s;
+    --motion-base: 0.3s;
+    --motion-slow: 0.45s;
+    --ease: ease;
+    --transition: all var(--motion-base) var(--ease);
 }
 
 /* Dark theme - easy on eyes */
@@ -30,6 +76,25 @@
     --text-primary: #e0e0e0;
     --text-secondary: #b0b0b0;
     --border: #404040;
+
+    --accent: #A99AD6;
+    --accent-hover: #C0B6E8;
+    --accent-surface: #A99AD6;
+    --accent-surface-hover: #C0B6E8;
+    --accent-on-surface: #1F1B2E;
+    --accent-soft: rgba(169, 154, 214, 0.18);
+    --focus-ring: 0 0 0 3px rgba(169, 154, 214, 0.35);
+
+    --danger-text: #F1A3A3;
+    --danger-soft: #3a1f1f;
+    --success-text: #8fd6a8;
+    --success-soft: #1f3a26;
+    --warning-text: #e6c489;
+
+    --strength-1: #ef9a9a;
+    --strength-2: #ffb74d;
+    --strength-3: #aed581;
+    --strength-4: #66bb6a;
 }
 
 /* Soft theme - low contrast for sensitivity */
@@ -39,7 +104,22 @@
     --text-primary: #5a524a;
     --text-secondary: #6b6054;
     --border: #d4cfc7;
-    --focus: #3f6b73;
+
+    /* Deliberately the slightly lighter plum (5.94:1 vs light's 6.70:1): gentler, still
+       comfortably AA. Where "softer" and "accessible" pull against each other, accessible
+       wins; this is the resolution, not an accident. Retires the one-off teal (#3f6b73) this
+       theme used to carry, so all three themes now share one accent identity. */
+    --accent: #63548A;
+    --accent-hover: #4E4270;
+    --accent-surface: #63548A;
+    --accent-surface-hover: #4E4270;
+    --accent-on-surface: #FFFFFF;
+    --accent-soft: rgba(99, 84, 138, 0.10);
+    --focus-ring: 0 0 0 3px rgba(99, 84, 138, 0.3);
+
+    /* Danger/success/warning/strength: the light-theme values already clear AA against this
+       theme's backgrounds and border (measured in frontend/tests/contrast.test.js), so soft
+       inherits them rather than repeating the same numbers under a new name. */
 }
 
 /* Reset and base styles */
@@ -50,8 +130,8 @@
 }
 
 *:focus {
-    outline: 2px solid var(--focus);
-    outline-offset: 2px;
+    outline: var(--focus-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-offset);
     box-shadow: var(--focus-ring);
 }
 
@@ -61,16 +141,8 @@
     box-shadow: none;
 }
 
-/* Respect reduced-motion preferences (trauma-informed: no jarring motion) */
-@media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-    }
-}
+/* The full reduced-motion treatment (token collapse + !important backstop + the breathing-orb
+   exception) lives in one consolidated block near the end of this file. */
 
 /* Screen reader only content */
 .sr-only {
@@ -139,28 +211,19 @@ h3 { font-size: 1.25rem; }
 }
 
 .btn-primary {
-    background: var(--focus);
-    color: white;
-    border-color: var(--focus);
+    background: var(--accent-surface);
+    color: var(--accent-on-surface);
+    border-color: var(--accent-surface);
 }
 
 .btn-primary:hover:not(:disabled) {
-    background: #1565C0;
+    background: var(--accent-surface-hover);
+    border-color: var(--accent-surface-hover);
 }
 
 .btn-secondary {
     background: transparent;
     color: var(--text-secondary);
-}
-
-.btn-danger {
-    background: var(--bg-secondary);
-    color: #c62828;
-    border-color: #e0a3a3;
-}
-
-.btn-danger:hover:not(:disabled) {
-    background: #ffebee;
 }
 
 .settings-note {
@@ -197,7 +260,7 @@ select {
 input:focus,
 textarea:focus,
 select:focus {
-    border-color: var(--focus);
+    border-color: var(--accent);
 }
 
 textarea {
@@ -280,9 +343,9 @@ textarea {
     text-align: center;
     margin: var(--spacing-md) 0;
     padding: var(--spacing-md);
-    background: #e3f2fd;
+    background: var(--accent-soft);
     border-radius: 4px;
-    border-left: 4px solid var(--focus);
+    border-left: 4px solid var(--accent);
 }
 
 /* Soft-start interstitial */
@@ -319,8 +382,8 @@ textarea {
 }
 
 .error-message {
-    color: #d32f2f;
-    background: #ffebee;
+    color: var(--danger-text);
+    background: var(--danger-soft);
     padding: var(--spacing-md);
     border-radius: 4px;
     margin: var(--spacing-md) 0;
@@ -339,16 +402,18 @@ textarea {
     overflow: hidden;
 }
 
+/* Each strength colour is checked against --border (its own track) per theme; dark's track is
+   dark enough that it needs a brighter set (see the --strength-* tokens in :root / [data-theme]). */
 .strength-fill {
     height: 100%;
     width: 0;
-    background: #e57373;
+    background: var(--strength-1);
     transition: var(--transition);
 }
 
-.strength-fill.strength-2 { background: #ffb74d; }
-.strength-fill.strength-3 { background: #aed581; }
-.strength-fill.strength-4 { background: #66bb6a; }
+.strength-fill.strength-2 { background: var(--strength-2); }
+.strength-fill.strength-3 { background: var(--strength-3); }
+.strength-fill.strength-4 { background: var(--strength-4); }
 
 .strength-label {
     font-size: 0.8rem;
@@ -392,7 +457,7 @@ textarea {
 }
 
 .password-toggle:hover { color: var(--text-primary); }
-.password-toggle:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.password-toggle:focus-visible { outline: var(--focus-width) solid var(--focus-ring-color); outline-offset: var(--focus-offset); }
 
 .auth-restore-hint {
     text-align: center;
@@ -402,7 +467,7 @@ textarea {
 }
 
 .restore-link {
-    color: var(--focus);
+    color: var(--accent);
     cursor: pointer;
     text-decoration: underline;
     text-underline-offset: 2px;
@@ -412,13 +477,13 @@ textarea {
 .restore-link code { font-size: 0.85em; }
 
 .btn-danger {
-    background: #b3261e;
-    color: #fff;
+    background: var(--danger-surface);
+    color: var(--danger-on-surface);
     border: none;
 }
 
-.btn-danger:hover { background: #9c2018; }
-.btn-danger:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.btn-danger:hover { background: var(--danger-surface-hover); }
+.btn-danger:focus-visible { outline: var(--focus-width) solid var(--focus-ring-color); outline-offset: var(--focus-offset); }
 
 .ack-label {
     display: flex;
@@ -455,7 +520,7 @@ textarea {
     margin-top: var(--spacing-md);
     background: none;
     border: none;
-    color: var(--focus);
+    color: var(--accent);
     text-decoration: underline;
     cursor: pointer;
     font-size: 0.9rem;
@@ -508,20 +573,17 @@ textarea {
     gap: var(--spacing-sm);
 }
 
-/* Inline beside the "Mind Map Actions" heading: status as quiet coloured text, not a badge. */
+/* Inline beside the "Mind Map Actions" heading: status as quiet coloured text, not a badge.
+   The colours are theme tokens, so no per-theme override is needed here anymore. */
 .save-indicator {
     font-size: 0.85rem;
     font-weight: 600;
-    color: #2E7D32;
+    color: var(--success-text);
 }
 
-.save-indicator.saving { color: #9a6a1e; }
+.save-indicator.saving { color: var(--warning-text); }
 
-.save-indicator.error { color: #c62828; }
-
-[data-theme="dark"] .save-indicator { color: #8fd6a8; }
-[data-theme="dark"] .save-indicator.saving { color: #e6c489; }
-[data-theme="dark"] .save-indicator.error { color: #f1a3a3; }
+.save-indicator.error { color: var(--danger-text); }
 
 /* Main app content. min-height (not a fixed height) so the map keeps filling the viewport,
    but the page can grow and scroll when the accessible outline twin sits below it. */
@@ -626,21 +688,21 @@ kbd {
        bottom safety bar (both z-index 1000), so a node never tucks under them. */
     scroll-margin-top: 4rem;
     scroll-margin-bottom: 4rem;
-    transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    transition: border-color var(--motion-fast) var(--ease), box-shadow var(--motion-fast) var(--ease), background var(--motion-fast) var(--ease);
 }
 
 .map-outline-node:hover {
-    border-color: var(--accent, #6f5f96);
+    border-color: var(--accent);
 }
 
 .map-outline-node:focus-visible {
-    outline: 2px solid var(--focus);
-    outline-offset: 2px;
+    outline: var(--focus-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-offset);
 }
 
 .map-outline-node.selected {
-    border-color: var(--accent, #6f5f96);
-    box-shadow: 0 0 0 2px rgba(111, 95, 150, 0.25);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(95, 81, 133, 0.25);
 }
 
 .map-outline-chip {
@@ -690,7 +752,7 @@ kbd {
     border-left: 1px solid var(--border);
     box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12);
     transform: translateX(100%);
-    transition: transform 0.3s ease;
+    transition: transform var(--motion-base) var(--ease);
     pointer-events: none;
 }
 
@@ -741,7 +803,7 @@ kbd {
 }
 
 .detail-close:hover { color: var(--text-primary); }
-.detail-close:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.detail-close:focus-visible { outline: var(--focus-width) solid var(--focus-ring-color); outline-offset: var(--focus-offset); }
 
 .node-detail-body {
     flex: 1 1 auto;
@@ -775,7 +837,7 @@ kbd {
     font-size: 0.95rem;
 }
 
-.detail-input:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.detail-input:focus-visible { outline: var(--focus-width) solid var(--focus-ring-color); outline-offset: var(--focus-offset); }
 
 .detail-story {
     resize: vertical;
@@ -820,7 +882,7 @@ kbd {
 }
 
 .keyword-tag button:hover { color: var(--text-primary); }
-.keyword-tag button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.keyword-tag button:focus-visible { outline: var(--focus-width) solid var(--focus-ring-color); outline-offset: var(--focus-offset); }
 
 .detail-connections {
     list-style: none;
@@ -856,7 +918,7 @@ kbd {
     padding: 2px 8px;
     border-radius: 6px;
     cursor: pointer;
-    transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+    transition: background var(--motion-fast) var(--ease), color var(--motion-fast) var(--ease), border-color var(--motion-fast) var(--ease);
 }
 
 .detail-unlink:hover,
@@ -884,7 +946,7 @@ kbd {
 .btn-text-danger {
     background: transparent;
     border: 1px solid transparent;
-    color: #b3261e;
+    color: var(--danger-text);
     cursor: pointer;
 }
 
@@ -893,7 +955,7 @@ kbd {
     border-color: rgba(179, 38, 30, 0.3);
 }
 
-.btn-text-danger:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.btn-text-danger:focus-visible { outline: var(--focus-width) solid var(--focus-ring-color); outline-offset: var(--focus-offset); }
 
 /* ===== Discovery: a quiet "possible connections" affordance + its gentle list ===== */
 .suggest-affordance {
@@ -908,12 +970,12 @@ kbd {
     color: var(--text-primary);
     font-size: 0.85rem;
     cursor: pointer;
-    transition: background 0.18s ease, border-color 0.18s ease;
+    transition: background var(--motion-fast) var(--ease), border-color var(--motion-fast) var(--ease);
 }
 
 .suggest-affordance[hidden] { display: none; }
 .suggest-affordance:hover { background: rgba(155, 139, 189, 0.2); border-color: rgba(155, 139, 189, 0.6); }
-.suggest-affordance:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.suggest-affordance:focus-visible { outline: var(--focus-width) solid var(--focus-ring-color); outline-offset: var(--focus-offset); }
 .suggest-spark { color: #9b8bbd; }
 
 .suggest-intro {
@@ -970,7 +1032,7 @@ kbd {
 }
 
 .suggest-connect {
-    background: #A8DAD3;
+    background: var(--type-support);
     color: #1f3b37;
     border: none;
     padding: 6px 14px;
@@ -980,7 +1042,7 @@ kbd {
 }
 
 .suggest-connect:hover { filter: brightness(0.97); }
-.suggest-connect:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.suggest-connect:focus-visible { outline: var(--focus-width) solid var(--focus-ring-color); outline-offset: var(--focus-offset); }
 
 .suggest-dismiss {
     background: transparent;
@@ -992,7 +1054,7 @@ kbd {
 }
 
 .suggest-dismiss:hover { color: var(--text-primary); }
-.suggest-dismiss:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.suggest-dismiss:focus-visible { outline: var(--focus-width) solid var(--focus-ring-color); outline-offset: var(--focus-offset); }
 
 .suggest-empty {
     color: var(--text-secondary);
@@ -1043,15 +1105,17 @@ kbd {
     justify-content: center;
 }
 
-.node-preview.event { background: #EDDCB8; }
-.node-preview.emotion { background: #B7D5F0; }
-.node-preview.person { background: #F3BFD2; }
-.node-preview.place { background: #D9CCC3; }
-.node-preview.trigger { background: #F5DD9A; }
-.node-preview.coping { background: #A9D6AC; }
-.node-preview.insight { background: #E3BBE9; }
-.node-preview.growth { background: #D8ECB4; }
-.node-preview.support { background: #A8DAD3; }
+.node-preview.event { background: var(--type-event); }
+.node-preview.emotion { background: var(--type-emotion); }
+.node-preview.body { background: var(--type-body); }
+.node-preview.person { background: var(--type-person); }
+.node-preview.place { background: var(--type-place); }
+.node-preview.trigger { background: var(--type-trigger); }
+.node-preview.coping { background: var(--type-coping); }
+.node-preview.support { background: var(--type-support); }
+.node-preview.need { background: var(--type-need); }
+.node-preview.insight { background: var(--type-insight); }
+.node-preview.growth { background: var(--type-growth); }
 
 /* Modals */
 .modal {
@@ -1128,7 +1192,7 @@ kbd {
     padding: var(--spacing-md);
     background: var(--bg-primary);
     border-radius: 4px;
-    border-left: 4px solid var(--focus);
+    border-left: 4px solid var(--accent);
     font-size: 0.9rem;
     color: var(--text-secondary);
 }
@@ -1173,7 +1237,7 @@ kbd {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     opacity: 0;
     transform: translateY(20px);
-    transition: all 0.3s ease;
+    transition: var(--transition);
     z-index: 2000;
 }
 
@@ -1183,20 +1247,20 @@ kbd {
 }
 
 .notification-success {
-    border-color: #4CAF50;
-    background: #E8F5E9;
-    color: #2E7D32;
+    border-color: var(--success-text);
+    background: var(--success-soft);
+    color: var(--success-text);
 }
 
 .notification-error {
-    border-color: #F44336;
-    background: #FFEBEE;
-    color: #C62828;
+    border-color: var(--danger-text);
+    background: var(--danger-soft);
+    color: var(--danger-text);
 }
 
 /* The trigger pairing nudge: a gentle, opt-in invitation (not an auto-dismissing toast). */
 .notification-nudge {
-    border-color: var(--accent, #6f5f96);
+    border-color: var(--accent);
     max-width: 320px;
 }
 .notification-nudge .nudge-text {
@@ -1215,16 +1279,15 @@ kbd {
     padding: 0.4rem 0.9rem;
     font-size: 0.88rem;
     cursor: pointer;
-    transition: background 0.3s ease, border-color 0.3s ease;
+    transition: background var(--motion-base) var(--ease), border-color var(--motion-base) var(--ease);
 }
 .notification-nudge .nudge-add {
-    background: #A9D6AC;
-    border-color: #A9D6AC;
+    background: var(--type-coping);
+    border-color: var(--type-coping);
     color: #1f3b22;
 }
 .notification-nudge .nudge-add:hover {
-    background: #94c997;
-    border-color: #94c997;
+    filter: brightness(0.93);
 }
 .notification-nudge .nudge-dismiss {
     background: transparent;
@@ -1234,8 +1297,17 @@ kbd {
     border-color: var(--text-secondary);
 }
 
-/* Reduced motion preference */
+/* Respect reduced-motion preferences (trauma-informed: no jarring motion). One consolidated
+   block (this used to be declared twice): the --motion-* tokens collapse to ~0 so anything
+   using var(--transition) or a --motion-* duration stops animating by inheritance, AND the
+   !important blanket below backstops anything still hard-coded. Both, not one or the other. */
 @media (prefers-reduced-motion: reduce) {
+    :root {
+        --motion-fast: 0.01ms;
+        --motion-base: 0.01ms;
+        --motion-slow: 0.01ms;
+    }
+
     *,
     *::before,
     *::after {
@@ -1244,10 +1316,19 @@ kbd {
         transition-duration: 0.01ms !important;
         scroll-behavior: auto !important;
     }
-    
+
     .notification {
         transition: none;
     }
+
+    /* The breathing guide is the one place we keep gentle motion under reduce-motion: the slow
+       swell and the word fade ARE the exercise (functional, calm, non-vestibular), not decoration.
+       !important is needed to win over the global reduce-motion reset above. */
+    .breathing-orb { transition: transform 4s ease-in-out !important; }
+    .breathing-orb.is-in { transition: transform 4s ease-in-out !important; }
+    .breathing-orb.is-hold { transition: transform 0.4s ease !important; }
+    .breathing-orb.is-out { transition: transform 6s ease-in-out !important; }
+    .breathing-guide { transition: opacity 0.45s ease !important; }
 }
 
 /* Responsive design */
@@ -1354,7 +1435,7 @@ kbd {
     width: 24px;
     height: 24px;
     border: 2px solid var(--border);
-    border-top-color: var(--focus);
+    border-top-color: var(--accent);
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-left: var(--spacing-sm);
@@ -1524,11 +1605,11 @@ body {
 
 .sense-text { color: var(--text-primary); }
 
-.sense-see .sense-num { background: #B7D5F0; }
-.sense-feel .sense-num { background: #F6C2AD; }
-.sense-hear .sense-num { background: #C9C3EE; }
-.sense-smell .sense-num { background: #EDDCB8; }
-.sense-taste .sense-num { background: #F3BFD2; }
+.sense-see .sense-num { background: var(--type-emotion); }
+.sense-feel .sense-num { background: var(--type-body); }
+.sense-hear .sense-num { background: var(--type-need); }
+.sense-smell .sense-num { background: var(--type-event); }
+.sense-taste .sense-num { background: var(--type-person); }
 
 /* Crisis resources, as calm cards with a soft accent edge. */
 .crisis-list {
@@ -1547,7 +1628,7 @@ body {
     padding: var(--spacing-sm) var(--spacing-md);
     background: var(--bg-primary);
     border: 1px solid var(--border);
-    border-left: 4px solid #A8DAD3;
+    border-left: 4px solid var(--type-support);
     border-radius: 10px;
 }
 
@@ -1556,7 +1637,7 @@ body {
     color: var(--text-primary);
 }
 
-.crisis-link { color: var(--focus); text-decoration: none; }
+.crisis-link { color: var(--accent); text-decoration: none; }
 .crisis-link:hover { text-decoration: underline; }
 
 .crisis-desc {
@@ -1576,12 +1657,12 @@ body {
     display: inline-block;
     padding: 7px 14px;
     border-radius: 999px;
-    background: #A8DAD3;
+    background: var(--type-support);
     color: #21413d;
     font-weight: 600;
     font-size: 0.9rem;
     text-decoration: none;
-    transition: filter 0.18s ease;
+    transition: filter var(--motion-fast) var(--ease);
 }
 
 .crisis-action:hover,
@@ -1599,7 +1680,7 @@ body {
 .tutorial-step {
     opacity: 0;
     transform: translateY(6px);
-    transition: opacity 0.3s ease, transform 0.3s ease;
+    transition: opacity var(--motion-base) var(--ease), transform var(--motion-base) var(--ease);
 }
 .tutorial-step.is-shown { opacity: 1; transform: none; }
 
@@ -1619,9 +1700,9 @@ body {
 .tutorial-dot {
     width: 7px; height: 7px; border-radius: 50%;
     background: var(--border);
-    transition: background 0.2s ease, transform 0.2s ease;
+    transition: background var(--motion-fast) var(--ease), transform var(--motion-fast) var(--ease);
 }
-.tutorial-dot.active { background: var(--focus); transform: scale(1.25); }
+.tutorial-dot.active { background: var(--accent); transform: scale(1.25); }
 
 .tutorial-nav { display: flex; align-items: center; gap: var(--spacing-sm); }
 
@@ -1654,16 +1735,8 @@ body {
 .app-footer-credit { font-size: 0.75rem; }
 .app-footer-sep { color: var(--text-secondary); font-size: 0.75rem; }
 
-/* The breathing guide is the one place we keep gentle motion under reduce-motion: the slow
-   swell and the word fade ARE the exercise (functional, calm, non-vestibular), not decoration.
-   !important is needed to win over the global reduce-motion reset above. */
-@media (prefers-reduced-motion: reduce) {
-    .breathing-orb { transition: transform 4s ease-in-out !important; }
-    .breathing-orb.is-in { transition: transform 4s ease-in-out !important; }
-    .breathing-orb.is-hold { transition: transform 0.4s ease !important; }
-    .breathing-orb.is-out { transition: transform 6s ease-in-out !important; }
-    .breathing-guide { transition: opacity 0.45s ease !important; }
-}
+/* The breathing-orb reduced-motion exception now lives in the single consolidated
+   prefers-reduced-motion block, alongside the token collapse and the !important backstop. */
 
 /* ===== MIND MAP TOOLBAR ===== */
 .mindmap-toolbar {
@@ -1761,10 +1834,12 @@ body {
     background: var(--bg-primary);
 }
 
-/* Readable links inside modal bodies on the dark theme (default link blue sat too dark). */
-[data-theme="dark"] .modal-body a:not(.btn):not(.crisis-action),
-[data-theme="dark"] .export-note a {
-    color: #9ec3ff;
+/* Links inside modal bodies: the accent token is theme-correct by construction, so this no
+   longer needs a dark-only patch (it used to hard-code a lighter blue just for dark theme,
+   because the default link colour it was overriding was never themed either). */
+.modal-body a:not(.btn):not(.crisis-action),
+.export-note a {
+    color: var(--accent);
 }
 
 /* Type chips: the 11 types as colour-dotted radio chips, all visible at once. */
@@ -1798,14 +1873,14 @@ body {
 .type-chip:hover { background: var(--bg-primary); }
 
 .type-chip:has(input:checked) {
-    border-color: var(--focus);
-    box-shadow: inset 0 0 0 1px var(--focus);
+    border-color: var(--accent);
+    box-shadow: inset 0 0 0 1px var(--accent);
     background: var(--bg-primary);
 }
 
 .type-chip:has(input:focus-visible) {
-    outline: 2px solid var(--focus);
-    outline-offset: 2px;
+    outline: var(--focus-width) solid var(--focus-ring-color);
+    outline-offset: var(--focus-offset);
 }
 
 /* Zoom controls: explicit, always-visible map zoom (scroll/pinch still work). */
@@ -1872,15 +1947,15 @@ body {
 }
 
 .btn-toolbar:hover:not(:disabled) {
-    background: var(--focus);
-    color: white;
-    border-color: var(--focus);
+    background: var(--accent-surface);
+    color: var(--accent-on-surface);
+    border-color: var(--accent-surface);
 }
 
 .btn-toolbar.active {
-    background: var(--focus);
-    color: white;
-    border-color: var(--focus);
+    background: var(--accent-surface);
+    color: var(--accent-on-surface);
+    border-color: var(--accent-surface);
 }
 
 .btn-toolbar:disabled {
@@ -1929,12 +2004,12 @@ body {
 }
 
 .mindmap-help li strong {
-    color: var(--focus);
+    color: var(--accent);
 }
 
 .mindmap-help-note {
-    background: rgba(33, 150, 243, 0.1);
-    border-left: 4px solid var(--focus);
+    background: var(--accent-soft);
+    border-left: 4px solid var(--accent);
     padding: var(--spacing-md);
     margin: var(--spacing-md) 0 0 0;
     border-radius: 4px;
