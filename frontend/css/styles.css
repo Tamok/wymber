@@ -740,6 +740,16 @@ kbd {
     box-shadow: 0 0 0 2px var(--accent-halo);
 }
 
+/* Visual-only mirror of the canvas roving-focus ring (issue #126, mindmap.js
+   syncOutlineRovingFocus). DOM focus never lands here, so this can't rely on :focus-visible; it
+   has to be its own class. Dashed + a wider halo than .selected so the two remain tellable apart
+   when a node is both selected and roving-focused at once. */
+.map-outline-node.is-kbd-focused {
+    outline: var(--focus-width) dashed var(--accent);
+    outline-offset: var(--focus-offset);
+    box-shadow: 0 0 0 4px var(--accent-halo);
+}
+
 .map-outline-chip {
     flex: 0 0 auto;
     width: 14px;

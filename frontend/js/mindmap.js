@@ -19,13 +19,75 @@ const typeLabel = (t) => NODE_TYPES[t]?.label || (t ? t[0].toUpperCase() + t.sli
 // Canvas + edge colors per app theme. Node fills stay the constant pastel type colors (they read
 // well on any background with the dark label text); only the surrounding canvas and the edges
 // follow light / dark / soft so the map never looks pasted onto the wrong theme.
+// `focus` mirrors --accent in styles.css exactly, per theme. The canvas is drawn to a bitmap and
+// cannot read CSS custom properties, so the roving-focus ring color has to be duplicated here by
+// hand; if --accent ever moves, update these three lines with it (frontend/tests/contrast.test.js
+// does not reach into here).
 const CANVAS = {
-    light: { bg: '#FEFEFE', edge: '#cfc7ba', suggested: '#9b8bbd' },
-    dark:  { bg: '#1f2228', edge: '#3a3f49', suggested: '#7c6fa6' },
-    soft:  { bg: '#f7f2ea', edge: '#d8cdbb', suggested: '#9b8bbd' },
+    light: { bg: '#FEFEFE', edge: '#cfc7ba', suggested: '#9b8bbd', focus: '#5F5185' },
+    dark:  { bg: '#1f2228', edge: '#3a3f49', suggested: '#7c6fa6', focus: '#A99AD6' },
+    soft:  { bg: '#f7f2ea', edge: '#d8cdbb', suggested: '#9b8bbd', focus: '#63548A' },
 };
 
 const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
+
+// Screen-space bearing (in atan2(dy, dx) degrees) each arrow key points along. The canvas y-axis
+// points down, so "up" is -90 degrees, not +90.
+const DIRECTION_AXIS_DEG = { up: -90, down: 90, left: 180, right: 0 };
+const DIRECTION_CONE_DEG = 60;
+// Phrasing for the "nothing that way" announcement. "No dot to the up." reads wrong, so up/down
+// get their own preposition instead of reusing "to the {direction}" for all four.
+const DIRECTION_PHRASE = { up: 'above', down: 'below', left: 'to the left', right: 'to the right' };
+const NEIGHBOUR_BONUS = 0.5; // a connected candidate's distance counts for half, so it wins ties
+
+/** Smallest signed angle from `b` to `a`, in degrees, wrapped to [-180, 180]. */
+function angleDiffDeg(a, b) {
+    let d = a - b;
+    while (d > 180) d -= 360;
+    while (d < -180) d += 360;
+    return d;
+}
+
+/**
+ * Pure direction-picker for canvas roving focus (issue #126). No DOM, no Cytoscape, no `this`,
+ * so it's unit-testable on its own (frontend/tests/mindmap-nav.test.js) without faking a renderer.
+ *
+ * Candidates are restricted to a +-60 degree cone around the pressed axis (never teleport
+ * somewhere off to the side just because it's the closest node on the whole map), then scored by
+ * plain Euclidean distance with a connected-neighbour bonus (half distance) so an edge-connected
+ * node wins over an unconnected one *unless* the unconnected one is meaningfully nearer. This is
+ * what reconciles "move along edges" with what a sighted keyboard user expects on a visual graph.
+ *
+ * @param {Array<{id:*, x:number, y:number}>} nodes
+ * @param {*} fromId
+ * @param {'up'|'down'|'left'|'right'} direction
+ * @param {Set<*>} neighbourIds ids directly connected to fromId
+ * @returns {*|null} the chosen id, or null if nothing qualifies
+ */
+export function nextNodeInDirection(nodes, fromId, direction, neighbourIds = new Set()) {
+    const axis = DIRECTION_AXIS_DEG[direction];
+    const from = (nodes || []).find((n) => n.id === fromId);
+    if (!from || axis === undefined) return null;
+
+    let best = null;
+    let bestScore = Infinity;
+    for (const n of nodes) {
+        if (n.id === fromId) continue;
+        const dx = n.x - from.x;
+        const dy = n.y - from.y;
+        if (dx === 0 && dy === 0) continue; // stacked exactly on the source: no direction to it
+        const bearing = Math.atan2(dy, dx) * (180 / Math.PI);
+        if (Math.abs(angleDiffDeg(bearing, axis)) > DIRECTION_CONE_DEG) continue;
+
+        const dist = Math.hypot(dx, dy);
+        const score = neighbourIds.has(n.id) ? dist * NEIGHBOUR_BONUS : dist;
+        if (best === null || score < bestScore || (score === bestScore && n.id < best.id)) {
+            best = n;
+            bestScore = score;
+        }
+    }
+    return best ? best.id : null;
+}
 
 // Size each node box to its wrapped label. We compute this ourselves (rather than the
 // deprecated Cytoscape 'label' width/height) so the boxes stay snug and the console stays clean.
@@ -77,6 +139,10 @@ export class TrauMindMap {
         this.api = apiClient;
         this.cy = null;
         this.selectedNode = null; // the raw db node { id, node_type, title, ... } or null
+        this.focusedNodeId = null; // roving keyboard focus on the canvas (issue #126), separate
+        // from selection: app.js wires onSelectNode to open the node detail drawer, so if arrow
+        // keys committed selection, every arrow press would pop the drawer open over the map.
+        // Arrows move this ring; Enter/Space commits it via the existing handleNodeSelection.
         this.toolbarMode = 'select';
         this.connectingFrom = null; // raw db node while linking
         this.onShowNodeModal = null; // callback set by app.js (edit -> node detail drawer)
@@ -142,6 +208,18 @@ export class TrauMindMap {
             },
             { selector: 'node.selected', style: { 'border-width': 3, 'border-color': '#6f5f96' } },
             { selector: 'node.connecting', style: { 'border-width': 3, 'border-color': '#6f5f96', 'border-style': 'dashed' } },
+            // The roving keyboard-focus ring (issue #126). An outline, not a border, so it never
+            // fights the existing .selected / .connecting border states; both can be visible on
+            // the same node at once (e.g. tab back onto the already-selected node).
+            {
+                selector: 'node.kbd-focus',
+                style: {
+                    'outline-width': 3,
+                    'outline-color': c.focus,
+                    'outline-offset': 2,
+                    'outline-opacity': 1,
+                },
+            },
             { selector: 'node.dim', style: { 'opacity': 0.28 } },
             {
                 selector: 'edge',
@@ -231,6 +309,14 @@ export class TrauMindMap {
             const el = this.cy.getElementById(String(this.selectedNode.id));
             if (el.nonempty()) el.addClass('selected');
             else this.selectedNode = null;
+        }
+
+        // Same revalidation for the roving focus ring: a re-render can drop the focused node
+        // (deleted elsewhere, e.g. from the outline), and a stale id would leave a ghost ring.
+        if (this.focusedNodeId != null) {
+            const el = this.cy.getElementById(String(this.focusedNodeId));
+            if (el.nonempty()) el.addClass('kbd-focus');
+            else this.focusedNodeId = null;
         }
 
         // Honor saved positions (preset). Only when nothing was ever placed do we arrange gently.
@@ -449,6 +535,135 @@ export class TrauMindMap {
             }
         };
         document.addEventListener('keydown', this._deleteKeyHandler);
+
+        // Canvas-native roving focus (issue #126): an enhancement over the #map-outline twin,
+        // not a replacement for it. Scoped to the container (not document), and kept as a
+        // reference for the same reason as _deleteKeyHandler above: re-init after lock/unlock
+        // must not stack listeners.
+        const ARROW_DIRECTIONS = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
+        this._navKeyHandler = (e) => {
+            const direction = ARROW_DIRECTIONS[e.key];
+            if (direction) {
+                e.preventDefault(); // don't let the arrow keys scroll the page
+                this.moveRovingFocus(direction);
+                return;
+            }
+            if (e.key === ' ') e.preventDefault(); // Space scrolls the container otherwise
+            if (e.key === 'Enter' || e.key === ' ') {
+                if (this.focusedNodeId == null) return;
+                const node = this.lastData.nodes.find((n) => n.id === this.focusedNodeId);
+                if (node) this.handleNodeSelection(node);
+                return;
+            }
+            if (e.key === 'Escape') {
+                if (this.focusedNodeId == null) return; // nothing consumed: let it bubble so
+                // app.js's global Escape still closes overlays / quick-exits as documented.
+                // When we DO have a roving focus, we must stopPropagation: app.js's document
+                // listener treats "Escape with nothing open" as an instant, no-confirm logout,
+                // and it has no way to know a roving ring is "something open". Missing this
+                // would mean pressing Escape on the canvas logs the user out mid-session.
+                e.stopPropagation();
+                this.clearRovingFocus();
+            }
+        };
+        this.container.addEventListener('keydown', this._navKeyHandler);
+    }
+
+    // ===== ROVING KEYBOARD FOCUS (canvas-native nav, issue #126) =====
+
+    /** Ids of nodes directly connected to `id` (explicit edges + legacy parent_id links). */
+    neighbourIdsOf(id) {
+        const out = new Set();
+        (this.lastData.edges || []).forEach((e) => {
+            if (e.from_node_id === id) out.add(e.to_node_id);
+            else if (e.to_node_id === id) out.add(e.from_node_id);
+        });
+        const node = this.lastData.nodes.find((n) => n.id === id);
+        if (node?.parent_id != null) out.add(node.parent_id);
+        this.lastData.nodes.forEach((n) => { if (n.parent_id === id) out.add(n.id); });
+        return out;
+    }
+
+    /** The node whose live canvas position is nearest the current viewport centre. */
+    nearestNodeToViewportCentre() {
+        const ext = this.cy.extent();
+        const cx = (ext.x1 + ext.x2) / 2;
+        const cy = (ext.y1 + ext.y2) / 2;
+        let best = null;
+        let bestDist = Infinity;
+        this.cy.nodes().forEach((el) => {
+            const p = el.position();
+            const d = Math.hypot(p.x - cx, p.y - cy);
+            if (d < bestDist) { bestDist = d; best = parseInt(el.id(), 10); }
+        });
+        return best;
+    }
+
+    /** Arrow-key entry point: seed the roving focus if nothing is focused yet, else step it. */
+    moveRovingFocus(direction) {
+        if (!this.cy || this.cy.nodes().empty()) return;
+        if (this.focusedNodeId == null) {
+            this.setRovingFocus(this.nearestNodeToViewportCentre());
+            return;
+        }
+        // Live cy positions, not this.lastData's (those only refresh on the 1.2s save debounce,
+        // so a node just dragged would still score from its old spot).
+        const nodes = this.cy.nodes().map((el) => ({ id: parseInt(el.id(), 10), x: el.position('x'), y: el.position('y') }));
+        const neighbourIds = this.neighbourIdsOf(this.focusedNodeId);
+        const nextId = nextNodeInDirection(nodes, this.focusedNodeId, direction, neighbourIds);
+        if (nextId == null) {
+            this.announceToScreenReader(`No dot ${DIRECTION_PHRASE[direction]}.`);
+            return;
+        }
+        this.setRovingFocus(nextId);
+    }
+
+    setRovingFocus(id) {
+        if (id == null) return;
+        const el = this.cy.getElementById(String(id));
+        if (el.empty()) return;
+        this.focusedNodeId = id;
+        this.cy.nodes().removeClass('kbd-focus');
+        el.addClass('kbd-focus');
+        this.syncOutlineRovingFocus();
+        this.revealFocused(el);
+        this.announceRovingFocus(id);
+    }
+
+    /** Escape: drop the ring, but DOM focus stays on the container (still `role="application"`). */
+    clearRovingFocus() {
+        this.focusedNodeId = null;
+        this.cy?.nodes().removeClass('kbd-focus');
+        this.syncOutlineRovingFocus();
+    }
+
+    /**
+     * Bring the focused node into view only when it isn't already fully visible; re-centering on
+     * every arrow press would be exactly the disorienting motion this product avoids. Reduced
+     * motion is checked at call time (not once at construction) so a preference change mid-session
+     * takes effect immediately.
+     */
+    revealFocused(el) {
+        const ext = this.cy.extent();
+        const bb = el.boundingBox();
+        const fullyVisible = bb.x1 >= ext.x1 && bb.x2 <= ext.x2 && bb.y1 >= ext.y1 && bb.y2 <= ext.y2;
+        if (fullyVisible) return;
+        const reduceMotion = typeof window.matchMedia === 'function'
+            && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (reduceMotion) this.cy.center(el);
+        else this.cy.animate({ center: { eles: el } }, { duration: 220 });
+    }
+
+    /** Short by design: this is spoken on every arrow press, so it stays a single sentence. */
+    announceRovingFocus(id) {
+        const index = this.lastData.nodes.findIndex((n) => n.id === id);
+        const node = this.lastData.nodes[index];
+        if (!node) return;
+        const count = this.neighbourIdsOf(id).size;
+        const connections = count === 1 ? 'connection' : 'connections';
+        this.announceToScreenReader(
+            `${typeLabel(node.node_type)}: ${node.title}. ${count} ${connections}. ${index + 1} of ${this.lastData.nodes.length}.`
+        );
     }
 
     nodeFromEl(el) {
@@ -655,6 +870,7 @@ export class TrauMindMap {
 
         this.outlineEl.appendChild(list);
         this.syncOutlineSelection();
+        this.syncOutlineRovingFocus();
         this.refreshOutlineHint();
     }
 
@@ -664,6 +880,20 @@ export class TrauMindMap {
             const selected = this.selectedNode && b.dataset.nodeId === String(this.selectedNode.id);
             b.classList.toggle('selected', !!selected);
             b.setAttribute('aria-pressed', selected ? 'true' : 'false');
+        });
+    }
+
+    /**
+     * Visual-only mirror of the canvas roving-focus ring onto its #map-outline twin (ADR-0004
+     * pillar 1). DOM focus never moves here: doing so would pull the user out of the canvas
+     * application region and break the roving model. This just keeps the two views looking
+     * consistent with each other.
+     */
+    syncOutlineRovingFocus() {
+        if (!this.outlineEl) return;
+        this.outlineEl.querySelectorAll('.map-outline-node').forEach((b) => {
+            const focused = this.focusedNodeId != null && b.dataset.nodeId === String(this.focusedNodeId);
+            b.classList.toggle('is-kbd-focused', !!focused);
         });
     }
 
@@ -718,6 +948,11 @@ export class TrauMindMap {
             document.removeEventListener('keydown', this._deleteKeyHandler);
             this._deleteKeyHandler = null;
         }
+        if (this._navKeyHandler) {
+            this.container.removeEventListener('keydown', this._navKeyHandler);
+            this._navKeyHandler = null;
+        }
+        this.focusedNodeId = null;
         if (this.cy) {
             this.cy.destroy();
             this.cy = null;
