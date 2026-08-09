@@ -248,3 +248,10 @@ kbd {
   .site-nav { gap: 16px; font-size: 0.9rem; }
   .hero, .band { padding: 40px 20px; }
 }
+
+/* Code block (verify.html: reproducing a build from the terminal) */
+.code-block {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 16px 20px; overflow-x: auto; font-family: ui-monospace, monospace; font-size: 0.85rem;
+  line-height: 1.6; color: var(--ink);
+}

@@ -26,6 +26,10 @@
     <meta name="apple-mobile-web-app-title" content="Wymber">
     <meta name="mobile-web-app-capable" content="yes">
 
+    <!-- The build stamp (ADR-0003 Layer 1). Rewritten to the real commit at build time; this is
+         transparency (what code is running), never a self-attestation of integrity. -->
+    <meta name="wymber-build" content="dev">
+
     <!-- Description + social sharing. The landing (wymber.app) is the indexed surface; this
          app shell is an empty vault screen with nothing to rank, so it asks not to be indexed
          (robots.txt still allows crawling here, or the noindex would never be seen). -->

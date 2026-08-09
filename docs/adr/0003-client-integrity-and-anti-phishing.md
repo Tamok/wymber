@@ -140,3 +140,153 @@ assurance comes only from **out-of-band** verification (Layer 2 extension / manu
 > **passkeys** (which a fake site can't use), and a **signed desktop app** is the highest-trust
 > option. What we will never pretend is that a web page can prove its own honesty: it can't, so never
 > enter your Wymber password anywhere but the site you trust.
+
+## Implementation notes (Layer 1)
+
+Landed in [#111]: `scripts/build-pages.mjs` (the only build, run by CI on push to main/develop)
+now makes its own output verifiable, deterministically.
+
+**Manifest.** `scripts/integrity-manifest.mjs` walks the built `dist/` tree and hashes every
+shipped file with SHA-384, in the exact SRI format (`sha384-<base64>`). It writes the same
+manifest to two places, on two cadences: `dist/integrity-manifest.json` on **every** build (served
+from `web.wymber.app`, the app origin, so it always describes exactly what CI just deployed), and
+the committed `landing/integrity-manifest.json` (served from `wymber.app`, a *different* origin)
+as a **release snapshot**, refreshed deliberately with `node scripts/integrity-manifest.mjs
+--publish`. The landing copy is opt-in because it is a tracked file whose `commit` field changes
+with every commit: writing it on every build would leave a dirty working tree after an ordinary
+build or test run. Comparing the two is the cross-check this layer exists for: if either origin
+is tampered with, its manifest stops matching the other. That is tamper-evidence for the official
+deploy. It is not proof either origin is honest, a compromise of the build pipeline itself, or of
+both origins at once, would produce two manifests that agree with each other and still lie.
+
+**SRI is injected at build time, not committed.** There is no content-hashing build step (the app
+ships as plain files, on purpose, so it stays simple to self-host and to audit). If an `integrity`
+attribute were committed by hand in `index.html`, it would silently go stale, and therefore
+silently break the site, the moment any contributor edited `styles.css` or `app.js` without also
+updating the hash. Computing the hash from the bytes actually written to `dist/` on every build
+makes staleness structurally impossible: the hash is always of what is actually being served.
+`build-pages.mjs` asserts each injection site before rewriting it (the placeholder or bare tag
+must be found, unmodified) and throws rather than shipping a build with a missing or blocked
+integrity check.
+
+**Import-map integrity, for ES modules.** A `<script integrity="...">` attribute only covers the
+tag it's on. Wymber's modules load each other with `import` statements, and an `import` statement
+cannot carry an `integrity` attribute. The build instead emits a single
+`<script type="importmap">{"integrity": {...}}</script>` covering every `.js` file under
+`/static/js/` and `/static/libs/`, keyed by URL, placed before `</head>` (import maps must precede
+the first module script; the module entrypoint lives in `<body>`, so this satisfies that). Browsers
+that support import-map integrity check every module import against it; browsers that don't
+simply ignore the unrecognised key, so this degrades gracefully rather than breaking the app.
+
+**The build indicator stays honest.** `frontend/js/build-info.js` ships the literal `'dev'`
+placeholder in source; only a build stamps the real short commit SHA into the `dist/` copy (both
+the module and the `<meta name="wymber-build">` tag). A self-hosted or locally-served copy that
+nothing stamped correctly reports `'dev'`, never a fabricated commit. `buildLabel()` is
+deliberately inert: a short, plain string, no checkmark, no "verified", no "secure", because per
+this ADR a client can never vouch for its own integrity. Showing the build hash in the UI (so a
+person can compare it against the published manifest) is future work for `app.js`, out of scope
+here; this file is the seam for that to land against later.
+
+Consistent with the rest of this ADR: same-origin SRI and the published manifest make the
+*official* deploy tamper-evident against its own published source. They do nothing to stop a
+clone on a different origin from shipping its own, differently-hashed bundle. That remains Layers
+2-4's job (out-of-band attestation, passkeys, the signed desktop app).
+
+## Implementation notes (Layer 1, continued): strict CSP + Integrity-Policy
+
+Landed in [#112]: both origins now ship a strict `Content-Security-Policy`, and the app ships
+`Integrity-Policy-Report-Only`, tightening the tamper-evidence [#111] already established.
+
+**The policy.** Both origins share the same shape (`default-src 'self'`, `base-uri 'none'`,
+`object-src 'none'`, `frame-ancestors 'none'`, `form-action 'none'`, `manifest-src 'self'`,
+`worker-src 'self'`, `connect-src 'self'` on the app / `'none'` on the landing, since the landing
+makes no requests at all), but differ in `script-src` and `img-src`: the app needs
+`img-src 'self' data: blob:` (`export.js`'s `URL.createObjectURL` downloads, Cytoscape's canvas),
+the landing only `img-src 'self' data:`. Emitted from three places, verified to agree by
+`frontend/tests/csp.test.js` and `tests/test_server.py`: `backend/main.py` (self-hosting, the
+Playwright E2E), `scripts/build-pages.mjs` into `dist/_headers` (web.wymber.app), and
+`landing/_headers` (wymber.app, hand-written: the landing has no build step).
+
+**`script-src` has no `'unsafe-inline'`; `style-src` keeps it.** Script injection is the concrete
+threat this policy is written against (exfiltrating the password or the decrypted map at unlock,
+per this ADR's Goal B), so `script-src` is `'self'` plus one `sha256-` hash per inline `<script>`
+block actually on the page. `style-src` keeps `'unsafe-inline'` because `frontend/index.html`'s
+`<body>` and every landing page use inline `style="..."` attributes throughout (11+ on the landing
+alone), which vary per element rather than living in one static, hashable block the way a
+`<script>` tag does. That is a narrow, accepted trade: a CSS-injection attacker can restyle the
+page, not run script or exfiltrate a password.
+
+**The `script-src` hashes are derived at serve/build time, never hardcoded**, for the same reason
+the SRI hashes above are: a hardcoded hash goes stale the instant anyone edits the inline script,
+and a stale `script-src` hash fails silently, the theme guard (or the import map sitting next to
+it) just stops running, with no visible error until someone notices dark mode or the app itself is
+broken. `backend/main.py` reads `frontend/index.html` at import time and hashes every inline
+`<script>` block found; `scripts/csp.mjs` does the equivalent in Node, called by
+`build-pages.mjs` **after** the build's own stamping, SRI injection, and import-map injection, so
+the hash covers the HTML actually shipped, importmap included. Getting that ordering wrong (hashing
+before the import map is injected) would make the CSP block the very script tag meant to carry the
+import map, and the app would fail to boot: `frontend/tests/csp.test.js` asserts both inline
+scripts are covered as a regression guard for exactly that.
+
+One subtlety worth recording because it cost real debugging time while building this: a browser
+normalizes `\r\n` and lone `\r` to `\n` while it tokenizes HTML, *before* it ever computes a
+script's CSP hash (the WHATWG "preprocessing the input stream" step). This repository's blobs are
+LF, but a Windows checkout with `core.autocrlf` rewrites them to CRLF on disk, so hashing the raw
+file bytes there computes a hash the browser never produces, silently blocking the theme guard.
+Both `scripts/csp.mjs` and `backend/main.py` normalize newlines before hashing, independently, so
+the computed hash matches what a browser actually executes regardless of checkout line endings.
+
+**Why the Python and Node implementations are two separate functions, not one shared module.**
+Two different runtimes serve this app: `backend/main.py` (self-hosting, the Playwright E2E) and
+`scripts/build-pages.mjs`/Node (the Cloudflare Pages build). There is no runtime the two share to
+put common code in. Both sides implement the identical, narrow rule (extract inline `<script>`
+blocks with no `src=`, normalize newlines, sha256 it), each documented at its own definition, and
+both are exercised by `frontend/tests/csp.test.js`'s and `tests/test_server.py`'s independent
+recomputation from the raw HTML, so a divergence between them would fail a test rather than ship.
+
+**`Integrity-Policy` is enforced on the landing, report-only on the app.** The landing
+(`landing/_headers`) ships `Integrity-Policy: blocked-destinations=(script)`, enforced, because it
+is free: the landing has zero `<script>` tags, so there is nothing an enforced policy could ever
+block. The app ships `Integrity-Policy-Report-Only: blocked-destinations=(script)` in both
+`backend/main.py` and `dist/_headers` because `frontend/js/mindmap.js` still lazy-loads Cytoscape
+through a classic `<script>` element with no `integrity` attribute set
+(`s.src = '/static/libs/cytoscape.min.js'`); enforcing the policy today would make the browser
+block that load outright and break the map for everyone. `frontend/js/build-info.js` now exports
+`integrityFor(url)`, reading the SHA-384 hash for a given URL straight out of the injected
+`<script type="importmap">`, as the seam for the one-line change that would unblock enforcement:
+`mindmap.js` setting `s.integrity = integrityFor('/static/libs/cytoscape.min.js')` on that element
+before appending it. Until that lands, the app's `Integrity-Policy` stays report-only rather than
+risk breaking the map, an honest, narrower claim than this ADR's headline promises for Layer 1,
+consistent with its own instruction not to overclaim what is and isn't done yet.
+
+**`form-action 'none'` shipped as designed, pending full E2E confirmation.** The app's `<form>`
+elements all call `preventDefault()` in their submit handlers and never actually submit, so
+`form-action 'none'` should be safe with no fallback needed. The Playwright E2E suite (which
+exercises real form submits: create, unlock, recover) is this repo's real proof of that and
+should be run clean before merge; whoever lands this should confirm it (see this change's own
+report for why it could not be run here).
+
+## Implementation notes (Layer 5): the "verify this client" page
+
+Landed in [#114]: `landing/verify.html`, a calm, no-JS transparency page (the landing origin ships
+zero `<script>` tags by design, see [#112]'s `landing/_headers`), linked from the footer of every
+landing page. It leads with the one thing that actually protects a person who won't run a
+command: only unlock at an address you trust, never enter the password or recovery code anywhere
+else, before any technical detail. From there it explains the build stamp
+(`<meta name="wymber-build">`, viewable in View Source with no tools needed), walks through the
+two-origin cross-check between `https://web.wymber.app/integrity-manifest.json` and
+`https://wymber.app/integrity-manifest.json` from [#111], and gives the commands to reproduce a
+build locally and compare it byte for byte. It closes with an explicit "what this does not prove"
+section restating this ADR's own limits: a page can't prove its own honesty, these checks cover
+only the official deploy, and a compromised build pipeline would make both manifests agree while
+still being wrong.
+
+**The in-app build indicator is not wired yet.** This page documents how to read the build stamp
+from raw HTML, but nothing in the running app surfaces it visibly to a person who isn't looking at
+source. That's `frontend/js/app.js`, out of bounds for [#114] the same way it was for [#111]:
+`frontend/js/build-info.js`'s `BUILD` and `buildLabel()` (landed in [#111]) remain the seam,
+unused, waiting for a future change to import them into the UI.
+
+[#111]: https://github.com/Tamok/wymber/issues/111
+[#112]: https://github.com/Tamok/wymber/issues/112
+[#114]: https://github.com/Tamok/wymber/issues/114
