@@ -88,13 +88,13 @@ export function renderAnalysis(analysis) {
 
     const isolatedList = analysis.isolatedNodes.length > 0
         ? analysis.isolatedNodes.map(n => `<li>${n.title}</li>`).join('')
-        : '<li>None - all nodes are connected</li>';
+        : '<li>None, all dots are connected</li>';
 
     let copingNote = '';
     if (analysis.triggerCount > 0 && analysis.copingCount === 0) {
         copingNote = `<p class="mindmap-help-note"><strong>Suggestion:</strong>
             You have ${analysis.triggerCount} trigger(s) but no coping strategies mapped yet.
-            Consider adding coping nodes for each trigger.</p>`;
+            Consider adding coping dots for each trigger.</p>`;
     } else if (analysis.triggerCount > analysis.copingCount) {
         copingNote = `<p class="mindmap-help-note"><strong>Suggestion:</strong>
             You have more triggers (${analysis.triggerCount}) than coping strategies (${analysis.copingCount}).
@@ -103,7 +103,7 @@ export function renderAnalysis(analysis) {
 
     const missingNote = analysis.missingTypes.length > 0
         ? `<p>Types not yet used: <em>${analysis.missingTypes.join(', ')}</em></p>`
-        : '<p>You are using all available node types.</p>';
+        : "<p>You're using all available dot types.</p>";
 
     const mostConnectedNote = analysis.mostConnected
         ? `<p><strong>Most connected:</strong> "${analysis.mostConnected.title}" (${analysis.mostConnectedCount} connections)</p>`
@@ -113,17 +113,17 @@ export function renderAnalysis(analysis) {
         <div class="settings-panel">
             <section>
                 <h3>Overview</h3>
-                <p><strong>${analysis.totalNodes}</strong> nodes and <strong>${analysis.totalConnections}</strong> connections in your map.</p>
+                <p><strong>${analysis.totalNodes}</strong> dots and <strong>${analysis.totalConnections}</strong> connections in your map.</p>
                 ${mostConnectedNote}
             </section>
             <section>
-                <h3>Node Types</h3>
-                <ul style="list-style: none; padding: 0;">${typeBreakdown || '<li>No nodes yet</li>'}</ul>
+                <h3>Dot types</h3>
+                <ul style="list-style: none; padding: 0;">${typeBreakdown || '<li>No dots yet</li>'}</ul>
                 ${missingNote}
             </section>
             <section>
-                <h3>Isolated Nodes</h3>
-                <p>These nodes have no connections to other nodes:</p>
+                <h3>Isolated dots</h3>
+                <p>These dots have no connections to others:</p>
                 <ul>${isolatedList}</ul>
             </section>
             ${copingNote}

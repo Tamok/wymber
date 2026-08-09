@@ -390,7 +390,7 @@ export class TrauMindMap {
             return true;
         } catch (error) {
             console.error('Error saving map:', error);
-            this.updateSaveIndicator('Save failed', 'error');
+            this.updateSaveIndicator('Could not save', 'error');
             return false;
         }
     }
@@ -484,7 +484,7 @@ export class TrauMindMap {
             this.announceToScreenReader(`Connected ${fromNode.title} to ${toNode.title}`);
         } catch (error) {
             console.error('Error creating connection:', error);
-            this.showNotification('Could not create connection', 'error');
+            this.showNotification('Could not connect those dots, but nothing was lost', 'error');
         }
     }
 
@@ -512,7 +512,7 @@ export class TrauMindMap {
             this.announceToScreenReader(`Unlinked ${a} and ${b}`);
         } catch (error) {
             console.error('Error unlinking:', error);
-            this.showNotification('Could not unlink', 'error');
+            this.showNotification('Could not unlink, but the connection is still there', 'error');
         }
     }
 
@@ -922,7 +922,7 @@ export class TrauMindMap {
         if (!this.outlineEl) return;
         const linking = this.toolbarMode === 'link';
         this.outlineEl.querySelectorAll('.map-outline-node').forEach((b) => {
-            const t = b.querySelector('.map-outline-title')?.textContent || 'node';
+            const t = b.querySelector('.map-outline-title')?.textContent || 'dot';
             const ty = b.querySelector('.map-outline-type')?.textContent || '';
             b.setAttribute('aria-label', linking ? `${ty}: ${t}. Choose to connect.` : `${ty}: ${t}. Select.`);
         });

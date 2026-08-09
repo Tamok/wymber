@@ -1517,7 +1517,7 @@ kbd {
     }
 }
 
-/* Print styles for therapy sessions */
+/* Print styles, for saving or sharing a paper copy of the map */
 @media print {
     .no-print {
         display: none !important;

@@ -106,7 +106,7 @@ export const NODE_TYPES = {
         icon: "zap",
         label: "Trigger",
         description: "Things that bring up strong reactions or memories",
-        tooltip: "Sights, sounds, situations that activate your trauma response",
+        tooltip: "Sights, sounds, or situations that bring up a strong reaction for you",
         prompt: "Something that brings the feeling back. Want to add a calming anchor too?"
     },
     coping: {
@@ -114,7 +114,7 @@ export const NODE_TYPES = {
         icon: "shield",
         label: "Coping",
         description: "Strategies and skills that help you",
-        tooltip: "Healthy coping mechanisms, grounding skills, therapeutic practices",
+        tooltip: "Things that help you get through, like grounding skills or steadying habits",
         prompt: "Something that helps you get through. Even small things count."
     },
     support: {
