@@ -66,7 +66,8 @@ test.describe('Journey: first run, end to end', () => {
         // 6. Analyze reflects the real map: 3 nodes, the connection, the three types used.
         await page.click('#analyze-btn');
         await expect(page.locator('#analyze-modal')).toBeVisible({ timeout: 5000 });
-        await expect(page.locator('#analyze-content')).toContainText('3');
+        // The real sentence, not a bare "3": a loose digit match would pass on any stray number.
+        await expect(page.locator('#analyze-content')).toContainText('3 nodes and 1 connections');
         await expect(page.locator('#analyze-content')).toContainText('Event');
         await expect(page.locator('#analyze-content')).toContainText('Body');
         await expect(page.locator('#analyze-content')).toContainText('Coping');
@@ -86,7 +87,9 @@ test.describe('Journey: a returning user', () => {
         await addNode(page, 'event', 'A quiet Sunday', { description: 'Nothing happened, and that was fine.' });
 
         // Reload before editing: the original write survives on its own.
-        await page.waitForTimeout(1000); // let the write settle, as node-persists test does
+        // No sleep needed: local-repo._mutate() awaits the seal to OPFS before its promise
+        // resolves, and the outline only renders after that await, so a title visible in
+        // #map-outline is already durable ciphertext. (Only node *positions* are debounced.)
         await page.reload();
         await unlockAndOpenMap(page);
         await expect(page.locator('#map-outline')).toContainText('A quiet Sunday', { timeout: 10000 });
@@ -101,11 +104,13 @@ test.describe('Journey: a returning user', () => {
         await expect(page.locator('#map-outline')).toContainText('A quiet Sunday, revisited', { timeout: 5000 });
 
         // Reload again: the EDIT must be what comes back, not the pre-edit original.
-        await page.waitForTimeout(1000);
         await page.reload();
         await unlockAndOpenMap(page);
         await expect(page.locator('#map-outline')).toContainText('A quiet Sunday, revisited', { timeout: 10000 });
-        await expect(page.locator('#map-outline')).not.toContainText('A quiet Sunday, and that was fine');
+        // The edit replaced the node rather than adding a second one. A negative text assertion
+        // can't say this: the new title contains the old one as a substring, so it would pass
+        // no matter what. Counting the outline entries is the assertion that actually bites.
+        await expect(page.locator('.map-outline-node')).toHaveCount(1);
         await openNodeDetailFromOutline(page, 'A quiet Sunday, revisited');
         await expect(page.locator('#detail-description')).toHaveValue('Looking back, it mattered more than I thought.');
         await expect(page.locator('#detail-story')).toHaveValue('I sat by the window for a long time.');
@@ -134,7 +139,6 @@ test.describe('Journey: recovery code round trip', () => {
 
         const unique = 'Only findable if recovery preserves data ' + Date.now();
         await addNode(page, 'event', unique);
-        await page.waitForTimeout(1000); // let the write settle before reloading
 
         await page.reload();
         await expect(page.locator('#unlock-form')).toBeVisible({ timeout: 15000 });
@@ -240,5 +244,7 @@ test.describe('Journey: auto-lock', () => {
 
         await expect(page.locator('#unlock-form')).toBeVisible({ timeout: 5000 });
         await expect(page.locator('#main-app')).toBeHidden();
+        // Locking silently would be alarming. The app says why, gently.
+        await expect(page.locator('.notification-info')).toContainText(/locked for your privacy/i);
     });
 });

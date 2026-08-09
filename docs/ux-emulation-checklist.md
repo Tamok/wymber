@@ -99,7 +99,7 @@ don't have to re-verify it by eye.
       *(Automated: `e2e/safety.spec.js`.)*
 - [ ] The crisis modal's call/text links read clear and immediate, not clinical.
       *(Automated for presence: `e2e/safety.spec.js`, `e2e/mindmap.spec.js`. Colour contrast on
-      this modal has a known, documented `test.fixme` in `e2e/a11y.spec.js`: see that file's
+      this modal has a known, documented `test.fixme` in `e2e/keyboard.spec.js`: see that file's
       comment before re-checking it by hand.)*
 - [ ] The grounding modal's breathing guide is genuinely calming to look at (colour, motion,
       pacing), not just present.
@@ -125,8 +125,9 @@ don't have to re-verify it by eye.
       not a fresh pass. **Fully automated**: tab order reachability, `Enter`/`Space` activation,
       focus-visible rings, the outline's `aria-pressed`/`aria-label` contract, and Escape-closes-
       every-modal, all in `e2e/keyboard.spec.js`; serious/critical axe-core violations across
-      every modal and screen, in `e2e/a11y.spec.js` (two are known, documented `test.fixme`
-      colour-contrast findings there; don't re-file them).
+      every modal and screen, in `e2e/a11y.spec.js` and `e2e/keyboard.spec.js` (two known,
+      documented `test.fixme` colour-contrast findings live in `e2e/keyboard.spec.js`; don't
+      re-file them).
 - [ ] What automation **cannot** judge, and still needs a real pass with a real screen reader
       (NVDA / VoiceOver / TalkBack) occasionally, not every run: whether the announcement order
       makes emotional sense reading through a whole task (not just that *an* announcement fired),
@@ -173,7 +174,10 @@ tracked.
    to the overlapping safety-bar element rather than the button, meaning a real thumb tap would
    be caught the same way. `e2e/ux-tour.spec.js`'s mobile test documents this in a code comment
    at the "What's new" step and uses a direct DOM `.click()` (bypassing hit-testing, not a real
-   user path) only so the tour can still capture that screen.
+   user path) only so the tour can still capture that screen. The bug itself is pinned by a
+   `test.fixme` in the same file ("Mobile layout regressions"), so once the CSS is fixed that
+   test starts passing and can be promoted to a permanent guard, rather than the fix going
+   unnoticed because the tour was already green.
 
 ## What's already automated vs what needs a human
 

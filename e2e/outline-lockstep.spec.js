@@ -34,9 +34,14 @@ async function readGraph(page) {
 
 /**
  * The outline twin, read the same shape as readGraph(): node ids come straight off each
- * button's data-node-id. Edge pairs are decoded from each item's "Connected to: A, B" text
- * by mapping titles back to ids via the outline's own title -> id map, so the comparison
- * still happens in id space rather than trusting titles to line up by coincidence.
+ * button's data-node-id. Edge pairs are decoded by mapping connected titles back to ids via
+ * the outline's own title -> id map, so the comparison happens in id space rather than
+ * trusting titles to line up by coincidence.
+ *
+ * The connected names are read structurally, not by splitting the rendered text on commas:
+ * renderOutline() emits each connection as a `.legend-dot` span followed by a bare text node
+ * holding the title, so the title immediately after each dot is exact. Splitting on ", "
+ * would silently mis-decode any title that itself contains a comma.
  */
 async function readOutline(page) {
     return page.evaluate(() => {
@@ -52,9 +57,11 @@ async function readOutline(page) {
             const id = li.querySelector('.map-outline-node').dataset.nodeId;
             const connEl = li.querySelector('.map-outline-connections');
             if (!connEl) return;
-            const rest = connEl.textContent.replace(/^Connected to:\s*/, '');
-            rest.split(',').map((t) => t.trim()).filter(Boolean).forEach((t) => {
-                const otherId = titleToId.get(t);
+            const kids = [...connEl.childNodes];
+            kids.forEach((node, i) => {
+                if (!(node.nodeType === 1 && node.classList.contains('legend-dot'))) return;
+                const title = (kids[i + 1]?.textContent || '').trim();
+                const otherId = titleToId.get(title);
                 if (otherId) edgeSet.add([id, otherId].sort().join('|'));
             });
         });

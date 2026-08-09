@@ -240,3 +240,26 @@ test.describe('UX tour: theme sweep (map screen)', () => {
         }
     });
 });
+
+// The tour above documents the mobile footer overlap in a comment and still gets its
+// screenshot by bypassing hit-testing. That keeps the tour green, which means nothing would
+// ever tell us the bug got fixed, or that it got worse. This is the assertion that bites:
+// a real tap, at a real phone width, on a control the app puts in front of the user.
+test.describe('Mobile layout regressions', () => {
+    test.use({ viewport: { width: 390, height: 844 } });
+
+    test.fixme(
+        'the footer "What\'s new" link is tappable at phone width (blocked by the fixed safety bar)',
+        async ({ page }) => {
+            // styles.css: `.safety-bar` is `position: fixed; bottom: 0; flex-wrap: wrap`, and the
+            // page compensates with a flat `body { padding-bottom: 4rem }`. At 390px the bar wraps
+            // to two rows, grows past 4rem, and covers the footer, so this tap lands on the safety
+            // bar instead of the button. Fix is in frontend/css/styles.css (not this stream's to
+            // make): reserve the bar's real height, e.g. a dynamic offset or a taller reserve at
+            // narrow widths. When that lands, drop the .fixme and this becomes the guard.
+            await createVaultAndOpenMap(page);
+            await page.click('#whats-new-btn', { timeout: 5000 });
+            await expect(page.locator('#changelog-modal')).toBeVisible({ timeout: 5000 });
+        }
+    );
+});
