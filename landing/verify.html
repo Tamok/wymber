@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verify this client · Wymber</title>
+  <meta name="description" content="Wymber is open source, so anyone can host a copy. Here's how to check you're on the official client: the one rule that matters most, and how to verify the build yourself.">
+  <link rel="canonical" href="https://wymber.app/verify">
+  <meta property="og:site_name" content="Wymber">
+  <meta property="og:title" content="Verify this client · Wymber">
+  <meta property="og:description" content="Wymber is open source, so anyone can host a copy. The one rule that protects you, and how to check the official client for yourself.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://wymber.app/verify">
+  <meta property="og:image" content="https://wymber.app/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .article-main { max-width: 720px; margin: 0 auto; padding: 36px 24px 64px; }
+    .article-main h1 { text-align: center; }
+    .article-byline { color: var(--ink-soft); text-align: center; font-size: 0.9rem; margin: 0 auto 36px; }
+    .article-main h2 { text-align: left; font-size: 1.25rem; margin: 30px 0 10px; }
+    .article-main p, .article-main li { color: var(--ink-soft); }
+    .article-main ul, .article-main ol { padding-left: 1.2em; display: grid; gap: 6px; }
+    .article-callout {
+      background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--accent);
+      border-radius: var(--radius); padding: 16px 20px; margin: 24px 0;
+    }
+    .article-callout p { margin: 0; color: var(--ink); }
+    .article-note { border-left: 3px solid var(--line); padding-left: 14px; font-size: 0.92rem; }
+  </style>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "Verify this client",
+    "description": "Wymber is open source, so anyone can host a copy. Here's how to check you're on the official client: the one rule that matters most, and how to verify the build yourself.",
+    "url": "https://wymber.app/verify",
+    "datePublished": "2026-08-09",
+    "dateModified": "2026-08-09",
+    "image": "https://wymber.app/og.png",
+    "author": { "@type": "Person", "name": "JELL", "url": "https://wymber.app/about" },
+    "publisher": { "@type": "Organization", "name": "Zoignon Studio", "url": "https://zoignon.com", "logo": { "@type": "ImageObject", "url": "https://wymber.app/logo.png" } }
+  }
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="wordmark" href="/" aria-label="Wymber home">
+      <img class="mark" src="favicon.svg" alt="" width="30" height="30">
+      <span>Wymber</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary"><a href="/">Home</a></nav>
+  </header>
+
+  <main class="article-main">
+    <h1>Verify this client</h1>
+    <p class="article-byline">By JELL, <a href="/about">Wymber</a> · Last updated 2026-08-09</p>
+
+    <p>Wymber is <a href="https://github.com/Tamok/wymber" target="_blank" rel="noopener">open
+       source</a>, so anyone can host a copy of it. That's good for durability: your data outlives
+       us, because the code to open a <code>.wymber</code> file will always be public, even if this
+       site disappears one day. The same openness means the official client should be checkable,
+       not just trusted. This page explains how, in plain language, and what checking it can and
+       can't tell you.</p>
+
+    <h2>The one thing that actually protects you</h2>
+    <div class="article-callout">
+      <p>Only unlock Wymber at an address you typed or bookmarked yourself: <strong>wymber.app</strong>
+         or <strong>web.wymber.app</strong>. Never enter your Wymber password or recovery code on
+         any other site, no matter how convincing it looks, and no matter who sent you the link.
+         If you remember nothing else from this page, remember that. It's the one step that
+         protects you, whether or not you ever check anything below.</p>
+    </div>
+    <p>Everything past this point is for people who want to go further: technical checks that make
+       the official client verifiable, rather than something you're just asked to trust.</p>
+
+    <h2>What's running right now</h2>
+    <p>Every build of the app carries a build stamp you can see with tools already in your
+       browser, no downloads needed. Open the app at
+       <a href="https://web.wymber.app/" target="_blank" rel="noopener">web.wymber.app</a>, then
+       View Source or open your browser's developer tools. Near the top of the page you'll find a
+       line like:</p>
+    <p><code>&lt;meta name="wymber-build" content="927914a"&gt;</code></p>
+    <p>Those seven characters are the exact commit in the public repository the app was built
+       from. In the same source you'll also see an <code>integrity="sha384-..."</code> attribute
+       on the main stylesheet and script tags, and a
+       <code>&lt;script type="importmap"&gt;</code> block listing a hash for every module the app
+       loads. Those hashes are how the browser itself refuses to run a file that doesn't match
+       what was built, a modified module simply fails to load rather than running quietly changed.</p>
+
+    <h2>Check it against the published hashes</h2>
+    <p>The build stamp tells you what commit is running. To check the files themselves, compare
+       the hashes published from two different places:</p>
+    <ol>
+      <li>Open <a href="https://web.wymber.app/integrity-manifest.json" target="_blank" rel="noopener">web.wymber.app/integrity-manifest.json</a>,
+          the app's own origin. It's rewritten on every deploy, so it always describes exactly
+          what's live there right now.</li>
+      <li>Open <a href="https://wymber.app/integrity-manifest.json" target="_blank" rel="noopener">wymber.app/integrity-manifest.json</a>,
+          this site's origin, a separate server. This copy is a deliberate release snapshot, so it
+          may trail the app's copy by a small commit or two between releases, that's expected, not
+          a problem by itself.</li>
+      <li>Compare the two: the <code>commit</code> field, and the <code>sha384-</code> hash listed
+          for any file you care about. When they agree, that's tamper-evidence that neither origin
+          has been altered on its own: if someone changed a file served from just one of them, the
+          two manifests would stop matching.</li>
+    </ol>
+
+    <h2>Reproduce the build yourself</h2>
+    <p>If you're comfortable with a terminal, you can build the exact commit named in the stamp
+       and compare the result byte for byte:</p>
+    <pre class="code-block"><code>git clone https://github.com/Tamok/wymber.git
+cd wymber
+git checkout &lt;the commit from the build stamp&gt;
+node scripts/build-pages.mjs</code></pre>
+    <p>That writes a fresh <code>dist/</code> folder, including its own
+       <code>integrity-manifest.json</code>, computed the same way the deployed one was. Compare
+       it against the manifest published from either origin above. A match means the files being
+       served are exactly the audited source at that commit.</p>
+
+    <h2>What this does not prove</h2>
+    <p>Being honest about the limits matters as much as the checks themselves:</p>
+    <ul>
+      <li>A web page can never prove its own honesty. A fake copy could show a build stamp,
+          "verified" badge, or hash listing every bit as convincingly as the real one, so nothing
+          on this page, or in the app itself, is proof by itself.</li>
+      <li>These checks cover the <strong>official</strong> deploy, wymber.app and
+          web.wymber.app. They say nothing about a look-alike hosted somewhere else, which is
+          exactly why the one rule above matters more than any check on this page.</li>
+      <li>If the build pipeline that produces both manifests were itself compromised, both
+          origins would agree with each other and both would still be wrong. Agreement rules out
+          one origin being tampered with alone; it isn't proof of the whole pipeline.</li>
+    </ul>
+    <p>Work already underway points toward stronger, out-of-band ways to check this, without
+       promising dates: unlocking with a passkey, which is bound to this site's address and simply
+       can't be used on a look-alike; a signed desktop app as the highest-trust option; and an
+       independent, out-of-band way to confirm the loaded code matches what's published. This page
+       will grow to describe those as they land.</p>
+
+    <p class="article-note">Read more in
+       <a href="https://github.com/Tamok/wymber/blob/main/docs/adr/0003-client-integrity-and-anti-phishing.md" target="_blank" rel="noopener">ADR-0003, client integrity and anti-phishing</a>,
+       the design decision behind this page, or browse the
+       <a href="https://github.com/Tamok/wymber" target="_blank" rel="noopener">source</a> itself.
+       See also: <a href="/encryption">how Wymber encrypts your map</a> ·
+       <a href="/privacy">the privacy policy</a>.</p>
+  </main>
+
+  <footer class="site-footer">
+    <p class="copyright">© 2026 Wymber · <a href="/">Home</a> · <a href="/privacy">Privacy</a> · <a href="/about">About</a> · Produced by <a href="https://zoignon.com">Zoignon Studio</a></p>
+  </footer>
+</body>
+</html>

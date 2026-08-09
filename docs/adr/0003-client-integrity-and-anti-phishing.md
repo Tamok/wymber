@@ -266,5 +266,27 @@ exercises real form submits: create, unlock, recover) is this repo's real proof 
 should be run clean before merge; whoever lands this should confirm it (see this change's own
 report for why it could not be run here).
 
+## Implementation notes (Layer 5): the "verify this client" page
+
+Landed in [#114]: `landing/verify.html`, a calm, no-JS transparency page (the landing origin ships
+zero `<script>` tags by design, see [#112]'s `landing/_headers`), linked from the footer of every
+landing page. It leads with the one thing that actually protects a person who won't run a
+command: only unlock at an address you trust, never enter the password or recovery code anywhere
+else, before any technical detail. From there it explains the build stamp
+(`<meta name="wymber-build">`, viewable in View Source with no tools needed), walks through the
+two-origin cross-check between `https://web.wymber.app/integrity-manifest.json` and
+`https://wymber.app/integrity-manifest.json` from [#111], and gives the commands to reproduce a
+build locally and compare it byte for byte. It closes with an explicit "what this does not prove"
+section restating this ADR's own limits: a page can't prove its own honesty, these checks cover
+only the official deploy, and a compromised build pipeline would make both manifests agree while
+still being wrong.
+
+**The in-app build indicator is not wired yet.** This page documents how to read the build stamp
+from raw HTML, but nothing in the running app surfaces it visibly to a person who isn't looking at
+source. That's `frontend/js/app.js`, out of bounds for [#114] the same way it was for [#111]:
+`frontend/js/build-info.js`'s `BUILD` and `buildLabel()` (landed in [#111]) remain the seam,
+unused, waiting for a future change to import them into the UI.
+
 [#111]: https://github.com/Tamok/wymber/issues/111
 [#112]: https://github.com/Tamok/wymber/issues/112
+[#114]: https://github.com/Tamok/wymber/issues/114

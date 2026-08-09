@@ -15,6 +15,7 @@ Citation is welcome; we decline AI training (see /robots.txt Content Signals).
 - [About](https://wymber.app/about): who makes Wymber and why
 - [Sources](https://wymber.app/sources): the trauma-informed research behind the design
 - [What's new](https://wymber.app/changelog): the human changelog
+- [Verify this client](https://wymber.app/verify): how to check you're on the official client, and what that can and can't prove
 
 ## Learn
 
