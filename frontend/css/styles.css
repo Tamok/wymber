@@ -473,7 +473,7 @@ textarea {
     text-underline-offset: 2px;
 }
 
-.restore-link:hover { color: var(--text-primary); }
+.restore-link:hover { color: var(--accent-hover); }
 .restore-link code { font-size: 0.85em; }
 
 .btn-danger {
@@ -525,6 +525,8 @@ textarea {
     cursor: pointer;
     font-size: 0.9rem;
 }
+
+.btn-link:hover { color: var(--accent-hover); }
 
 .recovery-code {
     font-family: monospace;
