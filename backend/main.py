@@ -48,12 +48,21 @@ def _normalize_newlines(text: str) -> str:
     return text.replace("\r\n", "\n").replace("\r", "\n")
 
 
+# A <script> whose type is none of these is a "data block": HTML never executes it, so CSP never
+# gates it and it needs no hash (e.g. application/ld+json structured data). Kept in lockstep with
+# EXECUTABLE_TYPES in scripts/csp.mjs, so the two runtimes never derive different policies.
+_EXECUTABLE_TYPES = {"", "module", "importmap", "text/javascript", "application/javascript"}
+
+
 def _inline_script_hashes(html: str) -> list[str]:
-    """'sha256-<base64>' for every inline (no src=) <script> block, in document order."""
+    """'sha256-<base64>' for every inline (no src=), executable <script> block, in document order."""
     hashes = []
     for attrs, body in _INLINE_SCRIPT_RE.findall(html):
         if re.search(r"\bsrc\s*=", attrs, re.IGNORECASE):
             continue  # external script: no inline body to hash, already covered by 'self'
+        type_match = re.search(r"\btype\s*=\s*[\"']?([^\"'\s>]*)", attrs, re.IGNORECASE)
+        if (type_match.group(1).lower() if type_match else "") not in _EXECUTABLE_TYPES:
+            continue  # data block, never executed
         digest = hashlib.sha256(_normalize_newlines(body).encode("utf-8")).digest()
         hashes.append("sha256-" + base64.b64encode(digest).decode("ascii"))
     return hashes

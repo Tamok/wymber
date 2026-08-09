@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { createServer } from 'node:http';
 import {
     readFileSync, writeFileSync, existsSync, statSync, openSync, closeSync, unlinkSync, cpSync, rmSync, mkdtempSync,
+    readdirSync,
 } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -334,4 +335,84 @@ describe('dist/ boots clean under its own CSP + SRI + import-map (real Chromium)
             rmSync(tmpDist, { recursive: true, force: true });
         }
     }, 30000);
+});
+
+// The landing (wymber.app) has no build step, it deploys straight from landing/, so its CSP
+// hashes are written into landing/_headers by scripts/landing-csp.mjs rather than computed at
+// deploy time. That is only safe with a test that catches drift: an inline script blocked by a
+// stale hash throws no error a visitor would see, it just silently stops working (the homepage
+// carousel's arrow buttons would go dead). So recompute the hashes here, independently of that
+// script, straight from the pages.
+describe('landing/_headers CSP (ADR-0003 Layer 1, the landing origin)', () => {
+    const landing = join(root, 'landing');
+    let csp;
+    let inlineScripts;
+
+    beforeAll(() => {
+        const rules = parseHeadersFile(readFileSync(join(landing, '_headers'), 'utf8'));
+        const wildcard = rules.find((r) => r.pattern === '/*');
+        expect(wildcard, 'landing/_headers must have a /* rule').toBeDefined();
+        const header = wildcard.headers.find(([k]) => k.toLowerCase() === 'content-security-policy');
+        expect(header, 'landing/_headers must set a CSP').toBeDefined();
+        csp = header[1];
+
+        // Every inline <script> across every landing page, split into the ones a browser will
+        // execute (need a hash) and the data blocks it never will (application/ld+json).
+        const executableTypes = new Set(['', 'module', 'importmap', 'text/javascript', 'application/javascript']);
+        inlineScripts = { executable: [], dataBlocks: [] };
+        for (const file of readdirSync(landing).sort()) {
+            if (!file.endsWith('.html')) continue;
+            const pageHtml = readFileSync(join(landing, file), 'utf8');
+            for (const [, attrs, body] of pageHtml.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)) {
+                if (/\bsrc\s*=/i.test(attrs)) continue;
+                const type = (attrs.match(/\btype\s*=\s*["']?([^"'\s>]*)/i)?.[1] || '').toLowerCase();
+                const normalized = body.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+                const hash = 'sha256-' + createHash('sha256').update(normalized, 'utf8').digest('base64');
+                inlineScripts[executableTypes.has(type) ? 'executable' : 'dataBlocks'].push({ file, type, hash });
+            }
+        }
+    });
+
+    it('has a hash for every inline script a browser will actually execute', () => {
+        // If this fails, an inline script on the landing changed: run `node scripts/landing-csp.mjs`.
+        for (const { file, hash } of inlineScripts.executable) {
+            expect(csp, `landing/_headers is stale for the inline script in ${file}`).toContain(hash);
+        }
+    });
+
+    it('does not carry hashes for data blocks (application/ld+json is never executed)', () => {
+        for (const { file, type, hash } of inlineScripts.dataBlocks) {
+            expect(type).not.toBe('');
+            expect(csp, `${file}'s ${type} block is a data block and needs no hash`).not.toContain(hash);
+        }
+    });
+
+    it('never allows unsafe-inline, unsafe-eval, or a script source', () => {
+        const scriptSrc = csp.split(';').map((d) => d.trim()).find((d) => d.startsWith('script-src'));
+        expect(scriptSrc).toBeDefined();
+        expect(scriptSrc).not.toContain('unsafe-inline');
+        expect(scriptSrc).not.toContain('unsafe-eval');
+        expect(scriptSrc).not.toContain("'self'"); // hashes only: the landing loads no script files
+    });
+
+    it('keeps the rest of the strict posture', () => {
+        for (const expected of [
+            "default-src 'self'",
+            "base-uri 'none'",
+            "object-src 'none'",
+            "frame-ancestors 'none'",
+            "form-action 'none'",
+            "connect-src 'none'",
+        ]) {
+            expect(csp).toContain(expected);
+        }
+    });
+
+    it('is exactly what scripts/landing-csp.mjs would write (no drift)', async () => {
+        // expectedLandingCsp() is pure on purpose: asserting against the generator's *output*
+        // rather than running the generator keeps this test from quietly rewriting a tracked file
+        // when it is stale. A failing test should report, not repair.
+        const { expectedLandingCsp } = await import('../../scripts/landing-csp.mjs');
+        expect(csp, 'landing/_headers is stale: run `node scripts/landing-csp.mjs`').toBe(expectedLandingCsp());
+    });
 });
