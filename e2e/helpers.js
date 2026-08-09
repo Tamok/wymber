@@ -2,13 +2,21 @@ import { expect } from '@playwright/test';
 
 export const PASSWORD = 'TestVault2025!';
 
-/** Fill a field and verify it stuck — guards against an occasional fill race under load. */
+/**
+ * Fill a field and verify it stuck, guarding against an occasional fill race under load.
+ *
+ * Always clears before writing. A run caught #create-password holding the password twice over
+ * ("TestVault2025!TestVault2025!"), which failed vault creation and took the whole test with it.
+ * A fill that appends instead of replacing is the only way to land in that state, so clearing
+ * first makes each attempt idempotent no matter what caused the append, and re-reading the value
+ * (rather than trusting one write) is what turns a rare, confusing failure into a retry.
+ */
 async function fillVerified(page, selector, value) {
     const loc = page.locator(selector);
-    await loc.fill(value);
-    if ((await loc.inputValue()) !== value) {
+    for (let attempt = 0; attempt < 3; attempt++) {
         await loc.fill('');
         await loc.fill(value);
+        if ((await loc.inputValue()) === value) break;
     }
     await expect(loc).toHaveValue(value);
 }
