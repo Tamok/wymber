@@ -181,31 +181,9 @@ describe('across the native persistence backend: seal in Node, round-trip via Na
         expect(document).toEqual(fixtureDocument());
     });
 
-    it('a blob written by NativePersistence is byte-identical to what a web-side store/load hands back', async () => {
-        // persistence.js (OPFS/IndexedDB) is browser-only and can't run under Node, but both
-        // backends share one contract: `saveVault(str)` followed by `loadVault()` returns `str`
-        // unchanged (see frontend/js/persistence.js — its OPFS/IDB writes never transform the
-        // string). Model that "web store" side as a trivial identity store and assert both
-        // backends agree on the same serialized string: a blob written by one is exactly what the
-        // other would read, so a vault can cross the native <-> web persistence seam intact.
-        const { vault } = await createVault(fixtureDocument(), FIXTURE_PASSWORD, {
-            recoveryCode: FIXTURE_RECOVERY_CODE,
-            iterations: 1000,
-        });
-        const serialized = serializeVault(vault);
-
-        installNativeShell(makeFs());
-        const native = new NativePersistence();
-        await native.saveVault(serialized);
-        const viaNative = await native.loadVault();
-
-        const webStore = new Map();
-        const webSave = async (str) => { webStore.set('vault', str); };
-        const webLoad = async () => webStore.get('vault') ?? null;
-        await webSave(serialized);
-        const viaWeb = await webLoad();
-
-        expect(viaNative).toBe(viaWeb);
-        expect(viaNative).toBe(serialized);
-    });
+    // NOTE: the web <-> native storage crossing itself is deliberately NOT tested here.
+    // persistence.js (the real web backend) is OPFS/IndexedDB and browser-only, so under Node it
+    // could only be stood in for by an in-memory fake — and comparing a fake's output against
+    // NativePersistence's would reduce to asserting a string equals itself. That test lives in
+    // e2e/parity/crypto-parity.spec.js instead, where BOTH backends are the real implementations.
 });

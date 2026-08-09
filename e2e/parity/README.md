@@ -87,9 +87,17 @@ so what they write is exactly what gets imported — never hand-edit the generat
 Proves: a vault sealed on Node's WebCrypto opens (password + recovery) on Chromium and vice versa;
 a vault survives the exact byte encoding `NativePersistence` uses (`utf8` via
 `TextEncoder`/`TextDecoder`) and the native storage read/write seam (mocked Filesystem plugin in
-the vitest half, an in-page Capacitor shim in the Playwright half); the envelope's structural
+the vitest half, an in-page Capacitor shim in the Playwright half); a blob written by the **real
+web backend** (`persistence.js`, OPFS/IndexedDB) is read back intact by `NativePersistence` and
+vice versa, still unlocking by **both** roots after the crossing; the envelope's structural
 invariants (format tag, version, both key wraps, base64 payloads, ASCII-only today) hold across
 both fixtures.
+
+Note on where each half lives: the web↔native storage crossing is tested **only** in the Playwright
+half, on purpose. `persistence.js` is browser-only, so under Node it could only be stood in for by
+an in-memory fake — and comparing a fake against `NativePersistence` collapses into asserting a
+string equals itself. A test that cannot fail is worse than no test, so it lives where both
+backends are real.
 
 Does **not** prove: correctness on an actual Android device or emulator (none exists in this
 repo/CI) — a real device could still differ in ways Chromium-on-desktop cannot surface, e.g. the

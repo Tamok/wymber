@@ -114,4 +114,70 @@ test.describe('Crypto parity (Chromium half, #150)', () => {
         expect(result.loadedEqualsSerialized).toBe(true);
         expect(result.document).toEqual(fixtureDocument());
     });
+
+    test('web <-> device storage seam: a vault written by either backend is readable by the other, and still unlocks', async ({ page }) => {
+        // This is the literal "and across the native persistence backend" clause of #150, and it
+        // belongs here rather than in the vitest half: persistence.js is the REAL web backend
+        // (OPFS, falling back to IndexedDB) and only exists in a browser. Under Node it can only be
+        // stood in for by an in-memory fake, which would reduce the assertion to comparing a string
+        // with itself. Here both backends are the real thing (bar the Capacitor plugin shim), so a
+        // divergence in how either one stores or returns the blob actually shows up.
+        test.setTimeout(120000);
+        await page.goto('/');
+        await page.evaluate(installCapacitorShim);
+
+        const result = await page.evaluate(async ({ documentObj, password, recoveryCode, iterations }) => {
+            const cryptoMod = await import('/static/js/crypto.js');
+            const { NativePersistence } = await import('/static/js/native-persistence.js');
+            const { VaultPersistence } = await import('/static/js/persistence.js');
+
+            const { vault } = await cryptoMod.createVault(documentObj, password, { recoveryCode, iterations });
+            const serialized = cryptoMod.serializeVault(vault);
+
+            // web -> device: write with the web backend, hand what it returns to the native one.
+            const web = new VaultPersistence();
+            await web.saveVault(serialized);
+            const fromWeb = await web.loadVault();
+
+            const native = new NativePersistence();
+            await native.saveVault(fromWeb);
+            const webThenNative = await native.loadVault();
+            const webThenNativeDoc = (await cryptoMod.unlockVault(cryptoMod.parseVault(webThenNative), password)).document;
+
+            // device -> web: and back the other way, so neither direction is assumed.
+            await web.clearVault();
+            await web.saveVault(webThenNative);
+            const nativeThenWeb = await web.loadVault();
+            // Prove the recovery root survives the crossing too, not just the password one.
+            const nativeThenWebDoc = (await cryptoMod.unlockVault(cryptoMod.parseVault(nativeThenWeb), recoveryCode, 'recovery')).document;
+
+            await web.clearVault();
+
+            return {
+                serialized,
+                fromWeb,
+                webThenNative,
+                nativeThenWeb,
+                webThenNativeDoc,
+                nativeThenWebDoc,
+                // Records only that a real storage API was reachable, so a green result can't come
+                // from a page with no storage at all. It does NOT claim which branch ran: OPFS is
+                // expected in Chromium, but persistence.js silently falls back to IndexedDB, and
+                // either is a real backend for this test's purposes.
+                hasStorageApi: !!globalThis.navigator?.storage?.getDirectory || !!globalThis.indexedDB,
+            };
+        }, {
+            documentObj: fixtureDocument(), password: FIXTURE_PASSWORD, recoveryCode: FIXTURE_RECOVERY_CODE, iterations: FAST_ITERATIONS,
+        });
+
+        // Every hop is byte-identical: neither backend transforms the blob on the way through.
+        expect(result.fromWeb).toBe(result.serialized);
+        expect(result.webThenNative).toBe(result.serialized);
+        expect(result.nativeThenWeb).toBe(result.serialized);
+        // And it is still a working vault at the end of each crossing, by both unlock roots.
+        expect(result.webThenNativeDoc).toEqual(fixtureDocument());
+        expect(result.nativeThenWebDoc).toEqual(fixtureDocument());
+        // Sanity: the web backend really did have a storage API to use.
+        expect(result.hasStorageApi).toBe(true);
+    });
 });
