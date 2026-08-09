@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync, openSync, closeSync, unlinkSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, relative, sep } from 'node:path';
+import { tmpdir } from 'node:os';
 
 // This suite runs the real build (scripts/build-pages.mjs writes to the repo's gitignored dist/;
 // it deliberately does NOT touch the committed landing/integrity-manifest.json, so running the
@@ -14,6 +15,39 @@ import { dirname, join, relative, sep } from 'node:path';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const dist = join(root, 'dist');
+
+// frontend/tests/csp.test.js also builds dist/ in its own beforeAll, and Vitest may run separate
+// test files concurrently in different workers; guard the (rm + rebuild) build-pages.mjs does
+// with the same cross-process lock csp.test.js uses, so one worker never reads dist/ mid-rebuild
+// by another.
+const BUILD_LOCK = join(tmpdir(), 'wymber-dist-build.lock');
+
+function withBuildLock(fn) {
+    const deadline = Date.now() + 60000;
+    let fd;
+    for (;;) {
+        try {
+            fd = openSync(BUILD_LOCK, 'wx');
+            break;
+        } catch (err) {
+            if (err.code !== 'EEXIST') throw err;
+            if (Date.now() > deadline) throw new Error('[integrity-manifest.test] timed out waiting for the dist/ build lock');
+            Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50);
+        }
+    }
+    try {
+        return fn();
+    } finally {
+        closeSync(fd);
+        try { unlinkSync(BUILD_LOCK); } catch (_) { /* already gone */ }
+    }
+}
+
+function buildDist() {
+    withBuildLock(() => {
+        execFileSync(process.execPath, [join(root, 'scripts', 'build-pages.mjs')], { cwd: root, stdio: 'pipe' });
+    });
+}
 
 function sriHash(bytes) {
     return 'sha384-' + createHash('sha384').update(bytes).digest('base64');
@@ -38,7 +72,7 @@ let html;
 let manifest;
 
 beforeAll(() => {
-    execFileSync(process.execPath, [join(root, 'scripts', 'build-pages.mjs')], { cwd: root, stdio: 'pipe' });
+    buildDist();
     html = readFileSync(join(dist, 'index.html'), 'utf8');
     manifest = JSON.parse(readFileSync(join(dist, 'integrity-manifest.json'), 'utf8'));
 }, 30000);
@@ -138,7 +172,7 @@ describe('dist/integrity-manifest.json', () => {
 describe('reproducibility', () => {
     it('running the build twice produces a byte-identical integrity-manifest.json', () => {
         const first = readFileSync(join(dist, 'integrity-manifest.json'));
-        execFileSync(process.execPath, [join(root, 'scripts', 'build-pages.mjs')], { cwd: root, stdio: 'pipe' });
+        buildDist();
         const second = readFileSync(join(dist, 'integrity-manifest.json'));
         expect(second.equals(first)).toBe(true);
     }, 30000);

@@ -20,6 +20,7 @@ import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, relative, sep } from 'node:path';
 import { writeManifest } from './integrity-manifest.mjs';
+import { appCspHeader } from './csp.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const frontend = join(root, 'frontend');
@@ -41,24 +42,6 @@ for (const d of ['css', 'js', 'libs', 'icons']) {
 }
 copyFileSync(join(frontend, 'favicon.svg'), join(dist, 'static', 'favicon.svg'));
 copyFileSync(join(frontend, 'og-image.png'), join(dist, 'static', 'og-image.png'));
-
-// Cloudflare Pages headers: keep the SW's root scope + correct manifest MIME, and baseline
-// security headers (the strict CSP is #112; frame-ancestors here blocks clickjacking now).
-writeFileSync(join(dist, '_headers'), [
-    '/*',
-    '  X-Frame-Options: DENY',
-    "  Content-Security-Policy: frame-ancestors 'none'",
-    '  X-Content-Type-Options: nosniff',
-    '  Permissions-Policy: camera=(), microphone=(), geolocation=()',
-    '/sw.js',
-    '  Service-Worker-Allowed: /',
-    '  Cache-Control: no-cache',
-    '/manifest.webmanifest',
-    '  Content-Type: application/manifest+json',
-    '/.well-known/security.txt',
-    '  Content-Type: text/plain; charset=utf-8',
-    '',
-].join('\n'));
 
 // --- ADR-0003 Layer 1: make this build verifiable -------------------------------------------
 
@@ -159,6 +142,31 @@ if (!html.includes(headCloseNeedle)) {
 html = html.replace(headCloseNeedle, `${importMapTag}\n${headCloseNeedle}`);
 
 writeFileSync(indexPath, html);
+
+// Cloudflare Pages headers, written AFTER the HTML mutations above so the CSP's script-src
+// hashes are computed from the HTML actually served (post stamping + SRI + import-map
+// injection): get this ordering wrong and the import map's own inline <script> is blocked by
+// the very CSP meant to protect it, and the whole app fails to boot (ADR-0003 Layer 1, #112).
+// `Integrity-Policy-Report-Only`, not enforced: frontend/js/mindmap.js still loads Cytoscape via
+// a classic <script> element with no `integrity` attribute (out of bounds for this change), so
+// enforcing this today would block that load and break the map. See
+// frontend/js/build-info.js's integrityFor() for the seam that would unblock enforcing it.
+writeFileSync(join(dist, '_headers'), [
+    '/*',
+    '  X-Frame-Options: DENY',
+    `  Content-Security-Policy: ${appCspHeader(html)}`,
+    '  Integrity-Policy-Report-Only: blocked-destinations=(script)',
+    '  X-Content-Type-Options: nosniff',
+    '  Permissions-Policy: camera=(), microphone=(), geolocation=()',
+    '/sw.js',
+    '  Service-Worker-Allowed: /',
+    '  Cache-Control: no-cache',
+    '/manifest.webmanifest',
+    '  Content-Type: application/manifest+json',
+    '/.well-known/security.txt',
+    '  Content-Type: text/plain; charset=utf-8',
+    '',
+].join('\n'));
 
 // (e) Write the manifest last, so /index.html's hash covers the HTML actually served (post
 // stamping + SRI + import-map injection above). This writes dist/integrity-manifest.json only

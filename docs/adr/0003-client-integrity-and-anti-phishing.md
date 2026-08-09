@@ -192,4 +192,79 @@ Consistent with the rest of this ADR: same-origin SRI and the published manifest
 clone on a different origin from shipping its own, differently-hashed bundle. That remains Layers
 2-4's job (out-of-band attestation, passkeys, the signed desktop app).
 
+## Implementation notes (Layer 1, continued): strict CSP + Integrity-Policy
+
+Landed in [#112]: both origins now ship a strict `Content-Security-Policy`, and the app ships
+`Integrity-Policy-Report-Only`, tightening the tamper-evidence [#111] already established.
+
+**The policy.** Both origins share the same shape (`default-src 'self'`, `base-uri 'none'`,
+`object-src 'none'`, `frame-ancestors 'none'`, `form-action 'none'`, `manifest-src 'self'`,
+`worker-src 'self'`, `connect-src 'self'` on the app / `'none'` on the landing, since the landing
+makes no requests at all), but differ in `script-src` and `img-src`: the app needs
+`img-src 'self' data: blob:` (`export.js`'s `URL.createObjectURL` downloads, Cytoscape's canvas),
+the landing only `img-src 'self' data:`. Emitted from three places, verified to agree by
+`frontend/tests/csp.test.js` and `tests/test_server.py`: `backend/main.py` (self-hosting, the
+Playwright E2E), `scripts/build-pages.mjs` into `dist/_headers` (web.wymber.app), and
+`landing/_headers` (wymber.app, hand-written: the landing has no build step).
+
+**`script-src` has no `'unsafe-inline'`; `style-src` keeps it.** Script injection is the concrete
+threat this policy is written against (exfiltrating the password or the decrypted map at unlock,
+per this ADR's Goal B), so `script-src` is `'self'` plus one `sha256-` hash per inline `<script>`
+block actually on the page. `style-src` keeps `'unsafe-inline'` because `frontend/index.html`'s
+`<body>` and every landing page use inline `style="..."` attributes throughout (11+ on the landing
+alone), which vary per element rather than living in one static, hashable block the way a
+`<script>` tag does. That is a narrow, accepted trade: a CSS-injection attacker can restyle the
+page, not run script or exfiltrate a password.
+
+**The `script-src` hashes are derived at serve/build time, never hardcoded**, for the same reason
+the SRI hashes above are: a hardcoded hash goes stale the instant anyone edits the inline script,
+and a stale `script-src` hash fails silently, the theme guard (or the import map sitting next to
+it) just stops running, with no visible error until someone notices dark mode or the app itself is
+broken. `backend/main.py` reads `frontend/index.html` at import time and hashes every inline
+`<script>` block found; `scripts/csp.mjs` does the equivalent in Node, called by
+`build-pages.mjs` **after** the build's own stamping, SRI injection, and import-map injection, so
+the hash covers the HTML actually shipped, importmap included. Getting that ordering wrong (hashing
+before the import map is injected) would make the CSP block the very script tag meant to carry the
+import map, and the app would fail to boot: `frontend/tests/csp.test.js` asserts both inline
+scripts are covered as a regression guard for exactly that.
+
+One subtlety worth recording because it cost real debugging time while building this: a browser
+normalizes `\r\n` and lone `\r` to `\n` while it tokenizes HTML, *before* it ever computes a
+script's CSP hash (the WHATWG "preprocessing the input stream" step). This repository's blobs are
+LF, but a Windows checkout with `core.autocrlf` rewrites them to CRLF on disk, so hashing the raw
+file bytes there computes a hash the browser never produces, silently blocking the theme guard.
+Both `scripts/csp.mjs` and `backend/main.py` normalize newlines before hashing, independently, so
+the computed hash matches what a browser actually executes regardless of checkout line endings.
+
+**Why the Python and Node implementations are two separate functions, not one shared module.**
+Two different runtimes serve this app: `backend/main.py` (self-hosting, the Playwright E2E) and
+`scripts/build-pages.mjs`/Node (the Cloudflare Pages build). There is no runtime the two share to
+put common code in. Both sides implement the identical, narrow rule (extract inline `<script>`
+blocks with no `src=`, normalize newlines, sha256 it), each documented at its own definition, and
+both are exercised by `frontend/tests/csp.test.js`'s and `tests/test_server.py`'s independent
+recomputation from the raw HTML, so a divergence between them would fail a test rather than ship.
+
+**`Integrity-Policy` is enforced on the landing, report-only on the app.** The landing
+(`landing/_headers`) ships `Integrity-Policy: blocked-destinations=(script)`, enforced, because it
+is free: the landing has zero `<script>` tags, so there is nothing an enforced policy could ever
+block. The app ships `Integrity-Policy-Report-Only: blocked-destinations=(script)` in both
+`backend/main.py` and `dist/_headers` because `frontend/js/mindmap.js` still lazy-loads Cytoscape
+through a classic `<script>` element with no `integrity` attribute set
+(`s.src = '/static/libs/cytoscape.min.js'`); enforcing the policy today would make the browser
+block that load outright and break the map for everyone. `frontend/js/build-info.js` now exports
+`integrityFor(url)`, reading the SHA-384 hash for a given URL straight out of the injected
+`<script type="importmap">`, as the seam for the one-line change that would unblock enforcement:
+`mindmap.js` setting `s.integrity = integrityFor('/static/libs/cytoscape.min.js')` on that element
+before appending it. Until that lands, the app's `Integrity-Policy` stays report-only rather than
+risk breaking the map, an honest, narrower claim than this ADR's headline promises for Layer 1,
+consistent with its own instruction not to overclaim what is and isn't done yet.
+
+**`form-action 'none'` shipped as designed, pending full E2E confirmation.** The app's `<form>`
+elements all call `preventDefault()` in their submit handlers and never actually submit, so
+`form-action 'none'` should be safe with no fallback needed. The Playwright E2E suite (which
+exercises real form submits: create, unlock, recover) is this repo's real proof of that and
+should be run clean before merge; whoever lands this should confirm it (see this change's own
+report for why it could not be run here).
+
 [#111]: https://github.com/Tamok/wymber/issues/111
+[#112]: https://github.com/Tamok/wymber/issues/112
