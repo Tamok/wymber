@@ -37,3 +37,27 @@ export function passwordStrength(password) {
     const labels = ['Very weak', 'Weak', 'Fair', 'Good', 'Strong'];
     return { score, label: labels[score] };
 }
+
+/**
+ * Decide whether to show the quiet "back up your vault" nudge (#147).
+ *
+ * Milestone-based, never naggy: the map must have meaningfully grown (>= minNodes),
+ * there must be work that isn't in any backup (never exported, or edited since the
+ * last export), and we must not have asked recently (>= cooldownDays since the last
+ * nudge). Pure and injectable so the policy is unit-testable.
+ *
+ * @param {{ nodeCount: number, lastBackupAt?: string|null, lastEditAt?: string|null,
+ *           lastNudgeAt?: string|null, now?: number, minNodes?: number, cooldownDays?: number }} p
+ * @returns {boolean}
+ */
+export function shouldNudgeBackup({
+    nodeCount, lastBackupAt = null, lastEditAt = null, lastNudgeAt = null,
+    now = Date.now(), minNodes = 10, cooldownDays = 30,
+} = {}) {
+    if (!nodeCount || nodeCount < minNodes) return false;
+    // Everything already backed up? Stay quiet.
+    if (lastBackupAt && (!lastEditAt || Date.parse(lastEditAt) <= Date.parse(lastBackupAt))) return false;
+    // Asked recently? Stay quiet.
+    if (lastNudgeAt && now - Date.parse(lastNudgeAt) < cooldownDays * 24 * 60 * 60 * 1000) return false;
+    return true;
+}

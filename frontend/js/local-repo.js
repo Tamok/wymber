@@ -24,6 +24,29 @@ export class LocalRepo {
         return this.store != null;
     }
 
+    /** When the vault was last sealed (any save). Null while locked. */
+    get vaultUpdatedAt() {
+        return this.vault?.updatedAt ?? null;
+    }
+
+    /**
+     * When the map *content* last changed — the latest of any node's create/update time
+     * or any edge's create time. Unlike {@link vaultUpdatedAt}, settings-only writes
+     * (theme, palette, `lastBackupAt`, the backup snooze, biometric flags) never move it,
+     * so recording a backup can't masquerade as an unbacked edit (#147). Deletions lower
+     * the node count but not this watermark — removing work never *creates* work to back
+     * up. Null while locked or on an empty map.
+     */
+    get contentUpdatedAt() {
+        if (!this.store) return null;
+        const { nodes, edges } = this.store.getMindmap();
+        let latest = null;
+        const seen = (t) => { if (t && (latest === null || t > latest)) latest = t; };
+        for (const n of nodes) { seen(n.updated_at); seen(n.created_at); }
+        for (const e of edges) seen(e.created_at);
+        return latest;
+    }
+
     async hasVault() {
         return this.persistence.hasVault();
     }
@@ -53,6 +76,28 @@ export class LocalRepo {
         this.vault = null;
         this.store = null;
         this.dekKey = null;
+    }
+
+    /**
+     * Raw DEK bytes for enrolling a device unlock method (e.g. biometrics). Requires the
+     * secret (an explicit consent moment); never stored — the caller wipes the bytes.
+     */
+    async getRawDek(secret, method = 'password') {
+        const str = await this.persistence.loadVault();
+        if (!str) throw new Error('No vault on this device yet.');
+        return vaultCrypto.unwrapDekRaw(vaultCrypto.parseVault(str), secret, method);
+    }
+
+    /** Unlock with a raw DEK released by a device unlock method (e.g. biometrics). */
+    async unlockWithDek(dekBytes) {
+        const str = await this.persistence.loadVault();
+        if (!str) throw new Error('No vault on this device yet.');
+        const vault = vaultCrypto.parseVault(str);
+        const { document, dekKey } = await vaultCrypto.unlockVaultWithDek(vault, dekBytes);
+        this.vault = vault;
+        this.dekKey = dekKey;
+        this.store = VaultStore.fromDocument(document);
+        return true;
     }
 
     async changePassword(oldPassword, newPassword) {

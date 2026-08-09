@@ -1,7 +1,11 @@
 import { NODE_TYPES, typeColor, setPalette } from './config.js';
 import { LocalRepo } from './local-repo.js';
+import { NativePersistence, isNativeShell, isStorageUnavailableError } from './native-persistence.js';
+import {
+    biometricAvailable, biometricEnrolled, biometricEnroll, biometricUnlock, biometricDisable,
+} from './native-biometric.js';
 import { TrauMindMap } from './mindmap.js';
-import { validateNodeData, passwordStrength } from './utils.js';
+import { validateNodeData, passwordStrength, shouldNudgeBackup } from './utils.js';
 import { analyzeMap, renderAnalysis } from './analyze.js';
 import { suggestLinks } from './suggest.js';
 import { exportAsJSON, exportAsText, importMap, exportVaultFile, importVaultFile } from './export.js';
@@ -9,8 +13,12 @@ import { Tutorial } from './tutorial.js';
 import { CHANGELOG } from './changelog.js';
 
 // Local-first: the encrypted vault on this device IS the backend. `api` keeps the
-// same get/post/put/delete surface the rest of the app already uses.
-const api = new LocalRepo();
+// same get/post/put/delete surface the rest of the app already uses. On the native
+// (Capacitor) shell the sealed vault is stored app-private instead of in WebView
+// storage (see mobile/ and ADR-0005); the web build is unchanged.
+const api = isNativeShell()
+    ? new LocalRepo({ persistence: new NativePersistence() })
+    : new LocalRepo();
 
 class WymberApp {
     constructor() {
@@ -30,10 +38,26 @@ class WymberApp {
 
     async init() {
         this.setupEventListeners();
+        await this.bootAuth();
+    }
+
+    /**
+     * Choose the opening panel from what's on disk. A read that fails for a reason other than
+     * "no vault yet" (I/O, storage pressure) must NOT fall through to Create: on the native shell
+     * that would let the app overwrite a vault still on the device but momentarily unreadable
+     * (#165). We show an honest, retryable "storage unavailable" state instead. On the web build
+     * hasVault() never throws StorageUnavailableError, so its behaviour is unchanged: an unknown
+     * error still lands on Create exactly as before.
+     */
+    async bootAuth() {
         let hasVault = false;
         try {
             hasVault = await api.hasVault();
-        } catch {
+        } catch (err) {
+            if (isStorageUnavailableError(err)) {
+                this.showAuthPanel('storage-error');
+                return;
+            }
             hasVault = false;
         }
         this.showAuthPanel(hasVault ? 'unlock' : 'create');
@@ -48,6 +72,15 @@ class WymberApp {
         document.getElementById('create-password')?.addEventListener('input', () => this.updateStrengthMeter());
         document.getElementById('show-recover')?.addEventListener('click', () => this.showAuthPanel('recover'));
         document.getElementById('back-to-unlock')?.addEventListener('click', () => this.showAuthPanel('unlock'));
+        // Retry after a "storage unavailable" boot (#165): re-check what's on disk, don't assume fresh.
+        document.getElementById('storage-retry-btn')?.addEventListener('click', () => this.bootAuth());
+        // Biometric unlock (native shell only; all three are hidden on the web build)
+        document.getElementById('biometric-unlock-btn')?.addEventListener('click', () => this.handleBiometricUnlock());
+        document.getElementById('biometric-enable-btn')?.addEventListener('click', () => this.enableBiometrics());
+        document.getElementById('biometric-dismiss-btn')?.addEventListener('click', () => this.dismissBiometricOffer());
+        // Backup nudge (#147)
+        document.getElementById('backup-now-btn')?.addEventListener('click', () => { this.hideBackupNudge(); this.doExportVault(); });
+        document.getElementById('backup-later-btn')?.addEventListener('click', () => this.snoozeBackupNudge());
         document.getElementById('restore-vault-file')?.addEventListener('change', (e) => this.doRestoreVault(e));
         document.getElementById('restore-confirm-btn')?.addEventListener('click', () => this.confirmRestore());
         document.getElementById('restore-cancel-btn')?.addEventListener('click', () => this.closeRestoreConfirm());
@@ -166,6 +199,7 @@ class WymberApp {
             unlock: 'unlock-form',
             recover: 'recover-form',
             'recovery-sheet': 'recovery-sheet',
+            'storage-error': 'storage-error',
         };
         document.querySelectorAll('.auth-panel').forEach((p) => { p.style.display = 'none'; });
         const el = document.getElementById(panels[name]);
@@ -180,9 +214,10 @@ class WymberApp {
         document.getElementById('main-app').style.display = 'none';
         document.getElementById('login-screen').style.display = 'block';
 
+        if (name === 'unlock') this.updateBiometricUnlockButton(); // async; hidden until enrolled
         if (name === 'create') this.updateStrengthMeter();
         setTimeout(() => {
-            const focusId = { create: 'create-password', unlock: 'unlock-password', recover: 'recover-code' }[name];
+            const focusId = { create: 'create-password', unlock: 'unlock-password', recover: 'recover-code', 'storage-error': 'storage-retry-btn' }[name];
             document.getElementById(focusId)?.focus();
         }, 50);
     }
@@ -222,9 +257,134 @@ class WymberApp {
         try {
             await api.unlock(password);
             this.enterApp();
+            // Quiet post-unlock prompts, at most one: biometrics first (native only), else backup.
+            this.maybeOfferBiometrics(password).then(() => this.maybeNudgeBackup());
         } catch {
             this.showError('Incorrect password. Please try again, or use your recovery code.');
         }
+    }
+
+    // ===== Biometric unlock (#146, native shell only — see native-biometric.js) =====
+
+    /** Show the "unlock with fingerprint/face" button only when actually enrolled. */
+    async updateBiometricUnlockButton() {
+        const btn = document.getElementById('biometric-unlock-btn');
+        if (!btn) return;
+        btn.style.display = (await biometricEnrolled()) ? '' : 'none';
+    }
+
+    async handleBiometricUnlock() {
+        this.showError('', false);
+        try {
+            const dek = await biometricUnlock();
+            try {
+                await api.unlockWithDek(dek);
+            } finally {
+                dek.fill(0);
+            }
+            this.enterApp();
+            this.maybeNudgeBackup();
+        } catch (e) {
+            if (e?.code === 'CANCELLED') return; // user chose "Use password" — no error needed
+            if (e?.code === 'INVALIDATED' || e?.code === 'NOT_ENROLLED') {
+                this.updateBiometricUnlockButton();
+                this.showError('Biometric unlock was reset because this device’s biometrics changed. Please use your password.');
+                return;
+            }
+            this.showError('Biometric unlock did not work. Please use your password.');
+        }
+    }
+
+    /**
+     * After a password unlock on the native shell: offer biometrics once, quietly, on the
+     * soft-start card. The password is held only while the offer is visible (enrolling
+     * re-derives the DEK from it), and dropped on any exit.
+     */
+    async maybeOfferBiometrics(password) {
+        try {
+            if (!(await biometricAvailable()) || (await biometricEnrolled())) return;
+            const { settings } = await api.get('/settings');
+            if (settings?.biometricDismissed) return;
+            this._biometricOfferPassword = password;
+            const offer = document.getElementById('biometric-offer');
+            if (offer) offer.style.display = 'block';
+        } catch {
+            /* never let the offer interfere with unlocking */
+        }
+    }
+
+    hideBiometricOffer() {
+        this._biometricOfferPassword = null;
+        const offer = document.getElementById('biometric-offer');
+        if (offer) offer.style.display = 'none';
+    }
+
+    async enableBiometrics() {
+        const password = this._biometricOfferPassword;
+        this.hideBiometricOffer();
+        if (!password) return;
+        try {
+            const dek = await api.getRawDek(password);
+            try {
+                await biometricEnroll(dek);
+            } finally {
+                dek.fill(0);
+            }
+            this.showNotification('Biometric unlock is on for this device.', 'success');
+        } catch (e) {
+            if (e?.code !== 'CANCELLED') this.showNotification('Could not set up biometric unlock. Your password still works.', 'error');
+        }
+    }
+
+    async dismissBiometricOffer() {
+        this.hideBiometricOffer();
+        try {
+            await api.put('/settings', { biometricDismissed: true }); // don't ask again
+        } catch { /* non-fatal */ }
+    }
+
+    // ===== Backup nudge (#147: milestone-based, quiet, 30-day cooldown) =====
+
+    /** After an unlock: nudge only if the map has grown and isn't safely backed up. */
+    async maybeNudgeBackup() {
+        try {
+            // One quiet thing at a time: the biometric offer wins the slot.
+            if (document.getElementById('biometric-offer')?.style.display === 'block') return;
+            const [{ nodes }, { settings }] = await Promise.all([api.get('/mindmap'), api.get('/settings')]);
+            const show = shouldNudgeBackup({
+                nodeCount: nodes?.length ?? 0,
+                lastBackupAt: settings?.lastBackupAt,
+                // Content watermark, not the vault seal time: settings writes (incl. recording
+                // this very backup) must not read as an unbacked edit (#147).
+                lastEditAt: api.contentUpdatedAt,
+                lastNudgeAt: settings?.backupNudgeAt,
+            });
+            // Clear any leftover visible nudge when the policy no longer holds (e.g. entries
+            // deleted back below the milestone, or the map is now backed up) so a stale
+            // display:block state can't resurface on the next soft start.
+            if (!show) { this.hideBackupNudge(); return; }
+            const nudge = document.getElementById('backup-nudge');
+            if (nudge) nudge.style.display = 'block';
+        } catch { /* never let the nudge interfere with unlocking */ }
+    }
+
+    hideBackupNudge() {
+        const nudge = document.getElementById('backup-nudge');
+        if (nudge) nudge.style.display = 'none';
+    }
+
+    /** Drop the transient soft-start prompts (the briefly-held password + any visible
+     * offer/nudge) so they never linger past a lock. Mirrors the biometric-offer pattern. */
+    teardownSoftStartPrompts() {
+        this.hideBiometricOffer(); // also clears the briefly-held password
+        this.hideBackupNudge();
+    }
+
+    async snoozeBackupNudge() {
+        this.hideBackupNudge();
+        try {
+            await api.put('/settings', { backupNudgeAt: new Date().toISOString() }); // ~30d cooldown
+        } catch { /* non-fatal */ }
     }
 
     async handleRecover(e) {
@@ -290,6 +450,7 @@ class WymberApp {
 
     async handleLogout() {
         this.stopIdleTimer();
+        this.teardownSoftStartPrompts();
         if (this.mindMap) {
             this.mindMap.destroy();
             this.mindMap = null;
@@ -369,6 +530,7 @@ class WymberApp {
 
     autoLock() {
         this.stopIdleTimer();
+        this.teardownSoftStartPrompts();
         if (this.mindMap) {
             this.mindMap.destroy();
             this.mindMap = null;
@@ -551,6 +713,7 @@ class WymberApp {
     }
 
     async openMapFromSoftStart() {
+        this.teardownSoftStartPrompts(); // leaving the soft start drops the held password + any nudge
         const ss = document.getElementById('soft-start');
         if (ss) ss.style.display = 'none';
         try {
@@ -1181,7 +1344,40 @@ class WymberApp {
         `;
 
         document.getElementById('delete-account-btn')?.addEventListener('click', () => this.deleteAccount());
+        this.renderBiometricSettings(); // async; appends a section on the native shell only
         document.getElementById('settings-modal').style.display = 'flex';
+    }
+
+    /** Biometric unlock section of Settings — only rendered inside the native shell. */
+    async renderBiometricSettings() {
+        if (!(await biometricAvailable())) return;
+        const panel = document.querySelector('#settings-content .settings-panel');
+        if (!panel || document.getElementById('biometric-settings')) return;
+        const enrolled = await biometricEnrolled();
+        const section = document.createElement('section');
+        section.id = 'biometric-settings';
+        if (enrolled) {
+            section.innerHTML = `
+                <h3>Biometric unlock</h3>
+                <p class="settings-note">Unlocking with your fingerprint or face is on for this device. Your password and recovery code always work too.</p>
+                <button id="biometric-off-btn" class="btn btn-secondary" type="button">Turn off biometric unlock</button>`;
+        } else {
+            section.innerHTML = `
+                <h3>Biometric unlock</h3>
+                <p class="settings-note">You'll be offered fingerprint or face unlock after your next password unlock.</p>
+                <button id="biometric-reoffer-btn" class="btn btn-secondary" type="button">Offer it next time I unlock</button>`;
+        }
+        panel.appendChild(section);
+        document.getElementById('biometric-off-btn')?.addEventListener('click', async () => {
+            await biometricDisable();
+            section.remove();
+            this.renderBiometricSettings();
+            this.showNotification('Biometric unlock is off. Your password still works.', 'success');
+        });
+        document.getElementById('biometric-reoffer-btn')?.addEventListener('click', async () => {
+            try { await api.put('/settings', { biometricDismissed: false }); } catch { /* non-fatal */ }
+            this.showNotification("Okay — you'll be asked after your next password unlock.", 'success');
+        });
     }
 
     async deleteAccount() {
@@ -1192,6 +1388,7 @@ class WymberApp {
         if (!confirmed) return;
         try {
             await api.destroyVault();
+            biometricDisable(); // hygiene: no orphaned wrapped key for a deleted vault
             this.stopIdleTimer();
             if (this.mindMap) { this.mindMap.destroy(); this.mindMap = null; }
             this.currentUser = null;
@@ -1269,13 +1466,11 @@ class WymberApp {
     async doExport(format) {
         try {
             const mapData = await api.get('/mindmap');
-            if (format === 'json') {
-                exportAsJSON(mapData.nodes || [], mapData.edges || []);
-            } else {
-                exportAsText(mapData.nodes || [], mapData.edges || []);
-            }
+            const delivered = format === 'json'
+                ? await exportAsJSON(mapData.nodes || [], mapData.edges || [])
+                : await exportAsText(mapData.nodes || [], mapData.edges || []);
             document.getElementById('export-modal').style.display = 'none';
-            this.showNotification('Export downloaded', 'success');
+            if (delivered) this.showNotification('Export saved', 'success');
         } catch (error) {
             console.error('Error exporting:', error);
             this.showNotification('Could not export map', 'error');
@@ -1301,9 +1496,16 @@ class WymberApp {
 
     async doExportVault() {
         try {
-            await exportVaultFile(api);
+            const delivered = await exportVaultFile(api);
             document.getElementById('export-modal').style.display = 'none';
-            this.showNotification('Encrypted vault downloaded', 'success');
+            if (delivered) {
+                this.showNotification('Encrypted vault saved', 'success');
+                // Remember the backup so the #147 nudge knows the map is covered. Awaited so
+                // it's committed before we return; a dropped write would let the nudge reappear.
+                try {
+                    await api.put('/settings', { lastBackupAt: new Date().toISOString() });
+                } catch { /* non-fatal: the backup itself succeeded; at worst we re-nudge later */ }
+            }
         } catch (error) {
             console.error('Vault export failed:', error);
             this.showNotification('Could not export your vault', 'error');

@@ -118,6 +118,8 @@
                         <input type="password" id="unlock-password" autocomplete="current-password" required>
                     </div>
                     <button type="submit" class="btn btn-primary">Unlock</button>
+                    <!-- Shown only on the native shell when biometric unlock is enrolled -->
+                    <button type="button" id="biometric-unlock-btn" class="btn" style="display:none;">Unlock with fingerprint or face</button>
                     <button type="button" id="show-recover" class="btn-link">Forgot your password?</button>
                 </form>
 
@@ -140,6 +142,16 @@
                     <button type="submit" class="btn btn-primary">Recover my space</button>
                     <button type="button" id="back-to-unlock" class="btn-link">Back</button>
                 </form>
+
+                <!-- Storage temporarily unavailable (native shell). Shown when reading the vault
+                     failed for a reason other than "no vault yet" (#165). We deliberately do NOT
+                     drop to Create here: your vault is still on the device, just unreadable this
+                     moment, and creating over it would lose it. Gentle, honest, retryable. -->
+                <div id="storage-error" class="auth-panel" style="display:none;" role="alert">
+                    <h2 class="auth-heading">We couldn't open your space just now</h2>
+                    <p class="auth-sub">Your data is safe on this device. We just couldn't read it this time, which can happen when storage is briefly busy. Nothing has changed, and nothing has been lost.</p>
+                    <button type="button" id="storage-retry-btn" class="btn btn-primary">Try again</button>
+                </div>
 
                 <p class="auth-restore-hint">Moving from another device?
                     <label for="restore-vault-file" class="restore-link">Restore a <code>.wymber</code> backup</label></p>
@@ -304,6 +316,22 @@
             <div class="soft-start-actions">
                 <button id="open-map-btn" class="btn btn-primary" type="button">Open my map</button>
                 <button id="soft-start-grounding-btn" class="btn" type="button">Grounding</button>
+            </div>
+            <!-- Quiet, once-only offer on the native shell (never a modal, never nags) -->
+            <div id="biometric-offer" style="display:none;">
+                <p class="settings-note">Next time, unlock with your fingerprint or face? It stays on this device.</p>
+                <div class="soft-start-actions">
+                    <button id="biometric-enable-btn" class="btn btn-primary" type="button">Enable</button>
+                    <button id="biometric-dismiss-btn" class="btn" type="button">No thanks</button>
+                </div>
+            </div>
+            <!-- Milestone backup nudge (#147): quiet, dismissible, 30-day cooldown -->
+            <div id="backup-nudge" style="display:none;">
+                <p class="settings-note">Your map has grown. Want to save an encrypted backup? It's the only copy that survives losing this device.</p>
+                <div class="soft-start-actions">
+                    <button id="backup-now-btn" class="btn btn-primary" type="button">Back up now</button>
+                    <button id="backup-later-btn" class="btn" type="button">Later</button>
+                </div>
             </div>
         </div>
     </div>

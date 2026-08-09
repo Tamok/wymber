@@ -1,11 +1,12 @@
 # Dependencies
 /node_modules/
 
-# Generated native projects.
-# Capacitor regenerates these from `npx cap add android|ios`. They are ignored while the shell is
-# bare scaffolding. Once you start customizing them (signing, splash, AndroidManifest permissions,
-# Info.plist), REMOVE the two lines below and commit android/ and ios/ so the customizations stick.
-/android/
+# Staged web root (generated from ../frontend by scripts/prepare-web.mjs)
+/www/
+
+# Native projects: android/ is COMMITTED (it carries the signing config in app/build.gradle;
+# its own .gitignore excludes build outputs, local.properties, and the copied web assets).
+# ios/ stays ignored until generated + customized, then commit it the same way.
 /ios/
 
 # Build + tooling output

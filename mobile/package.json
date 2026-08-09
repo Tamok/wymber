@@ -5,20 +5,22 @@
   "description": "Capacitor native shell for Wymber: a native shell over the single web core (ADR-0005). Android first, iOS to follow.",
   "type": "module",
   "scripts": {
-    "sync": "cap sync",
-    "copy": "cap copy",
-    "add:android": "cap add android",
-    "add:ios": "cap add ios",
+    "prepare:web": "node scripts/prepare-web.mjs",
+    "sync": "npm run prepare:web && cap sync",
+    "copy": "npm run prepare:web && cap copy",
+    "add:android": "npm run prepare:web && cap add android",
+    "add:ios": "npm run prepare:web && cap add ios",
     "open:android": "cap open android",
     "open:ios": "cap open ios",
-    "run:android": "cap run android",
+    "run:android": "npm run prepare:web && cap run android",
     "doctor": "cap doctor"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.0",
     "@capacitor/core": "^8.4.0",
     "@capacitor/filesystem": "^8.1.2",
-    "@capacitor/ios": "^8.4.0"
+    "@capacitor/ios": "^8.4.0",
+    "@capacitor/share": "^8.0.1"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.4.0"

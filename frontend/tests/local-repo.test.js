@@ -97,6 +97,48 @@ describe('LocalRepo (local-first, api-compatible adapter)', () => {
     });
 });
 
+describe('contentUpdatedAt (map-content watermark for the #147 backup nudge)', () => {
+    it('is null while locked and on an empty vault', async () => {
+        const p = new MemoryPersistence();
+        const repo = repoOver(p);
+        expect(repo.contentUpdatedAt).toBeNull();      // never unlocked
+        await repo.createVault('pw');
+        expect(repo.contentUpdatedAt).toBeNull();      // unlocked but empty
+        const reopened = repoOver(p);
+        expect(reopened.contentUpdatedAt).toBeNull();  // locked again
+    });
+
+    it('tracks the latest node/edge mutation', async () => {
+        const repo = repoOver(new MemoryPersistence());
+        await repo.createVault('pw');
+        const a = await repo.post('/node', { node_type: 'event', title: 'A' });
+        expect(repo.contentUpdatedAt).toBe(a.updated_at);
+        const b = await repo.post('/node', { node_type: 'emotion', title: 'B' });
+        expect(repo.contentUpdatedAt).toBe(b.updated_at);
+        const edge = await repo.post('/edge', { from_node_id: a.id, to_node_id: b.id });
+        expect(repo.contentUpdatedAt).toBe(edge.created_at);
+        const edited = await repo.put(`/node/${a.id}`, { title: 'A renamed' });
+        expect(repo.contentUpdatedAt).toBe(edited.updated_at);
+    });
+
+    it('does NOT advance on settings-only writes — a backup stays "covered" (#147)', async () => {
+        const repo = repoOver(new MemoryPersistence());
+        await repo.createVault('pw');
+        await repo.post('/node', { node_type: 'event', title: 'A' });
+        const coveredAt = repo.contentUpdatedAt;
+
+        // The nudge's own bookkeeping (and any settings write) reseals the vault, bumping
+        // vaultUpdatedAt — that reseal is exactly what used to masquerade as a fresh edit.
+        await repo.put('/settings', { lastBackupAt: new Date().toISOString() });
+        await repo.put('/settings', { backupNudgeAt: new Date().toISOString() });
+        await repo.put('/settings', { theme: 'dark' });
+
+        // The content watermark is unmoved, so shouldNudgeBackup sees the map as backed up
+        // and won't re-fire on the next unlock without a real edit.
+        expect(repo.contentUpdatedAt).toBe(coveredAt);
+    });
+});
+
 describe('encrypted .wymber export / import', () => {
     it('round-trips the map to a fresh device, and the file is ciphertext', async () => {
         const repo1 = repoOver(new MemoryPersistence());

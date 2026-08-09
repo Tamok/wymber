@@ -1,0 +1,96 @@
+# Mobile (Capacitor Android) lanes. Path-filtered: web-only changes never trigger this
+# (the tradeoff: a frontend/ change that breaks the mobile bundle is caught on the next
+# mobile change or release build, not on the web PR). See #148.
+name: Mobile
+
+on:
+  pull_request:
+    paths:
+      - "mobile/**"
+      - ".github/workflows/mobile.yml"
+  push:
+    branches: [main, develop]
+    paths:
+      - "mobile/**"
+      - ".github/workflows/mobile.yml"
+    tags: ["mobile-v*"]
+  workflow_dispatch:
+
+jobs:
+  android-debug:
+    name: Android debug build
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: Accept Android SDK licenses
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+      - name: Install mobile deps
+        run: npm ci
+        working-directory: mobile
+      - name: Stage web core + Capacitor sync
+        run: npm run sync
+        working-directory: mobile
+      - name: Build debug APK
+        run: ./gradlew :app:assembleDebug --no-daemon
+        working-directory: mobile/android
+
+  # Signed release artifacts (AAB for Play, APK for sideload). Runs on demand
+  # (workflow_dispatch) or on a mobile-v* tag. Signing uses the upload key from repo
+  # secrets (Play App Signing holds the distribution key); build.gradle reads the same
+  # env vars locally from .secrets/android/keystore.properties. Play upload (fastlane)
+  # lands once the Play Console org account exists — see docs/mobile/play-store-readiness.md.
+  android-release:
+    name: Android signed release
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/mobile-v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: Accept Android SDK licenses
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+      - name: Install mobile deps
+        run: npm ci
+        working-directory: mobile
+      - name: Stage web core + Capacitor sync
+        run: npm run sync
+        working-directory: mobile
+      - name: Materialize upload keystore
+        run: printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/wymber-upload.keystore"
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      - name: Build signed AAB + APK
+        run: ./gradlew :app:bundleRelease :app:assembleRelease --no-daemon
+        working-directory: mobile/android
+        env:
+          KEYSTORE_FILE: ${{ runner.temp }}/wymber-upload.keystore
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      - name: Verify APK signature
+        run: |
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
+          "$APKSIGNER" verify --print-certs mobile/android/app/build/outputs/apk/release/app-release.apk
+      - uses: actions/upload-artifact@v7
+        with:
+          name: wymber-android-release
+          path: |
+            mobile/android/app/build/outputs/bundle/release/app-release.aab
+            mobile/android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 30
+          if-no-files-found: error

@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest';
 import {
     createVault, unlockVault, sealDocument, changePassword, resetPassword,
     serializeVault, parseVault, generateRecoveryCode, normalizeRecoveryCode,
+    unwrapDekRaw, unlockVaultWithDek,
 } from '../js/crypto.js';
 
 // Low iteration count keeps tests fast; production uses DEFAULT_ITERATIONS (600k).
@@ -89,5 +90,34 @@ describe('vault crypto', () => {
         const b = generateRecoveryCode();
         expect(a).not.toBe(b);
         expect(normalizeRecoveryCode(a)).toHaveLength(24);
+    });
+
+    // Device unlock methods (biometrics, #146): the DEK itself is the credential.
+
+    it('unwraps the raw DEK and unlocks with it (biometric enroll/unlock path)', async () => {
+        const { vault } = await createVault(doc(), 'pw', FAST);
+        const dek = await unwrapDekRaw(vault, 'pw');
+        expect(dek).toHaveLength(32); // AES-256 DEK
+        const { document } = await unlockVaultWithDek(vault, dek);
+        expect(document.nodes[0].title).toBe('a private memory');
+    });
+
+    it('refuses to unwrap the DEK with a wrong password', async () => {
+        const { vault } = await createVault(doc(), 'pw', FAST);
+        await expect(unwrapDekRaw(vault, 'nope')).rejects.toThrow(/Incorrect password/);
+    });
+
+    it('rejects a wrong DEK via authenticated decryption', async () => {
+        const { vault } = await createVault(doc(), 'pw', FAST);
+        const wrong = new Uint8Array(32).fill(7);
+        await expect(unlockVaultWithDek(vault, wrong)).rejects.toThrow(/no longer matches/);
+    });
+
+    it('a DEK unwrapped before a password change still opens the vault (envelope property)', async () => {
+        const { vault } = await createVault(doc(), 'old-pw', FAST);
+        const dek = await unwrapDekRaw(vault, 'old-pw');
+        const rewrapped = await changePassword(vault, 'old-pw', 'new-pw');
+        const { document } = await unlockVaultWithDek(rewrapped, dek);
+        expect(document.nodes[0].title).toBe('a private memory');
     });
 });

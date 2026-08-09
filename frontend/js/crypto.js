@@ -148,6 +148,37 @@ export async function unlockVault(vault, secret, method = 'password') {
     return { document: documentObj, dekKey };
 }
 
+/**
+ * Unwrap the raw DEK bytes with a secret — for enrolling a device unlock method (e.g.
+ * biometrics wraps the DEK under a hardware key). Callers must treat the bytes as
+ * radioactive: hand them to the enroll step, then zero them.
+ */
+export async function unwrapDekRaw(vault, secret, method = 'password') {
+    const entry = vault.keys?.[method];
+    if (!entry) throw new Error(`This vault has no "${method}" key.`);
+    const prepared = method === 'recovery' ? normalizeRecoveryCode(secret) : secret;
+    try {
+        return await unwrapDEK(entry, prepared, vault.kdf.iterations);
+    } catch {
+        throw new Error(method === 'recovery' ? 'Incorrect recovery code.' : 'Incorrect password.');
+    }
+}
+
+/**
+ * Unlock with the raw DEK itself — device unlock methods (biometrics) hold the DEK, not a
+ * passphrase, so there is nothing to derive. GCM auth still rejects a wrong/stale DEK.
+ */
+export async function unlockVaultWithDek(vault, dekBytes) {
+    const dekKey = await importAesKey(dekBytes);
+    let documentObj;
+    try {
+        documentObj = JSON.parse(dec.decode(await aesDecrypt(dekKey, vault.payload)));
+    } catch {
+        throw new Error('This device key no longer matches the vault.');
+    }
+    return { document: documentObj, dekKey };
+}
+
 /** Re-encrypt the document into the vault using an unlocked DEK key (a normal save). */
 export async function sealDocument(vault, dekKey, documentObj) {
     const payload = await aesEncrypt(dekKey, enc.encode(JSON.stringify(documentObj)));

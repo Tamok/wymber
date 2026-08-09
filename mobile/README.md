@@ -6,8 +6,12 @@ unlock, share/export) only where it genuinely beats web. The decision and ration
 [ADR-0005](../docs/adr/0005-mobile-native-shell-single-web-core.md); the plan is in
 [docs/mobile/roadmap.md](../docs/mobile/roadmap.md).
 
-One Capacitor project targets **both** platforms. `webDir` points at `../frontend`, so the shell
-and the web core move together with no copy ritual and no build step.
+One Capacitor project targets **both** platforms. The web core stays the single source of truth in
+`frontend/`; a thin staging step (`npm run prepare:web`, run automatically by the `sync`/`copy`/`add`
+scripts) mirrors it into `mobile/www/` (the `webDir`). Staging exists for one reason: the web app
+uses absolute `/static/...` asset URLs (the server maps `/static` -> `frontend/`), so `www/` mirrors
+`frontend/` at **both** the root and under `static/`, so `/` and `/static/` resolve inside the
+WebView. `frontend/` itself is never modified. (See [scripts/prepare-web.mjs](scripts/prepare-web.mjs).)
 
 ## Prerequisites
 
@@ -20,13 +24,14 @@ and the web core move together with no copy ritual and no build step.
 ```bash
 cd mobile
 npm install
-npx cap add android        # generates mobile/android/ (needs the Android SDK)
-npx cap sync               # copies ../frontend into the native project + installs plugins
+npm run add:android        # stages www/, generates mobile/android/ (needs the Android SDK)
+npm run sync               # stages www/, copies into the native project + installs plugins
 npx cap open android       # opens Android Studio; Run onto a device/emulator
 ```
 
-`android/` and `ios/` are generated and currently git-ignored. Once you start customizing them
-(signing, splash, permissions, `Info.plist`), un-ignore and commit them, see [.gitignore](.gitignore).
+`android/`, `ios/`, and the generated `www/` are git-ignored. Once you start customizing the native
+projects (signing, splash, permissions, `Info.plist`), un-ignore and commit them, see
+[.gitignore](.gitignore).
 
 ## Dev loop
 
@@ -34,42 +39,57 @@ After any change to `frontend/`:
 
 ```bash
 cd mobile
-npx cap sync      # or: npx cap copy   (web assets only, faster)
+npm run sync      # re-stages www/ from frontend/, then cap sync   (use: npm run copy for web assets only)
 ```
 
-then re-run from Android Studio / Xcode. (No build step: the frontend is plain ES modules.)
+then re-run from Android Studio / Xcode. (No bundler: the frontend is plain ES modules; `prepare:web`
+is just a copy.)
 
 ## The native vault backend
 
-[src/native-persistence.js](src/native-persistence.js) is the mobile storage backend. It implements
-the same interface `LocalRepo` already injects (`hasVault` / `loadVault` / `saveVault` /
-`clearVault`, see `frontend/js/local-repo.js`) and writes the **sealed** vault blob to app-private
-native storage via the Capacitor Filesystem plugin, instead of OPFS/IndexedDB. Why: ADR-0005 (the
-WKWebView 10 MB OPFS cap, weak `persist()` on iOS, and WebView storage eviction make browser
-storage unsafe as the system of record). Only ciphertext is written; the WebView still does all the
-crypto, so zero-knowledge holds. Tracked in **#145**.
+[`frontend/js/native-persistence.js`](../frontend/js/native-persistence.js) is the native storage
+backend. It lives under `frontend/` because the WebView only serves `webDir`, but it activates only
+on the native shell. It implements the same interface `LocalRepo` injects (`hasVault` / `loadVault`
+/ `saveVault` / `clearVault`, see `frontend/js/local-repo.js`) and writes the **sealed** vault blob
+to app-private native storage via the Capacitor Filesystem plugin, instead of OPFS/IndexedDB. Why:
+ADR-0005 (the WKWebView 10 MB OPFS cap, weak `persist()` on iOS, and WebView storage eviction make
+browser storage unsafe as the system of record). Only ciphertext is written; the WebView still does
+all the crypto, so zero-knowledge holds. Tracked in **#145**.
 
-### The one app-side change this needs (handoff)
-
-The web core is owned by the app, not by this folder, so wiring the backend in is an **app change**,
-not a mobile-only one. It is a single line at the `new LocalRepo()` construction site in
-`frontend/js/app.js`:
+It is wired in at the `new LocalRepo()` site in `frontend/js/app.js`, guarded by `isNativeShell()`,
+so the web build is unchanged and only the native shell uses it:
 
 ```js
-import { NativePersistence, isNativeShell } from '<wherever this module is served from>';
-
 const api = isNativeShell()
     ? new LocalRepo({ persistence: new NativePersistence() })
     : new LocalRepo();
 ```
 
-Two open questions for that change (both for the app owner, deliberately not done here):
+> **Service worker:** `/static/js/native-persistence.js` is in the precache list in `frontend/sw.js`,
+> and `VERSION` is regenerated automatically by the pre-commit hook (`scripts/sw-version.mjs`), so
+> returning PWA users get the new module offline.
 
-1. **Where the module is served from.** The WebView only serves `webDir` (`../frontend`), so to be
-   importable at runtime `native-persistence.js` has to live under `frontend/` (e.g.
-   `frontend/js/native-persistence.js`) or be exposed via an import map. This copy in `mobile/src/`
-   is the source of truth; the app integration decides how it is served.
-2. **The injection line** in `app.js` above.
+## Release signing (upload key)
+
+Release builds are signed with an **upload key** for Play App Signing (Google holds the
+distribution key; a lost upload key is resettable via Play Console support, back it up anyway).
+The key lives OUTSIDE the repo:
+
+- `.secrets/android/wymber-upload.keystore` (RSA-4096, alias `wymber-upload`)
+- `.secrets/android/keystore.properties` (storeFile/storePassword/keyAlias/keyPassword)
+
+`android/app/build.gradle` resolves signing in this order: **CI env vars** (`KEYSTORE_FILE`,
+`KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`, or point `WYMBER_KEYSTORE_PROPERTIES` at a
+properties file) → **local `.secrets` file** → **unsigned release** (still buildable, not
+installable). Build:
+
+```bash
+cd mobile/android
+./gradlew :app:bundleRelease     # AAB for Play (app/build/outputs/bundle/release/)
+./gradlew :app:assembleRelease   # APK for direct sideload (app/build/outputs/apk/release/)
+```
+
+Store readiness / Play Console plan: [docs/mobile/play-store-readiness.md](../docs/mobile/play-store-readiness.md).
 
 ## Conventions / decisions to confirm
 
