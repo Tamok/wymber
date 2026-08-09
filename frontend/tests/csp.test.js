@@ -408,11 +408,14 @@ describe('landing/_headers CSP (ADR-0003 Layer 1, the landing origin)', () => {
         }
     });
 
-    it('is exactly what scripts/landing-csp.mjs would write (no drift)', async () => {
-        // expectedLandingCsp() is pure on purpose: asserting against the generator's *output*
-        // rather than running the generator keeps this test from quietly rewriting a tracked file
-        // when it is stale. A failing test should report, not repair.
-        const { expectedLandingCsp } = await import('../../scripts/landing-csp.mjs');
-        expect(csp, 'landing/_headers is stale: run `node scripts/landing-csp.mjs`').toBe(expectedLandingCsp());
+    it('carries exactly the hashes the landing needs, no stale leftovers', () => {
+        // Drift in the other direction: an inline script that was edited or deleted leaves a hash
+        // behind that matches nothing. Asserted against hashes this test recomputed itself, rather
+        // than by importing or running scripts/landing-csp.mjs: the test should be an independent
+        // check on the generator, and it must never repair a stale tracked file on the way past.
+        const scriptSrc = csp.split(';').map((d) => d.trim()).find((d) => d.startsWith('script-src'));
+        const inCsp = [...scriptSrc.matchAll(/'(sha256-[^']+)'/g)].map((m) => m[1]).sort();
+        const needed = [...new Set(inlineScripts.executable.map((s) => s.hash))].sort();
+        expect(inCsp, 'landing/_headers is stale: run `node scripts/landing-csp.mjs`').toEqual(needed);
     });
 });
