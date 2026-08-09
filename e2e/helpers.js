@@ -47,3 +47,40 @@ export async function unlock(page, password = PASSWORD) {
     await fillVerified(page, '#unlock-password', password);
     await page.click('#unlock-form button[type="submit"]');
 }
+
+/** Unlock from a reload, then move past the soft-start card into the map. */
+export async function unlockAndOpenMap(page, password = PASSWORD) {
+    await unlock(page, password);
+    await expect(page.locator('#soft-start')).toBeVisible({ timeout: 15000 });
+    await page.click('#open-map-btn');
+    await expect(page.locator('#soft-start')).toBeHidden();
+}
+
+/**
+ * Add a node through the modal and wait for it to land in the accessible outline twin.
+ * opts: { description }
+ */
+export async function addNode(page, type, title, opts = {}) {
+    await page.click('#add-node-btn');
+    await expect(page.locator('#node-modal')).toBeVisible({ timeout: 5000 });
+    await pickType(page, type);
+    await page.fill('#node-title', title);
+    if (opts.description) await page.fill('#node-description', opts.description);
+    await page.click('#save-node');
+    await expect(page.locator('#node-modal')).toBeHidden({ timeout: 5000 });
+    await expect(page.locator('#map-outline')).toContainText(title, { timeout: 5000 });
+}
+
+/** Link two already-added nodes via Link mode, from the accessible outline (matches how a
+ * keyboard-first / non-visual user actually connects two dots). Leaves Link mode active. */
+export async function linkNodes(page, titleA, titleB) {
+    await page.click('#link-mode-btn');
+    await page.locator('.map-outline-node', { hasText: titleA }).first().click();
+    await page.locator('.map-outline-node', { hasText: titleB }).first().click();
+}
+
+/** Open a node's detail drawer from the outline twin. */
+export async function openNodeDetailFromOutline(page, title) {
+    await page.locator('.map-outline-node', { hasText: title }).first().click();
+    await expect(page.locator('#node-detail')).toHaveClass(/open/);
+}
