@@ -1,6 +1,6 @@
 # ADR-0006: Optional recovery, without breaking the zero-knowledge guarantee
 
-- Status: Accepted (2026-08-09)
+- Status: Proposed (2026-08-09), pending owner review
 - Decider: [@tamok](https://github.com/tamok)
 
 ## Context

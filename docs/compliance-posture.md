@@ -8,7 +8,7 @@
 > knowledge cutoff, and states that its live regulatory items were web-checked in May 2026 but
 > **still need primary-source verification.** Nothing below has been reviewed by a lawyer.
 > Counsel should review this posture before any public launch of a paid tier, and especially
-> before the paid cloud-sync tier described in §8 ships.
+> before the paid cloud-sync tier described in §7 ships.
 
 Every regulatory statement here is attributed to that research document and flagged as needing
 primary-source verification. Where this document states what the code does today, that is a
@@ -19,8 +19,8 @@ analysis this document does not repeat, [`docs/CONTENT-GUIDELINES.md`](CONTENT-G
 the claims discipline referenced throughout, [ADR-0001](adr/0001-local-first-encrypted-file.md)
 for the data model, [ADR-0003](adr/0003-client-integrity-and-anti-phishing.md) for the
 client-integrity honesty register this document tries to match, and
-[ADR-0006](adr/0006-optional-recovery-tradeoffs.md) for the recovery-key tradeoffs referenced in
-§6.
+[ADR-0006](adr/0006-optional-recovery-tradeoffs.md) for the recovery-key tradeoffs behind the
+zero-knowledge guarantee this document relies on throughout.
 
 ## 1. Wellness, not a medical device
 
@@ -116,7 +116,7 @@ A plain incident-response posture, stated honestly as intent rather than an audi
   repository, a security advisory, or the site) is a natural fit for this project's existing
   transparency posture.
 - **This is a stated intent, not an audited or exercised incident-response program.** There is no
-  formal runbook today (see the gaps register, §10).
+  formal runbook today (see the gaps register, §9).
 
 ## 4. Age considerations
 
@@ -124,8 +124,8 @@ A plain incident-response posture, stated honestly as intent rather than an audi
 site, or this repository's documentation today. This is stated as a fact about the code, verified
 by search, not as a legal judgment about whether one is required.
 
-The research doc's safe-side checklist (§4.3 area, listed alongside CCPA/CPRA) flags age gating in
-a 13-16 range as a consideration for a product handling this kind of content. This document does
+The research doc's safe-side checklist (at the end of its §4, listed alongside CCPA/CPRA) flags age
+gating in a 13-16 range as a consideration for a product handling this kind of content. This document does
 not adopt a specific age threshold as a requirement: that is exactly the kind of determination
 that needs counsel, and asserting a number here without legal review would be worse than leaving
 it open. This is flagged as an **open gap** to resolve before any paid tier or app-store
@@ -148,12 +148,12 @@ already discloses.
 
 The research doc is explicit, and this document agrees as a matter of architecture: **local-first
 shrinks the surface for these obligations, and the paid cloud-sync tier (unbuilt today) is where
-real obligations would attach**, even with zero-knowledge encryption. See §8.
+real obligations would attach**, even with zero-knowledge encryption. See §7.
 
 ## 6. CCPA/CPRA
 
-**General orientation** (attributed to the research doc's safe-side checklist near §4.3, needs
-primary-source verification): California's privacy framework is named alongside GDPR as a
+**General orientation** (attributed to the research doc's safe-side checklist at the end of its §4,
+needs primary-source verification): California's privacy framework is named alongside GDPR as a
 consideration for a product handling sensitive personal content, particularly once there are
 accounts or a paid tier. This document does not enumerate specific statutory consumer rights here,
 since doing so accurately requires legal review this document is not positioned to substitute for.

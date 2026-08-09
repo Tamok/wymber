@@ -81,8 +81,8 @@ account, session, or re-auth step beyond the original unlock.
 The mitigation is auto-lock: idle for the configured period clears the in-memory DEK and
 document and returns to the lock screen (`frontend/js/app.js`, `autoLock`,
 `startIdleTimer`). The default is 15 minutes (`frontend/js/app.js`,
-`this.autoLockMinutes = 15`), and it is user-configurable down to shorter windows, or up
-to **"never"** (`getAutoLockMs` treats 0 as "no auto-lock"). That configurability is
+`this.autoLockMinutes = 15`), and the settings panel offers 5, 15, 30, or 60 minutes, or
+**"Never"** (`getAutoLockMs` treats 0 as "no auto-lock"). That configurability is
 double-edged: a shorter timeout is more protective in this scenario, and a user who picks
 "never" has knowingly removed the only defense this adversary faces. There's no
 technical control on the OS side either: OPFS/IndexedDB are ordinary storage inside the
