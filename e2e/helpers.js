@@ -84,3 +84,20 @@ export async function openNodeDetailFromOutline(page, title) {
     await page.locator('.map-outline-node', { hasText: title }).first().click();
     await expect(page.locator('#node-detail')).toHaveClass(/open/);
 }
+
+/** Unlink a node's first connection via its detail drawer (matches the flow in
+ * mindmap.spec.js's link/unlink test). Leaves Select mode active. */
+export async function unlinkFirstConnection(page, title) {
+    await page.click('#select-mode-btn');
+    await openNodeDetailFromOutline(page, title);
+    await page.locator('#detail-connections .detail-unlink').first().click();
+}
+
+/** Select a node from the outline (opens its drawer), then delete it with the keyboard
+ * Delete key, accepting the confirmation dialog. Matches mindmap.spec.js's delete flow. */
+export async function deleteNodeViaKeyboard(page, title) {
+    await page.locator('.map-outline-node', { hasText: title }).first().click();
+    await expect(page.locator('#node-detail')).toHaveClass(/open/);
+    page.once('dialog', (d) => d.accept());
+    await page.locator('body').press('Delete');
+}
