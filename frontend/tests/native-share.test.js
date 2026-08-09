@@ -185,12 +185,49 @@ describe('#167: a plaintext export does not survive indefinitely (would fail aga
     });
 });
 
+describe('the app-start sweep actually fires at module init (#167 manager review)', () => {
+    // This is the mechanism the whole "plaintext does not survive" claim rests on for the user
+    // who shares once and never exports again: nothing else ever sweeps their last export. The
+    // other tests all call sweepStagedExports() by hand, which proves the sweep works but NOT
+    // that it is ever triggered. So assert the module-init trigger itself.
+    it('a leftover export from a previous session is gone after the module is evaluated', async () => {
+        const fs = makeFs();
+        installNativeShell(fs, makeShare());
+        // A plaintext export left staged by a previous session's successful share.
+        const marker = 'LEFTOVER_PLAINTEXT_FROM_LAST_SESSION_4a71';
+        await fs.writeFile({ path: 'exports/wymber-export-old.txt', data: marker, directory: 'CACHE', recursive: true });
+        expect(stagedFiles(fs)).toHaveLength(1);
+
+        vi.resetModules();
+        await import('../js/native-share.js'); // module init == app start (export.js -> app.js at boot)
+        // The init sweep is deliberately deferred, so let the microtask queue drain.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        expect(fs.rmdir).toHaveBeenCalled();
+        expect(stagedFiles(fs)).toEqual([]);
+        expect([...fs._store.values()]).not.toContain(marker);
+    });
+});
+
 describe('the module is inert off the native shell', () => {
     beforeEach(() => { delete globalThis.Capacitor; });
 
     it('re-importing the module with no Capacitor global present never throws or hangs', async () => {
         vi.resetModules();
         await expect(import('../js/native-share.js')).resolves.toBeDefined();
+    });
+
+    it('module init does not touch the filesystem when there is no native shell', async () => {
+        // The web build must never call into the Filesystem plugin at boot. Install a filesystem
+        // spy but WITHOUT isNativePlatform() returning true, and assert nothing was swept.
+        const fs = makeFs();
+        globalThis.Capacitor = { Plugins: { Filesystem: fs }, isNativePlatform: () => false };
+        vi.resetModules();
+        await import('../js/native-share.js');
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        expect(fs.rmdir).not.toHaveBeenCalled();
+        delete globalThis.Capacitor;
     });
 
     it('isNativeShell() is false and nativeSaveFile rejects with a clear error, not a raw TypeError', async () => {
