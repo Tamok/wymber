@@ -161,9 +161,11 @@ html = html.replace(headCloseNeedle, `${importMapTag}\n${headCloseNeedle}`);
 writeFileSync(indexPath, html);
 
 // (e) Write the manifest last, so /index.html's hash covers the HTML actually served (post
-// stamping + SRI + import-map injection above). Published to dist/ (web.wymber.app) AND to
-// landing/integrity-manifest.json, committed and served from wymber.app: a different origin,
-// which is the cross-check this whole layer exists for (ADR-0003 Layer 1/2).
+// stamping + SRI + import-map injection above). This writes dist/integrity-manifest.json only
+// (served from web.wymber.app). The committed landing/integrity-manifest.json is the release
+// snapshot served from wymber.app, a different origin, and is refreshed deliberately with
+// `node scripts/integrity-manifest.mjs --publish`: a tracked file whose commit field churns on
+// every build would leave a dirty tree after an ordinary build or test run.
 const manifest = writeManifest(dist, { commit });
 
 console.log(`[build-pages] wrote dist/ (index.html + SRI + import-map, sw.js, manifest.webmanifest, _headers, static/) and integrity-manifest.json (${Object.keys(manifest.assets).length} assets, commit ${commit})`);

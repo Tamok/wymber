@@ -5,9 +5,10 @@ import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, relative, sep } from 'node:path';
 
-// This suite runs the real build (scripts/build-pages.mjs writes to the repo's gitignored
-// dist/, and rewrites the committed landing/integrity-manifest.json, both expected). It exists
-// to catch the one failure mode that would matter in production: a hash in dist/index.html or
+// This suite runs the real build (scripts/build-pages.mjs writes to the repo's gitignored dist/;
+// it deliberately does NOT touch the committed landing/integrity-manifest.json, so running the
+// tests leaves the working tree clean). It exists to catch the one failure mode that would
+// matter in production: a hash in dist/index.html or
 // integrity-manifest.json that does NOT match the bytes it is supposed to protect, which would
 // make the browser refuse to load its own app the moment SRI / import-map integrity is enforced.
 

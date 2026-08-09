@@ -4,17 +4,23 @@
  * (ADR-0003, Layer 1: "a committed manifest of SHA-384 hashes for every shipped asset ... so
  * anyone can confirm wymber.app serves exactly the source in the repo").
  *
- * The manifest is written to two places on purpose:
- *   - dist/integrity-manifest.json, published at web.wymber.app (the app origin), and
- *   - landing/integrity-manifest.json, committed to the repo and published at wymber.app (the
- *     landing origin, a *different* origin from web.wymber.app). Cross-checking the two is
- *     ADR-0003 Layer 1/2: a match is tamper-evidence for the official deploy, not proof either
- *     origin is honest.
+ * The manifest is written to two places, but on two different cadences:
+ *   - dist/integrity-manifest.json, on EVERY build, published at web.wymber.app (the app origin).
+ *     This one is always correct by construction: CI rebuilds it from the commit it deploys.
+ *   - landing/integrity-manifest.json, only when explicitly published (`--publish`), committed to
+ *     the repo and served from wymber.app (the landing origin, a *different* origin). This is the
+ *     release snapshot. Cross-checking the two is ADR-0003 Layer 1/2: a match is tamper-evidence
+ *     for the official deploy, not proof either origin is honest.
+ *
+ * Why the landing copy is opt-in: it is a tracked file, and its `commit` field changes with every
+ * commit. Writing it on every build would mean an ordinary `node scripts/build-pages.mjs` (or
+ * just running the test suite, which builds) leaves a dirty working tree with a churny diff.
+ * Regenerate it deliberately, on release: `node scripts/integrity-manifest.mjs --publish`.
  *
  * This module is reusable (scripts/build-pages.mjs imports writeManifest as its final step, so
  * the manifest hashes the HTML actually served, including its build-time SRI injections) and
- * also runnable standalone: `node scripts/integrity-manifest.mjs` builds dist/ first, then writes
- * the manifest.
+ * also runnable standalone: `node scripts/integrity-manifest.mjs [--publish]` builds dist/ first,
+ * then writes the manifest.
  */
 import { readdirSync, statSync, readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -47,13 +53,14 @@ function sriHash(bytes) {
 }
 
 /**
- * Walk distDir, hash every non-excluded file, and write the manifest to distDir and to
- * landing/integrity-manifest.json (committed).
+ * Walk distDir, hash every non-excluded file, and write the manifest to distDir. With
+ * `publish: true`, also refresh the committed landing/integrity-manifest.json release snapshot.
  * @param {string} distDir absolute path to the built Pages output (dist/)
- * @param {{ commit: string }} options the resolved build commit (short SHA, or 'dev')
+ * @param {{ commit: string, publish?: boolean }} options the resolved build commit (short SHA,
+ *   or 'dev'), and whether to refresh the committed landing copy
  * @returns {object} the manifest that was written
  */
-export function writeManifest(distDir, { commit }) {
+export function writeManifest(distDir, { commit, publish = false }) {
     const relPaths = walk(distDir)
         // Normalise Windows backslashes to forward slashes so the manifest is platform-independent.
         .map((p) => p.split(sep).join('/'))
@@ -81,7 +88,7 @@ export function writeManifest(distDir, { commit }) {
 
     const json = JSON.stringify(manifest, null, 2) + '\n';
     writeFileSync(join(distDir, 'integrity-manifest.json'), json);
-    writeFileSync(join(root, 'landing', 'integrity-manifest.json'), json);
+    if (publish) writeFileSync(join(root, 'landing', 'integrity-manifest.json'), json);
     return manifest;
 }
 
@@ -94,14 +101,16 @@ function resolveCommitLocal() {
     }
 }
 
-// Standalone entry point: `node scripts/integrity-manifest.mjs`. Invokes build-pages.mjs as a
-// subprocess (not a static/dynamic import: build-pages.mjs itself imports writeManifest from
-// this file, so an in-process import here would form a module cycle) to build dist/ first
-// (build-pages.mjs already calls writeManifest as its own final step, so this mostly re-confirms
-// the same output), then writes the manifest explicitly so this file works standalone.
+// Standalone entry point: `node scripts/integrity-manifest.mjs [--publish]`. Invokes
+// build-pages.mjs as a subprocess (not a static/dynamic import: build-pages.mjs itself imports
+// writeManifest from this file, so an in-process import here would form a module cycle) to build
+// dist/ first, then writes the manifest. Pass --publish on a release to refresh the committed
+// landing/integrity-manifest.json snapshot; without it, only dist/ is written.
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) {
+    const publish = process.argv.includes('--publish');
     execFileSync(process.execPath, [join(root, 'scripts', 'build-pages.mjs')], { cwd: root, stdio: 'inherit' });
-    const manifest = writeManifest(join(root, 'dist'), { commit: resolveCommitLocal() });
-    console.log(`[integrity-manifest] wrote ${Object.keys(manifest.assets).length} asset hashes (commit ${manifest.commit})`);
+    const manifest = writeManifest(join(root, 'dist'), { commit: resolveCommitLocal(), publish });
+    console.log(`[integrity-manifest] wrote ${Object.keys(manifest.assets).length} asset hashes (commit ${manifest.commit})`
+        + (publish ? ', refreshed landing/integrity-manifest.json' : ''));
 }

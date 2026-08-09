@@ -148,9 +148,13 @@ now makes its own output verifiable, deterministically.
 
 **Manifest.** `scripts/integrity-manifest.mjs` walks the built `dist/` tree and hashes every
 shipped file with SHA-384, in the exact SRI format (`sha384-<base64>`). It writes the same
-manifest to two places: `dist/integrity-manifest.json` (served from `web.wymber.app`, the app
-origin) and the committed `landing/integrity-manifest.json` (served from `wymber.app`, a
-*different* origin). Comparing the two is the cross-check this layer exists for: if either origin
+manifest to two places, on two cadences: `dist/integrity-manifest.json` on **every** build (served
+from `web.wymber.app`, the app origin, so it always describes exactly what CI just deployed), and
+the committed `landing/integrity-manifest.json` (served from `wymber.app`, a *different* origin)
+as a **release snapshot**, refreshed deliberately with `node scripts/integrity-manifest.mjs
+--publish`. The landing copy is opt-in because it is a tracked file whose `commit` field changes
+with every commit: writing it on every build would leave a dirty working tree after an ordinary
+build or test run. Comparing the two is the cross-check this layer exists for: if either origin
 is tampered with, its manifest stops matching the other. That is tamper-evidence for the official
 deploy. It is not proof either origin is honest, a compromise of the build pipeline itself, or of
 both origins at once, would produce two manifests that agree with each other and still lie.
