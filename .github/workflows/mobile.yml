@@ -19,7 +19,13 @@ on:
 jobs:
   android-debug:
     name: Android debug build
-    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    # Tag pushes are excluded deliberately (#168): `on.push.tags` makes a mobile-v* tag trigger
+    # this workflow, and GitHub does NOT apply path filters to tag pushes — so without the
+    # refs/tags guard every release would also run a redundant debug build alongside
+    # android-release.
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -30,9 +36,20 @@ jobs:
           cache: gradle
       - uses: actions/setup-node@v5
         with:
+          # Capacitor CLI 8 declares engines.node >=22 and `npm run sync` runs it (#168).
           node-version: "22"
       - name: Accept Android SDK licenses
-        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+        # Deliberately `set -eu` WITHOUT pipefail (#168): `yes` is killed by SIGPIPE (141) as soon
+        # as sdkmanager stops reading, so pipefail would turn every successful run into a failure.
+        # Without it the pipeline reports sdkmanager's own status, which is what we want to check.
+        run: |
+          set -eu
+          SDKMANAGER="${ANDROID_HOME:?ANDROID_HOME is not set on this runner}/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            echo "::error::sdkmanager not found at $SDKMANAGER — the runner image's Android SDK layout changed. Fix this step instead of letting it resurface later as an opaque Gradle failure."
+            exit 1
+          fi
+          yes | "$SDKMANAGER" --licenses > /dev/null
       - name: Install mobile deps
         run: npm ci
         working-directory: mobile
@@ -61,9 +78,18 @@ jobs:
           cache: gradle
       - uses: actions/setup-node@v5
         with:
+          # Capacitor CLI 8 declares engines.node >=22 and `npm run sync` runs it (#168).
           node-version: "22"
       - name: Accept Android SDK licenses
-        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+        # See the identical step in android-debug for why pipefail is deliberately omitted.
+        run: |
+          set -eu
+          SDKMANAGER="${ANDROID_HOME:?ANDROID_HOME is not set on this runner}/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            echo "::error::sdkmanager not found at $SDKMANAGER — the runner image's Android SDK layout changed. Fix this step instead of letting it resurface later as an opaque Gradle failure."
+            exit 1
+          fi
+          yes | "$SDKMANAGER" --licenses > /dev/null
       - name: Install mobile deps
         run: npm ci
         working-directory: mobile
@@ -71,7 +97,19 @@ jobs:
         run: npm run sync
         working-directory: mobile
       - name: Materialize upload keystore
-        run: printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/wymber-upload.keystore"
+        # umask 077 so the signing key lands as 0600 rather than inheriting the runner's default
+        # 0644 (#168). Also fail loudly on a missing/empty secret: without the check, base64 -d of
+        # an empty string yields a 0-byte "keystore" and Gradle fails much later with a signing
+        # error that says nothing about the real cause.
+        run: |
+          set -euo pipefail
+          if [ -z "${ANDROID_KEYSTORE_BASE64:-}" ]; then
+            echo "::error::secrets.ANDROID_KEYSTORE_BASE64 is empty or unset — the signed release cannot be built."
+            exit 1
+          fi
+          umask 077
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/wymber-upload.keystore"
+          test -s "$RUNNER_TEMP/wymber-upload.keystore"
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
       - name: Build signed AAB + APK
@@ -83,8 +121,21 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
       - name: Verify APK signature
+        # An unset ANDROID_HOME used to expand empty here, so `find "/build-tools"` failed with a
+        # message about a path nobody recognises (#168). Check the variable, the search root, and
+        # the result explicitly so each failure names itself.
         run: |
-          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
+          set -euo pipefail
+          BUILD_TOOLS="${ANDROID_HOME:?ANDROID_HOME is not set on this runner}/build-tools"
+          if [ ! -d "$BUILD_TOOLS" ]; then
+            echo "::error::No build-tools directory at $BUILD_TOOLS — cannot locate apksigner."
+            exit 1
+          fi
+          APKSIGNER=$(find "$BUILD_TOOLS" -name apksigner -type f | sort -V | tail -1)
+          if [ -z "$APKSIGNER" ] || [ ! -x "$APKSIGNER" ]; then
+            echo "::error::apksigner not found (or not executable) under $BUILD_TOOLS. The release APK went UNVERIFIED — do not ship it."
+            exit 1
+          fi
           "$APKSIGNER" verify --print-certs mobile/android/app/build/outputs/apk/release/app-release.apk
       - uses: actions/upload-artifact@v7
         with:
