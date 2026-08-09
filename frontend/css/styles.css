@@ -278,14 +278,18 @@ textarea {
     min-height: 100px;
 }
 
-/* Crisis resources bar */
+/* Crisis resources bar. Was a stock indigo/purple gradient with white text (3.66:1, fails
+   AA and reads as loud/alarm-toned for a safety surface); now the same warm plum already used
+   for filled buttons, which clears >= 4.5:1 in all three themes (the accent-on-surface /
+   accent-surface pair frontend/tests/contrast.test.js already asserts). top respects a
+   notch/camera-cutout safe area on native, and is a no-op (0px) on the web build (#162). */
 .crisis-bar {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
+    background: var(--accent-surface);
+    color: var(--accent-on-surface);
     padding: var(--spacing-sm);
     text-align: center;
     position: sticky;
-    top: 0;
+    top: max(0px, env(safe-area-inset-top));
     z-index: 1000;
     display: flex;
     justify-content: center;
@@ -294,9 +298,28 @@ textarea {
 }
 
 .crisis-bar a {
-    color: white;
-    font-weight: bold;
+    color: var(--accent-on-surface);
+    font-weight: 700;
     text-decoration: underline;
+}
+
+/* The dismiss control had no styling at all, so it rendered as a default grey UA button on
+   the coloured bar. Inherits the bar's foreground, and keeps a full 44px target: a "close"
+   you have to aim at is the wrong thing to put on a safety surface. */
+.crisis-bar button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    background: none;
+    border: none;
+    color: inherit;
+    font-size: 1.1rem;
+    line-height: 1;
+    border-radius: 50%;
+    cursor: pointer;
 }
 
 /* Login screen */
@@ -1402,7 +1425,8 @@ kbd {
         top: auto;
         left: 0;
         right: 0;
-        bottom: 0;
+        /* Clears the home-indicator safe area on native; 0px on the web build (#162). */
+        bottom: max(0px, env(safe-area-inset-bottom));
         width: 100%;
         max-height: 85dvh;
         border-left: none;
@@ -1414,6 +1438,72 @@ kbd {
 
     .node-detail.open {
         transform: translateY(0);
+    }
+}
+
+/* ===== TOUCH / COMPACT VIEWPORT (#162) ===== */
+/* On a phone the header plus the "Mind Map Actions" card were eating roughly half the
+   portrait viewport before the canvas started. This block reclaims that space by tightening
+   the chrome, NOT by hiding controls or dropping their labels to icons: the header's four
+   glyphs are ⓘ / ? / ↓ / ⚙, and ⓘ and ? are indistinguishable at a glance with no label and
+   no hover to fall back on, so icon-only would cost more than it saved.
+   pointer:coarse is the touch signal (not width alone, so a narrow desktop window keeps the
+   roomier layout). It deliberately does NOT re-set flex-direction: the max-width:768px block
+   above already stacks the header on purpose, and this must compose with that, not fight it.
+   The map and its #map-outline twin (ADR-0004) are untouched here. */
+@media (pointer: coarse) and (max-width: 600px) {
+    .app-header {
+        padding: var(--spacing-xs) var(--spacing-sm);
+    }
+
+    .app-header h1 {
+        font-size: 1.15rem;
+    }
+
+    .app-header h1 img {
+        width: 22px;
+        height: 22px;
+    }
+
+    .mindmap-toolbar {
+        padding: var(--spacing-sm);
+        margin-bottom: var(--spacing-sm);
+    }
+
+    .mindmap-toolbar .toolbar-section {
+        margin-bottom: var(--spacing-xs);
+    }
+
+    /* Still the line that makes the toolbar make sense on first use, so it stays visible;
+       it just stops taking a full line's worth of leading. */
+    .mindmap-toolbar .toolbar-help {
+        margin-bottom: var(--spacing-xs);
+        font-size: 0.8rem;
+    }
+
+    .mindmap-container {
+        margin: var(--spacing-sm);
+    }
+
+    /* The Esc keycap inside Logout is pure decoration on touch, and it is *inside* the button,
+       so hiding it also tidies the accessible name from "Logout Esc" to "Logout". */
+    .btn-kbd {
+        display: none;
+    }
+
+    /* The footer shortcut legend is meaningless to a thumb, but a touch device can still have
+       a paired keyboard and a screen-reader user may well be using one. So it leaves the
+       layout without leaving the accessibility tree: visually hidden, still announced. */
+    .keyboard-hints {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
     }
 }
 
@@ -1459,14 +1549,16 @@ kbd {
 
 /* ===== Safety affordances (persistent) ===== */
 /* Clear the fixed bottom safety bar (which can wrap to two rows on narrow screens), so the
-   last of the page content is never tucked underneath it. */
+   last of the page content is never tucked underneath it. max() with env() is a no-op on the
+   web build (insets are 0 there) and only grows the clearance on a device with a home-indicator
+   safe area (#162); it never needs to grow much since the inset is well under 4rem. */
 body {
-    padding-bottom: 4rem;
+    padding-bottom: max(4rem, env(safe-area-inset-bottom));
 }
 
 .safety-bar {
     position: fixed;
-    bottom: 0;
+    bottom: max(0px, env(safe-area-inset-bottom));
     left: 0;
     right: 0;
     z-index: 1000;
@@ -1526,7 +1618,7 @@ body {
 .grounding-breathe {
     background: linear-gradient(180deg, rgba(178, 223, 219, 0.18), rgba(200, 230, 201, 0.12));
     border: 1px solid var(--border);
-    border-radius: 14px;
+    border-radius: 12px;
     padding: var(--spacing-lg) var(--spacing-md) var(--spacing-md);
     text-align: center;
 }
@@ -1623,7 +1715,8 @@ body {
 .sense-smell .sense-num { background: var(--type-event); }
 .sense-taste .sense-num { background: var(--type-person); }
 
-/* Crisis resources, as calm cards with a soft accent edge. */
+/* Crisis resources, as calm cards with a soft accent edge. Same card radius as the breathing
+   panel and the senses list above, so the three read as one family, not three widgets. */
 .crisis-list {
     list-style: none;
     margin: var(--spacing-md) 0;
@@ -1641,7 +1734,7 @@ body {
     background: var(--bg-primary);
     border: 1px solid var(--border);
     border-left: 4px solid var(--type-support);
-    border-radius: 10px;
+    border-radius: 12px;
 }
 
 .crisis-key {
