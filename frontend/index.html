@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Wymber - Private Trauma Mapping</title>
     <link rel="stylesheet" href="/static/css/styles.css">
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
@@ -205,7 +205,7 @@
                 <div class="toolbar-section">
                     <div class="toolbar-heading">
                         <div class="toolbar-heading-row">
-                            <h3>Mind Map Actions</h3>
+                            <h3>Mind map actions</h3>
                             <span id="save-indicator" class="save-indicator" role="status">All changes saved</span>
                         </div>
                         <p class="toolbar-help">Select a dot first, then choose an action</p>
@@ -260,7 +260,7 @@
                     <div class="mindmap-help">
                         <h3>How to use your map:</h3>
                         <ul>
-                            <li><strong>Add:</strong> Click "+ Add a dot" in Mind Map Actions (or press <kbd>N</kbd>)</li>
+                            <li><strong>Add:</strong> Click "+ Add a dot" in Mind map actions (or press <kbd>N</kbd>)</li>
                             <li><strong>Select:</strong> Click any dot to select it</li>
                             <li><strong>Link:</strong> Use "Link dots" to connect related experiences</li>
                             <li><strong>Unlink:</strong> Open a dot's Connections, or tap the line between two, to remove a link</li>
@@ -344,13 +344,13 @@
     <div id="node-modal" class="modal" style="display:none;">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 id="modal-title">Add to Your Map</h3>
+                <h3 id="modal-title">Add to your map</h3>
                 <button class="close-btn" id="close-modal">&times;</button>
             </div>
 
             <div class="modal-body">
                 <div class="form-group">
-                    <span class="form-label" id="node-type-label">Type of Entry</span>
+                    <span class="form-label" id="node-type-label">Type of dot</span>
                     <!-- All 11 types visible as colour-dotted chips (radios), rendered from
                          NODE_TYPES so config.js stays the source of truth. -->
                     <div id="node-type-chips" class="type-chips" role="radiogroup" aria-labelledby="node-type-label"></div>
@@ -359,11 +359,11 @@
 
                 <div class="form-group">
                     <label for="node-title">Title</label>
-                    <input type="text" id="node-title" placeholder="Brief label for this entry" required>
+                    <input type="text" id="node-title" placeholder="Brief label for this dot" required>
                 </div>
 
                 <div class="form-group">
-                    <label for="node-description">Description (Optional)</label>
+                    <label for="node-description">Description (optional)</label>
                     <textarea id="node-description" rows="4"
                              placeholder="Add more details if you'd like. This is encrypted and private to you."></textarea>
                 </div>
@@ -473,7 +473,7 @@
             </div>
 
             <div class="modal-footer">
-                <button id="save-settings" class="btn btn-primary">Save Settings</button>
+                <button id="save-settings" class="btn btn-primary">Save settings</button>
                 <button id="cancel-settings" class="btn btn-secondary">Cancel</button>
             </div>
         </div>
@@ -483,7 +483,7 @@
     <div id="analyze-modal" class="modal" style="display:none;">
         <div class="modal-content modal-large">
             <div class="modal-header">
-                <h2>Map Analysis</h2>
+                <h2>Map analysis</h2>
                 <button class="close-btn" id="close-analyze">&times;</button>
             </div>
             <div class="modal-body" id="analyze-content">

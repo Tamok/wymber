@@ -1,6 +1,45 @@
 import { NODE_TYPES } from './config.js';
 
 /**
+ * Parse a #rgb or #rrggbb hex color into 0-255 channel values.
+ * @param {string} hex
+ * @returns {{ r: number, g: number, b: number }}
+ */
+function hexToRgb(hex) {
+    let h = String(hex).trim().replace(/^#/, '');
+    if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+    const int = parseInt(h, 16);
+    return { r: (int >> 16) & 255, g: (int >> 8) & 255, b: int & 255 };
+}
+
+/**
+ * WCAG 2.x relative luminance of a hex color (the L in the contrast-ratio formula).
+ * @param {string} hex
+ * @returns {number} 0 (black) to 1 (white)
+ */
+export function relativeLuminance(hex) {
+    const { r, g, b } = hexToRgb(hex);
+    const [R, G, B] = [r, g, b].map((v) => {
+        const s = v / 255;
+        return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * R + 0.7152 * G + 0.0722 * B;
+}
+
+/**
+ * WCAG 2.x contrast ratio between two hex colors, order-independent.
+ * @param {string} hexA
+ * @param {string} hexB
+ * @returns {number} 1 (no contrast) to 21 (black on white)
+ */
+export function contrastRatio(hexA, hexB) {
+    const l1 = relativeLuminance(hexA);
+    const l2 = relativeLuminance(hexB);
+    const [lighter, darker] = l1 >= l2 ? [l1, l2] : [l2, l1];
+    return (lighter + 0.05) / (darker + 0.05);
+}
+
+/**
  * Validate node form data before submission.
  * @param {{ node_type: string, title: string }} data
  * @returns {{ valid: boolean, error?: string }}

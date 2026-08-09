@@ -4,7 +4,7 @@ import { NativePersistence, isNativeShell, isStorageUnavailableError } from './n
 import {
     biometricAvailable, biometricEnrolled, biometricEnroll, biometricUnlock, biometricDisable,
 } from './native-biometric.js';
-import { TrauMindMap } from './mindmap.js';
+import { TrauMindMap, keyboardHostFor } from './mindmap.js';
 import { validateNodeData, passwordStrength, shouldNudgeBackup } from './utils.js';
 import { analyzeMap, renderAnalysis } from './analyze.js';
 import { suggestLinks } from './suggest.js';
@@ -728,7 +728,7 @@ class WymberApp {
             }
         } catch (error) {
             console.error('Error initializing mind map:', error);
-            this.updateSaveIndicator('Error loading mind map', 'error');
+            this.updateSaveIndicator('Could not load your map', 'error');
         }
     }
 
@@ -782,7 +782,12 @@ class WymberApp {
         if (success) {
             if (placeholder) placeholder.style.display = 'none';
             container.style.display = 'block';
-            container.focus();
+            // Focus the application region, not the bare render div: #mindmap has no tabindex
+            // (Cytoscape never adds one), so focusing it was a silent no-op and the map was
+            // never actually placed under the keyboard. ADR-0004 pillar 2: opening a surface
+            // moves focus into it. This is also what makes arrow-key navigation (#126)
+            // reachable, since that listens on the same region.
+            keyboardHostFor(container).focus();
             this.updateSaveIndicator('Mind map loaded');
         } else {
             if (placeholder) placeholder.style.display = 'block';
@@ -818,7 +823,7 @@ class WymberApp {
     // detail drawer (#108). `presetType` pre-selects a type (used by the pairing nudge).
     showNodeModal(presetType = null) {
         const modal = document.getElementById('node-modal');
-        document.getElementById('modal-title').textContent = 'Add to Your Map';
+        document.getElementById('modal-title').textContent = 'Add to your map';
         this.renderTypeChips();
         document.querySelectorAll('#node-type-chips input[name="node-type"]')
             .forEach((r) => { r.checked = r.value === presetType; });
@@ -899,7 +904,7 @@ class WymberApp {
             document.getElementById('node-modal').style.display = 'none';
         } catch (error) {
             console.error('Error saving node:', error);
-            this.showNotification('Could not save entry', 'error');
+            this.showNotification('Could not save this dot, but nothing was lost', 'error');
             return;
         }
 
@@ -1058,7 +1063,7 @@ class WymberApp {
             this.showNotification(`Unlinked from "${entry.other.title}"`, 'success');
         } catch (error) {
             console.error('Could not unlink:', error);
-            this.showNotification('Could not unlink', 'error');
+            this.showNotification('Could not unlink, but the connection is still there', 'error');
         }
     }
 
@@ -1102,7 +1107,7 @@ class WymberApp {
             return true;
         } catch (error) {
             console.error('Could not save node detail:', error);
-            if (!silent) this.showNotification('Could not save', 'error');
+            if (!silent) this.showNotification('Could not save your changes, but nothing was lost', 'error');
             return false;
         }
     }
@@ -1125,7 +1130,7 @@ class WymberApp {
     async deleteFromDetail() {
         if (this.detailNodeId == null) return;
         const id = this.detailNodeId;
-        const title = document.getElementById('detail-title').value.trim() || 'this node';
+        const title = document.getElementById('detail-title').value.trim() || 'this dot';
         const confirmed = confirm(
             `This will remove "${title}" and its connections from your map. ` +
             `You can always add it back later. Would you like to continue?`
@@ -1138,7 +1143,7 @@ class WymberApp {
             this.showNotification('Removed from your map', 'success');
         } catch (error) {
             console.error('Could not remove node:', error);
-            this.showNotification('Could not remove node', 'error');
+            this.showNotification('Could not remove this dot, but nothing was lost', 'error');
         }
     }
 
@@ -1265,7 +1270,7 @@ class WymberApp {
             this.showNotification('Connected', 'success');
         } catch (error) {
             console.error('Could not connect suggestion:', error);
-            this.showNotification('Could not connect', 'error');
+            this.showNotification('Could not connect those dots, but nothing was lost', 'error');
         }
     }
 
@@ -1293,13 +1298,13 @@ class WymberApp {
                     <div class="form-group">
                         <label for="theme-select">Theme</label>
                         <select id="theme-select">
-                            <option value="light" ${currentTheme === 'light' ? 'selected' : ''}>Light (Default)</option>
+                            <option value="light" ${currentTheme === 'light' ? 'selected' : ''}>Light (default)</option>
                             <option value="dark" ${currentTheme === 'dark' ? 'selected' : ''}>Dark</option>
-                            <option value="soft" ${currentTheme === 'soft' ? 'selected' : ''}>Soft (Low Contrast)</option>
+                            <option value="soft" ${currentTheme === 'soft' ? 'selected' : ''}>Soft (low contrast)</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="font-size">Font Size</label>
+                        <label for="font-size">Font size</label>
                         <select id="font-size">
                             <option value="small" ${currentFont === 'small' ? 'selected' : ''}>Small</option>
                             <option value="medium" ${currentFont === 'medium' ? 'selected' : ''}>Medium</option>
@@ -1325,7 +1330,7 @@ class WymberApp {
                 <section>
                     <h3>Safety</h3>
                     <div class="crisis-resources">
-                        <h4>Crisis Resources (Always Available)</h4>
+                        <h4>Crisis resources (always available)</h4>
                         <ul>
                             <li><strong>988</strong> - Suicide & Crisis Lifeline (US)</li>
                             <li><strong>Crisis Text Line</strong> - Text HOME to 741741</li>
@@ -1338,7 +1343,7 @@ class WymberApp {
                     <h3>Your data</h3>
                     <p class="settings-note">Everything you write is stored <strong>locally on this device</strong>, encrypted with your password. Nothing is sent anywhere.</p>
                     <button id="delete-account-btn" class="btn btn-danger" type="button">Delete everything</button>
-                    <p class="settings-note">Permanently removes your space and all entries from this device. This can't be undone, and there's no backup unless you exported one.</p>
+                    <p class="settings-note">Permanently removes your space and all your dots from this device. This can't be undone, and there's no backup unless you exported one.</p>
                 </section>
             </div>
         `;
@@ -1382,7 +1387,7 @@ class WymberApp {
 
     async deleteAccount() {
         const confirmed = confirm(
-            'Permanently delete your space and ALL your entries from this device?\n\n' +
+            'Permanently delete your space and ALL your dots from this device?\n\n' +
             "This cannot be undone, and there's no backup unless you exported one."
         );
         if (!confirmed) return;
@@ -1453,7 +1458,7 @@ class WymberApp {
             document.getElementById('analyze-modal').style.display = 'flex';
         } catch (error) {
             console.error('Error analyzing map:', error);
-            this.showNotification('Could not analyze map', 'error');
+            this.showNotification('Could not analyze your map right now', 'error');
         }
     }
 
@@ -1473,7 +1478,7 @@ class WymberApp {
             if (delivered) this.showNotification('Export saved', 'success');
         } catch (error) {
             console.error('Error exporting:', error);
-            this.showNotification('Could not export map', 'error');
+            this.showNotification('Could not export your map. Nothing on your device changed.', 'error');
         }
     }
 
@@ -1485,7 +1490,7 @@ class WymberApp {
             const result = await importMap(data, api);
             event.target.value = '';
             document.getElementById('export-modal').style.display = 'none';
-            this.showNotification(`Restored ${result.nodeCount} entries to your map.`, 'success');
+            this.showNotification(`Restored ${result.nodeCount} dots to your map.`, 'success');
             if (this.mindMap) await this.mindMap.loadMap();
         } catch (error) {
             console.error('Import failed:', error);
@@ -1567,8 +1572,15 @@ class WymberApp {
             this.showAuthPanel('unlock');
         } catch (error) {
             console.error('Vault restore failed:', error);
-            api.lock(); // the old vault is untouched; don't leave a verified-but-not-restored state
-            this.showNotification('That does not look like a .wymber file.', 'error');
+            api.lock(); // don't leave a verified-but-not-restored state
+            // Deliberately does NOT promise "your data wasn't touched". importVault() parses
+            // before it writes, so a bad *file* really does leave the vault alone -- but this
+            // one catch also swallows a write failure after a good parse, where that promise
+            // could be false. On a tool whose vault is the only copy of the data, an
+            // occasionally-false reassurance is worse than none. Distinguishing the two (the
+            // way #165 did for reads, via isStorageUnavailableError) needs local-repo.js and
+            // is a follow-up.
+            this.showNotification("Could not restore that backup. Check it's the .wymber file you meant.", 'error');
         }
     }
 

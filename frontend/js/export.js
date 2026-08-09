@@ -36,7 +36,7 @@ export function exportAsText(nodes, edges) {
     const lines = [];
     lines.push('Wymber - Map Export');
     lines.push(`Exported: ${new Date().toLocaleString()}`);
-    lines.push(`Total nodes: ${nodes.length}`);
+    lines.push(`Total dots: ${nodes.length}`);
     lines.push(`Total connections: ${edges.length}`);
     lines.push('');
     lines.push('='.repeat(50));
@@ -66,8 +66,8 @@ export function exportAsText(nodes, edges) {
         lines.push('--- Connections ---');
         const nodeMap = Object.fromEntries(nodes.map(n => [n.id, n.title]));
         for (const edge of edges) {
-            const from = nodeMap[edge.from_node_id] || `Node ${edge.from_node_id}`;
-            const to = nodeMap[edge.to_node_id] || `Node ${edge.to_node_id}`;
+            const from = nodeMap[edge.from_node_id] || `Dot ${edge.from_node_id}`;
+            const to = nodeMap[edge.to_node_id] || `Dot ${edge.to_node_id}`;
             const label = edge.label ? ` (${edge.label})` : '';
             lines.push(`  ${from} --> ${to}${label}`);
         }
