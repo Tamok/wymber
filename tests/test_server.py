@@ -130,10 +130,10 @@ def test_csp_contains_the_required_strict_directives():
 def test_csp_script_src_never_allows_unsafe_inline_or_unsafe_eval():
     r = client.get("/")
     csp = r.headers["content-security-policy"]
-    directives = dict(
-        (part.strip().split(" ", 1)[0], part.strip())
+    directives = {
+        part.strip().split(" ", 1)[0]: part.strip()
         for part in csp.split(";") if part.strip()
-    )
+    }
     script_src = directives["script-src"]
     assert "unsafe-inline" not in script_src
     assert "unsafe-eval" not in script_src
