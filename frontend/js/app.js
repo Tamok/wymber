@@ -1478,7 +1478,7 @@ class WymberApp {
             if (delivered) this.showNotification('Export saved', 'success');
         } catch (error) {
             console.error('Error exporting:', error);
-            this.showNotification('Could not export your map. Nothing on your device changed', 'error');
+            this.showNotification('Could not export your map. Nothing on your device changed.', 'error');
         }
     }
 
@@ -1572,8 +1572,15 @@ class WymberApp {
             this.showAuthPanel('unlock');
         } catch (error) {
             console.error('Vault restore failed:', error);
-            api.lock(); // the old vault is untouched; don't leave a verified-but-not-restored state
-            this.showNotification("That does not look like a .wymber file. Your current space wasn't touched.", 'error');
+            api.lock(); // don't leave a verified-but-not-restored state
+            // Deliberately does NOT promise "your data wasn't touched". importVault() parses
+            // before it writes, so a bad *file* really does leave the vault alone -- but this
+            // one catch also swallows a write failure after a good parse, where that promise
+            // could be false. On a tool whose vault is the only copy of the data, an
+            // occasionally-false reassurance is worse than none. Distinguishing the two (the
+            // way #165 did for reads, via isStorageUnavailableError) needs local-repo.js and
+            // is a follow-up.
+            this.showNotification("Could not restore that backup. Check it's the .wymber file you meant.", 'error');
         }
     }
 
