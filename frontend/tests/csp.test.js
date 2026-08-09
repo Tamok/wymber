@@ -258,7 +258,23 @@ describe('integrityFor() (frontend/js/build-info.js)', () => {
 // together in a real browser: the Playwright E2E suite runs against backend/main.py serving
 // frontend/ (unbuilt), never against dist/ (the built, SRI-injected, CSP-headered output). A CSP
 // violation, a bad SRI hash, or a blocked import map all surface here as a console/page error.
-describe('dist/ boots clean under its own CSP + SRI + import-map (real Chromium)', () => {
+// These need a Playwright browser binary, which `npm ci` alone does not fetch. CI installs it
+// (see the Vitest job in .github/workflows/ci.yml), so on CI a missing browser is a real failure
+// and must not be skipped past: silently skipping the only test that proves the built app boots
+// would be worse than a red build. Locally, a contributor who has not run `npx playwright install`
+// gets a skip with a note instead of a confusing crash.
+const browserAvailable = (() => {
+    try {
+        return existsSync(chromium.executablePath());
+    } catch {
+        return false;
+    }
+})();
+if (!browserAvailable && !process.env.CI) {
+    console.warn('[csp.test] skipping the real-Chromium boot tests: run `npx playwright install chromium` to enable them');
+}
+
+describe.skipIf(!browserAvailable && !process.env.CI)('dist/ boots clean under its own CSP + SRI + import-map (real Chromium)', () => {
     const PORT = 8097;
     let server;
     let browser;

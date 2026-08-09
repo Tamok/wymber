@@ -37,6 +37,10 @@ jobs:
         with:
           node-version: "20"
       - run: npm ci
+      # frontend/tests/csp.test.js boots the built dist/ in a real browser: the only check that
+      # the CSP, SRI and import-map integrity actually load the app together (ADR-0003 Layer 1).
+      # npm ci does not fetch browser binaries, so install the one it needs.
+      - run: npx playwright install --with-deps chromium
       - run: npx vitest run
 
   e2e:
