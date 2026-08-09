@@ -140,3 +140,52 @@ assurance comes only from **out-of-band** verification (Layer 2 extension / manu
 > **passkeys** (which a fake site can't use), and a **signed desktop app** is the highest-trust
 > option. What we will never pretend is that a web page can prove its own honesty: it can't, so never
 > enter your Wymber password anywhere but the site you trust.
+
+## Implementation notes (Layer 1)
+
+Landed in [#111]: `scripts/build-pages.mjs` (the only build, run by CI on push to main/develop)
+now makes its own output verifiable, deterministically.
+
+**Manifest.** `scripts/integrity-manifest.mjs` walks the built `dist/` tree and hashes every
+shipped file with SHA-384, in the exact SRI format (`sha384-<base64>`). It writes the same
+manifest to two places: `dist/integrity-manifest.json` (served from `web.wymber.app`, the app
+origin) and the committed `landing/integrity-manifest.json` (served from `wymber.app`, a
+*different* origin). Comparing the two is the cross-check this layer exists for: if either origin
+is tampered with, its manifest stops matching the other. That is tamper-evidence for the official
+deploy. It is not proof either origin is honest, a compromise of the build pipeline itself, or of
+both origins at once, would produce two manifests that agree with each other and still lie.
+
+**SRI is injected at build time, not committed.** There is no content-hashing build step (the app
+ships as plain files, on purpose, so it stays simple to self-host and to audit). If an `integrity`
+attribute were committed by hand in `index.html`, it would silently go stale, and therefore
+silently break the site, the moment any contributor edited `styles.css` or `app.js` without also
+updating the hash. Computing the hash from the bytes actually written to `dist/` on every build
+makes staleness structurally impossible: the hash is always of what is actually being served.
+`build-pages.mjs` asserts each injection site before rewriting it (the placeholder or bare tag
+must be found, unmodified) and throws rather than shipping a build with a missing or blocked
+integrity check.
+
+**Import-map integrity, for ES modules.** A `<script integrity="...">` attribute only covers the
+tag it's on. Wymber's modules load each other with `import` statements, and an `import` statement
+cannot carry an `integrity` attribute. The build instead emits a single
+`<script type="importmap">{"integrity": {...}}</script>` covering every `.js` file under
+`/static/js/` and `/static/libs/`, keyed by URL, placed before `</head>` (import maps must precede
+the first module script; the module entrypoint lives in `<body>`, so this satisfies that). Browsers
+that support import-map integrity check every module import against it; browsers that don't
+simply ignore the unrecognised key, so this degrades gracefully rather than breaking the app.
+
+**The build indicator stays honest.** `frontend/js/build-info.js` ships the literal `'dev'`
+placeholder in source; only a build stamps the real short commit SHA into the `dist/` copy (both
+the module and the `<meta name="wymber-build">` tag). A self-hosted or locally-served copy that
+nothing stamped correctly reports `'dev'`, never a fabricated commit. `buildLabel()` is
+deliberately inert: a short, plain string, no checkmark, no "verified", no "secure", because per
+this ADR a client can never vouch for its own integrity. Showing the build hash in the UI (so a
+person can compare it against the published manifest) is future work for `app.js`, out of scope
+here; this file is the seam for that to land against later.
+
+Consistent with the rest of this ADR: same-origin SRI and the published manifest make the
+*official* deploy tamper-evident against its own published source. They do nothing to stop a
+clone on a different origin from shipping its own, differently-hashed bundle. That remains Layers
+2-4's job (out-of-band attestation, passkeys, the signed desktop app).
+
+[#111]: https://github.com/Tamok/wymber/issues/111
