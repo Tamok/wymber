@@ -93,9 +93,18 @@ describe('contrastRatio / relativeLuminance (frontend/js/utils.js)', () => {
 // (WCAG 1.4.11 non-text contrast). Reused across all three themes so a regression in any one
 // theme's token values fails here instead of shipping.
 const PAIRS = [
+    // Body copy: the most-used pairs in the whole app, so they are checked first.
+    { fg: 'text-primary', bg: 'bg-primary', role: 'text', why: 'body copy on the page background' },
+    { fg: 'text-primary', bg: 'bg-secondary', role: 'text', why: 'body copy on card backgrounds' },
+    { fg: 'text-secondary', bg: 'bg-primary', role: 'text', why: 'secondary copy (hints, notes) on the page background' },
+    { fg: 'text-secondary', bg: 'bg-secondary', role: 'text', why: 'secondary copy on card backgrounds' },
+
     { fg: 'accent', bg: 'bg-primary', role: 'text', why: 'links/active borders on the page background' },
     { fg: 'accent', bg: 'bg-secondary', role: 'text', why: 'links/active borders on card backgrounds' },
+    { fg: 'accent-hover', bg: 'bg-primary', role: 'text', why: 'a hovered link on the page background' },
+    { fg: 'accent-hover', bg: 'bg-secondary', role: 'text', why: 'a hovered link on card backgrounds' },
     { fg: 'accent-on-surface', bg: 'accent-surface', role: 'text', why: 'label on a filled primary button' },
+    { fg: 'accent-on-surface', bg: 'accent-surface-hover', role: 'text', why: 'label on a hovered primary button' },
     { fg: 'danger-text', bg: 'bg-primary', role: 'text', why: '.save-indicator.error, .btn-text-danger' },
     { fg: 'danger-text', bg: 'bg-secondary', role: 'text', why: 'danger text on card backgrounds' },
     { fg: 'danger-text', bg: 'danger-soft', role: 'text', why: '.error-message, .notification-error' },

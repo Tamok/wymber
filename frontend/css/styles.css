@@ -19,6 +19,12 @@
     --accent-surface-hover: #4A3E6B;
     --accent-on-surface: #FFFFFF;
     --accent-soft: rgba(95, 81, 133, 0.10);
+    /* A stronger tint of the same plum, for selection halos that must read against the
+       surface they sit on. Themed, because a light-theme plum at 25% vanishes on a dark
+       background (which is what the hard-coded halo it replaces used to do). */
+    --accent-halo: rgba(95, 81, 133, 0.25);
+    --danger-soft-tint: rgba(179, 38, 30, 0.08);
+    --danger-soft-edge: rgba(179, 38, 30, 0.30);
 
     /* --focus is kept as an alias so nothing that already reads it breaks; all *semantic*
        uses below (links, active borders, filled buttons) read the named --accent-* tokens
@@ -83,6 +89,9 @@
     --accent-surface-hover: #C0B6E8;
     --accent-on-surface: #1F1B2E;
     --accent-soft: rgba(169, 154, 214, 0.18);
+    --accent-halo: rgba(169, 154, 214, 0.40);
+    --danger-soft-tint: rgba(241, 163, 163, 0.12);
+    --danger-soft-edge: rgba(241, 163, 163, 0.40);
     --focus-ring: 0 0 0 3px rgba(169, 154, 214, 0.35);
 
     --danger-text: #F1A3A3;
@@ -115,6 +124,7 @@
     --accent-surface-hover: #4E4270;
     --accent-on-surface: #FFFFFF;
     --accent-soft: rgba(99, 84, 138, 0.10);
+    --accent-halo: rgba(99, 84, 138, 0.25);
     --focus-ring: 0 0 0 3px rgba(99, 84, 138, 0.3);
 
     /* Danger/success/warning/strength: the light-theme values already clear AA against this
@@ -704,7 +714,7 @@ kbd {
 
 .map-outline-node.selected {
     border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(95, 81, 133, 0.25);
+    box-shadow: 0 0 0 2px var(--accent-halo);
 }
 
 .map-outline-chip {
@@ -953,8 +963,8 @@ kbd {
 }
 
 .btn-text-danger:hover {
-    background: rgba(179, 38, 30, 0.08);
-    border-color: rgba(179, 38, 30, 0.3);
+    background: var(--danger-soft-tint);
+    border-color: var(--danger-soft-edge);
 }
 
 .btn-text-danger:focus-visible { outline: var(--focus-width) solid var(--focus-ring-color); outline-offset: var(--focus-offset); }
