@@ -31,6 +31,22 @@ const CANVAS = {
 
 const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 
+/**
+ * Which element should carry the canvas keyboard listeners (issue #126).
+ *
+ * app.js hands us `#mindmap`, the bare div Cytoscape renders into. That div is NOT focusable:
+ * it has no tabindex and Cytoscape never adds one. The focusable surface is its parent,
+ * `#mindmap-container`, which carries role="application" and tabindex="0".
+ *
+ * Keydown fires on the focused element and bubbles *up*, so a listener on the inner div would
+ * never see a key pressed on the region the user actually tabs to: the whole feature would be
+ * silently inert. Bind to the application region instead, falling back to the element we were
+ * given so this still behaves if the markup is ever flattened.
+ */
+export function keyboardHostFor(el) {
+    return el?.closest?.('[role="application"]') || el;
+}
+
 // Screen-space bearing (in atan2(dy, dx) degrees) each arrow key points along. The canvas y-axis
 // points down, so "up" is -90 degrees, not +90.
 const DIRECTION_AXIS_DEG = { up: -90, down: 90, left: 180, right: 0 };
@@ -208,9 +224,13 @@ export class TrauMindMap {
             },
             { selector: 'node.selected', style: { 'border-width': 3, 'border-color': '#6f5f96' } },
             { selector: 'node.connecting', style: { 'border-width': 3, 'border-color': '#6f5f96', 'border-style': 'dashed' } },
+            { selector: 'node.dim', style: { 'opacity': 0.28 } },
             // The roving keyboard-focus ring (issue #126). An outline, not a border, so it never
             // fights the existing .selected / .connecting border states; both can be visible on
             // the same node at once (e.g. tab back onto the already-selected node).
+            // Declared AFTER .dim, and re-asserting full opacity, because selecting a node dims
+            // everything outside its neighbourhood: arrowing onto a dimmed node would otherwise
+            // draw the focus ring at 0.28 opacity, i.e. invisibly, exactly when you need it.
             {
                 selector: 'node.kbd-focus',
                 style: {
@@ -218,9 +238,9 @@ export class TrauMindMap {
                     'outline-color': c.focus,
                     'outline-offset': 2,
                     'outline-opacity': 1,
+                    'opacity': 1,
                 },
             },
-            { selector: 'node.dim', style: { 'opacity': 0.28 } },
             {
                 selector: 'edge',
                 style: {
@@ -566,7 +586,8 @@ export class TrauMindMap {
                 this.clearRovingFocus();
             }
         };
-        this.container.addEventListener('keydown', this._navKeyHandler);
+        this._keyboardHost = keyboardHostFor(this.container);
+        this._keyboardHost.addEventListener('keydown', this._navKeyHandler);
     }
 
     // ===== ROVING KEYBOARD FOCUS (canvas-native nav, issue #126) =====
@@ -949,8 +970,12 @@ export class TrauMindMap {
             this._deleteKeyHandler = null;
         }
         if (this._navKeyHandler) {
-            this.container.removeEventListener('keydown', this._navKeyHandler);
+            // Remove from the same host we added to, not from this.container: they are
+            // different elements (see keyboardHostFor), and a mismatch would leak a listener
+            // across every lock/unlock cycle.
+            (this._keyboardHost || this.container).removeEventListener('keydown', this._navKeyHandler);
             this._navKeyHandler = null;
+            this._keyboardHost = null;
         }
         this.focusedNodeId = null;
         if (this.cy) {

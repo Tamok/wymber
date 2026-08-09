@@ -4,7 +4,7 @@ import { NativePersistence, isNativeShell, isStorageUnavailableError } from './n
 import {
     biometricAvailable, biometricEnrolled, biometricEnroll, biometricUnlock, biometricDisable,
 } from './native-biometric.js';
-import { TrauMindMap } from './mindmap.js';
+import { TrauMindMap, keyboardHostFor } from './mindmap.js';
 import { validateNodeData, passwordStrength, shouldNudgeBackup } from './utils.js';
 import { analyzeMap, renderAnalysis } from './analyze.js';
 import { suggestLinks } from './suggest.js';
@@ -782,7 +782,12 @@ class WymberApp {
         if (success) {
             if (placeholder) placeholder.style.display = 'none';
             container.style.display = 'block';
-            container.focus();
+            // Focus the application region, not the bare render div: #mindmap has no tabindex
+            // (Cytoscape never adds one), so focusing it was a silent no-op and the map was
+            // never actually placed under the keyboard. ADR-0004 pillar 2: opening a surface
+            // moves focus into it. This is also what makes arrow-key navigation (#126)
+            // reachable, since that listens on the same region.
+            keyboardHostFor(container).focus();
             this.updateSaveIndicator('Mind map loaded');
         } else {
             if (placeholder) placeholder.style.display = 'block';

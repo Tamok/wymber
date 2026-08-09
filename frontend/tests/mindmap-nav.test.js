@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { nextNodeInDirection } from '../js/mindmap.js';
+import { nextNodeInDirection, keyboardHostFor } from '../js/mindmap.js';
 
 // A small cross layout around the origin, used by most of the direction tests below:
 //     up(2)
@@ -98,5 +98,65 @@ describe('nextNodeInDirection', () => {
     it('defaults neighbourIds to an empty set when omitted', () => {
         expect(() => nextNodeInDirection(cross, 1, 'right')).not.toThrow();
         expect(nextNodeInDirection(cross, 1, 'right')).toBe(4);
+    });
+});
+
+/**
+ * Regression guard for a bug that shipped past a fully green direction-picker suite: the arrow
+ * keys were wired to `#mindmap`, the bare div Cytoscape draws into, while the element a user
+ * actually tabs to is its parent `#mindmap-container` (role="application", tabindex="0").
+ * Keydown bubbles up, never down, so the listener never fired and the whole feature was inert
+ * while every unit test still passed. These tests assert the *wiring*, not the maths.
+ */
+describe('keyboardHostFor (canvas key listeners land on the focusable region)', () => {
+    function buildMarkup() {
+        document.body.innerHTML = `
+            <div id="mindmap-container" role="application" tabindex="0">
+                <div id="mindmap"></div>
+            </div>`;
+        return {
+            region: document.getElementById('mindmap-container'),
+            inner: document.getElementById('mindmap'),
+        };
+    }
+
+    it('resolves the inner render div to its role="application" ancestor', () => {
+        const { region, inner } = buildMarkup();
+        expect(keyboardHostFor(inner)).toBe(region);
+    });
+
+    it('a key pressed on the focusable region reaches a listener bound to the host', () => {
+        const { region, inner } = buildMarkup();
+        const seen = [];
+        keyboardHostFor(inner).addEventListener('keydown', (e) => seen.push(e.key));
+
+        region.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+
+        expect(
+            seen,
+            'ArrowRight on the application region must reach the canvas key handler; binding to '
+            + 'the inner #mindmap div instead makes arrow-key navigation silently inert'
+        ).toEqual(['ArrowRight']);
+    });
+
+    it('binding to the inner div instead would miss the event (the bug this guards)', () => {
+        const { region, inner } = buildMarkup();
+        const seen = [];
+        inner.addEventListener('keydown', (e) => seen.push(e.key));
+
+        region.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+
+        expect(seen).toEqual([]);
+    });
+
+    it('falls back to the element itself when there is no application ancestor', () => {
+        document.body.innerHTML = '<div id="solo"></div>';
+        const solo = document.getElementById('solo');
+        expect(keyboardHostFor(solo)).toBe(solo);
+    });
+
+    it('tolerates a null/undefined element without throwing', () => {
+        expect(() => keyboardHostFor(null)).not.toThrow();
+        expect(keyboardHostFor(null)).toBe(null);
     });
 });
