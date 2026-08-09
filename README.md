@@ -71,6 +71,16 @@ privacy claim here matters to you, you can read the code that backs it, and veri
 Open-source also means your data outlives the project. A `.wymber` export is always yours to open
 with the public code, even if this site ever disappears.
 
+Two documents make the claims on this page checkable rather than trusted, and both are written to
+be read by a sceptic:
+
+- **[Threat model](docs/threat-model.md)** — six adversaries, what each can and cannot get, and
+  where the guarantees stop. The useful half is the part about what an attacker *can* do.
+- **[Compliance posture](docs/compliance-posture.md)** — the wellness-not-medical-device line, the
+  no-ads / no-analytics / no-data-sale stance, and a gaps register listing what is still missing.
+
+Neither is a reassurance document. If either reads like one, that's a bug worth reporting.
+
 ## Crisis resources
 
 If you're in crisis, please reach out:
