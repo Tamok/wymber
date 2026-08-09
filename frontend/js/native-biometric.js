@@ -39,17 +39,25 @@ export async function biometricEnrolled() {
 
 /** Wrap the raw DEK (Uint8Array) under the device's biometric-gated key. Shows the prompt. */
 export async function biometricEnroll(dekBytes) {
-    await plugin().enroll({ dek: toB64(dekBytes) });
+    const p = plugin();
+    if (!p) throw new Error('Biometric plugin is not available.');
+    await p.enroll({ dek: toB64(dekBytes) });
 }
 
 /**
  * Release the DEK after a biometric prompt. Returns a Uint8Array.
  * Throws with .code === 'CANCELLED' (user backed out), 'INVALIDATED' (device biometrics
- * changed; the enrollment self-deleted), or 'NOT_ENROLLED'.
+ * changed; the enrollment self-deleted), 'NOT_ENROLLED', or the fallback 'ERROR'.
  */
 export async function biometricUnlock() {
+    const p = plugin();
+    if (!p) {
+        const err = new Error('Biometric plugin is not available.');
+        err.code = 'ERROR';
+        throw err;
+    }
     try {
-        const { dek } = await plugin().unlock();
+        const { dek } = await p.unlock();
         return fromB64(dek);
     } catch (e) {
         const err = new Error(e?.message || 'Biometric unlock failed.');
@@ -58,12 +66,18 @@ export async function biometricUnlock() {
     }
 }
 
+/**
+ * Turn off biometric unlock. Returns true only when the native side confirmed the Keystore
+ * entry + wrapped-DEK prefs were actually cleared; false on no-op (web build, plugin missing)
+ * or failure. Never throws, so callers can `await` it unconditionally.
+ */
 export async function biometricDisable() {
-    if (!isNativeShell() || !plugin()) return;
+    if (!isNativeShell() || !plugin()) return false;
     try {
         await plugin().disable();
+        return true;
     } catch {
-        /* best-effort */
+        return false;
     }
 }
 
