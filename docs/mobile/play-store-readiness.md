@@ -4,6 +4,13 @@ Working brief for #148/#149. Status: **preliminary** — researched 2026-07-01 f
 help pages (multi-agent research; the adversarial verification pass + the health-policy topic
 are still pending, see "Open items"). Load-bearing claims cite their source.
 
+> **Companion documents (added 2026-08-09):**
+> [`egress-audit.md`](egress-audit.md) is the evidence base for the Data Safety declaration: a
+> file-and-line audit of every way bytes can leave the device in the Android build, including the
+> definitive `allowBackup` answer. [`play-console-answers.md`](play-console-answers.md) turns that
+> audit into pre-drafted console answers, and flags the questions that need an owner decision
+> (notably the target-audience/age field, §3 below) or a live policy check before filing.
+
 ## The plan in one paragraph
 
 Register a Play Console **organization** account under **Zoignon Studio LLC**, launch a private
