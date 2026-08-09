@@ -10,7 +10,7 @@ Citation is welcome; we decline AI training (see /robots.txt Content Signals).
 
 ## Pages
 
-- [Home](https://wymber.app/): what Wymber is, how it works, the privacy promise
+- [Home](https://wymber.app/): what Wymber is, how it works, the privacy promise, and a FAQ (trauma mapping, where data lives, therapy, cost, AI, forgotten passwords, offline use, encrypted journals)
 - [Privacy](https://wymber.app/privacy): the plain-language privacy policy
 - [About](https://wymber.app/about): who makes Wymber and why
 - [Sources](https://wymber.app/sources): the trauma-informed research behind the design
@@ -23,6 +23,7 @@ Citation is welcome; we decline AI training (see /robots.txt Content Signals).
 - [Is there a trauma egg app?](https://wymber.app/trauma-egg-app): no official one exists; Wymber as an independent, private, digital tool in that spirit (not the Murray Method, not affiliated)
 - [How to do the trauma egg exercise](https://wymber.app/trauma-egg-exercise): a gentle paper-first step-by-step with a worked example (educational, independent of Marilyn Murray's Murray Method, not therapy)
 - [How Wymber encrypts your map](https://wymber.app/encryption): AES-256-GCM on-device, envelope encryption, verifiable in the open code
+- [What happens if you forget your password?](https://wymber.app/recovery): the recovery code as a second key of equal power, why there's no rotation today, and why losing both is permanent
 - [Local-first](https://wymber.app/local-first): why mental-health data shouldn't live on someone's server
 - [Trauma-informed design, applied](https://wymber.app/trauma-informed-design): SAMHSA's six principles as concrete software decisions
 - [Backing up or syncing your map](https://wymber.app/cloud-sync): using a cloud service to back up or move the encrypted vault, manually, with the risks (no live sync yet)

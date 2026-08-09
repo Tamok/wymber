@@ -32,7 +32,7 @@
     "description": "Wymber seals your map with AES-256-GCM in your own browser, with a key derived from your password. Only ciphertext is ever at rest.",
     "url": "https://wymber.app/encryption",
     "datePublished": "2026-06-12",
-    "dateModified": "2026-06-12",
+    "dateModified": "2026-08-09",
     "image": "https://wymber.app/og.png",
     "author": { "@type": "Person", "name": "JELL", "url": "https://wymber.app/about" },
     "publisher": { "@type": "Organization", "name": "Zoignon Studio", "url": "https://zoignon.com", "logo": { "@type": "ImageObject", "url": "https://wymber.app/logo.png" } }
@@ -50,13 +50,13 @@
 
   <main class="article-main">
     <h1>How Wymber encrypts your map (and why we can't read it)</h1>
-    <p class="article-byline">By JELL, <a href="/about">Wymber</a> · Last updated 2026-06-12</p>
+    <p class="article-byline">By JELL, <a href="/about">Wymber</a> · Last updated 2026-08-09</p>
 
     <p>Short version: your map is encrypted <strong>in your own browser</strong> with
        AES-256-GCM, using a key derived from your password. Only the sealed (encrypted) form is
        ever stored. There is no account, no server copy, and no key anywhere but with you, so
-       "trust us" never enters into it. We couldn't read your map if we wanted to, and neither
-       could anyone who compromised us.</p>
+       "trust us" never enters into it. We couldn't read your map if we wanted to: there is
+       nothing on our servers to breach, because nothing is stored there.</p>
 
     <h2>What happens when you create a vault</h2>
     <ol>
@@ -65,8 +65,8 @@
       <li>Your password is stretched into a <strong>wrapping key</strong> using PBKDF2 with
           600,000 iterations, which makes guessing attacks expensive.</li>
       <li>The data key is wrapped (encrypted) by that wrapping key, and separately by a key from
-          your <strong>recovery code</strong>, so a forgotten password doesn't cost you your map.
-          This pattern is called envelope encryption.</li>
+          your <strong>recovery code</strong>, so a forgotten password doesn't cost you your map,
+          as long as you still have that code. This pattern is called envelope encryption.</li>
       <li>Everything at rest, in your browser's private storage, is ciphertext. Unlocking
           decrypts the data key into memory for the session; stepping away locks it again.</li>
     </ol>
@@ -96,9 +96,13 @@
 
     <h2>What about sync, or losing my password?</h2>
     <p>Your <strong>recovery sheet</strong> (a printable one-time code) reopens the vault if the
-       password is gone. If optional sync ships later, it will be zero-knowledge: only the sealed
-       file would ever travel, and the key would still never leave you. The
-       <a href="/privacy">privacy policy</a> will say so before any such feature exists.</p>
+       password is gone. If both the password and the recovery code are gone, the map cannot be
+       recovered, by us or by anyone, because no key to it is held anywhere else. More on what
+       that means and how to hold onto your recovery code on the
+       <a href="/recovery">recovery page</a>. If optional sync ships later, it will be
+       zero-knowledge: only the sealed file would ever travel, and the key would still never leave
+       you. The <a href="/privacy">privacy policy</a> will say so before any such feature
+       exists.</p>
 
     <p class="article-note">See also: <a href="/cloud-sync">backing up or moving your map with a
        cloud</a> · <a href="/local-first">why local-first matters for mental-health data</a> ·

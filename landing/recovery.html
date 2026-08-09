@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>What happens if you forget your Wymber password? · Wymber</title>
+  <meta name="description" content="Your recovery code opens your Wymber vault if your password is gone. It's a second key of equal power, not a lesser backup, and there's no way to rotate it today. What that means and how to hold onto it.">
+  <link rel="canonical" href="https://wymber.app/recovery">
+  <meta property="og:site_name" content="Wymber">
+  <meta property="og:title" content="What happens if you forget your Wymber password?">
+  <meta property="og:description" content="Your recovery code is a second key of equal power, not a lesser backup. What it is, why there's no rotation today, and what happens if both are gone.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://wymber.app/recovery">
+  <meta property="og:image" content="https://wymber.app/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .article-main { max-width: 720px; margin: 0 auto; padding: 36px 24px 64px; }
+    .article-main h1 { text-align: center; }
+    .article-byline { color: var(--ink-soft); text-align: center; font-size: 0.9rem; margin: 0 auto 36px; }
+    .article-main h2 { text-align: left; font-size: 1.25rem; margin: 30px 0 10px; }
+    .article-main p, .article-main li { color: var(--ink-soft); }
+    .article-main ul, .article-main ol { padding-left: 1.2em; display: grid; gap: 6px; }
+    .article-note { border-left: 3px solid var(--line); padding-left: 14px; font-size: 0.92rem; }
+  </style>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "What happens if you forget your Wymber password?",
+    "description": "Your recovery code opens your Wymber vault if your password is gone. It's a second key of equal power, not a lesser backup, and there's no way to rotate it today.",
+    "url": "https://wymber.app/recovery",
+    "datePublished": "2026-08-09",
+    "dateModified": "2026-08-09",
+    "image": "https://wymber.app/og.png",
+    "author": { "@type": "Person", "name": "JELL", "url": "https://wymber.app/about" },
+    "publisher": { "@type": "Organization", "name": "Zoignon Studio", "url": "https://zoignon.com", "logo": { "@type": "ImageObject", "url": "https://wymber.app/logo.png" } }
+  }
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="wordmark" href="/" aria-label="Wymber home">
+      <img class="mark" src="favicon.svg" alt="" width="30" height="30">
+      <span>Wymber</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary"><a href="/">Home</a></nav>
+  </header>
+
+  <main class="article-main">
+    <h1>What happens if you forget your Wymber password?</h1>
+    <p class="article-byline">By JELL, <a href="/about">Wymber</a> · Last updated 2026-08-09</p>
+
+    <p>Short version: your <strong>recovery code</strong> is the way back in. It's a one-time code
+       shown when you first create your vault. If you saved or printed it somewhere safe, use it
+       on the unlock screen in place of your password, and you're back into your map. If your
+       password is gone and you didn't save the recovery code either, the section below on losing
+       both explains what that means. The answer is not a good one.</p>
+
+    <h2>What the recovery code is</h2>
+    <p>When you create a vault, Wymber shows you a recovery code once, behind a checkbox you have
+       to tick to confirm you've saved it. It's a long string, 120 bits of randomness written in a
+       plain alphabet (Crockford base32, so no easily-confused characters), and the app never
+       displays it again after that first screen. There's no "view my recovery code" setting to
+       come back to later. If you close that screen without saving it, it's gone, in the sense
+       that no part of the app can show it to you a second time.</p>
+
+    <h2>It's a second key, not a lesser backup</h2>
+    <p>It's easy to picture a recovery code as a fallback, weaker than the real password, there
+       for emergencies only. Underneath, Wymber generates one random key that actually seals your
+       map, and wraps that same key twice: once with a key derived from your password, and
+       separately with a key derived from your recovery code. Both wrapped copies open the
+       identical map, and neither is a spare. Anyone who has the recovery code can open your vault
+       exactly as if they had your password, in full, with nothing held back.</p>
+    <p>That has a consequence worth stating plainly: changing your password does not touch the
+       recovery code. Wymber re-wraps the password copy and leaves the recovery copy exactly as it
+       was, still valid, still able to open the same vault. So if a recovery code has been seen by
+       someone you'd rather it hadn't, changing your password afterwards doesn't undo that: the
+       code they saw still opens the vault. There is no action anywhere in the app today that
+       rotates a recovery code on its own. The only way to invalidate one you no longer trust is
+       to start a new vault and move your map into it by hand.</p>
+
+    <h2>Where to keep it</h2>
+    <p>Paper and a password manager fail in opposite ways, and neither is the right answer for
+       everyone. A printed sheet survives a wiped laptop, a forgotten cloud password, or a device
+       that dies outright, but anyone who can get into the room it's kept in can read it. A password
+       manager survives a house fire and doesn't sit in a drawer, but it depends on its own master
+       password and the device or account it's stored on. For a trauma map in particular, the
+       person most likely to find a printed sheet in a drawer is sometimes exactly the person the
+       map exists to be private from. Only you know which of those two risks, a lost device or a
+       shared home, is the real one for you.</p>
+
+    <h2>If both are gone</h2>
+    <p>If the password and the recovery code are both lost, the map cannot be recovered, by us or
+       by anyone, permanently. That's the direct result of the design described above, not a
+       missing feature. No key to your vault is held anywhere but with you, so there is nothing on
+       our side to look up, no "verify your identity and we'll reset it" process to run, and no
+       support ticket that ends with your map back in your hands. Building a way around that would
+       mean building a way for someone other than you to get into your map, which is the one thing
+       this design exists to rule out. There's no escrow and no social recovery: the tradeoff that
+       keeps your map unreadable to everyone else is the same one that makes it unreadable to us
+       when the keys are gone.</p>
+
+    <h2>Clearing your browser, and keeping a copy</h2>
+    <p>Clearing your browser's site data deletes the vault along with it, recovery code or not,
+       since the vault only exists as ciphertext in that storage. If you want a copy that survives
+       a cleared browser or a lost device, export the <code>.wymber</code> file: it stays
+       encrypted wherever you put it, so it's safe to store in a cloud drive or on another disk,
+       but it's only ever as safe as the password (or recovery code) that wraps it. More on that,
+       including the real risks of restoring one, is on the
+       <a href="/cloud-sync">backing up or syncing with a cloud</a> page.</p>
+
+    <p class="article-note">See also: <a href="/encryption">how Wymber encrypts your map</a> ·
+       <a href="/privacy">the privacy policy</a> ·
+       <a href="/cloud-sync">backing up or moving your map with a cloud</a>.</p>
+  </main>
+
+  <footer class="site-footer">
+    <p class="copyright">© 2026 Wymber · <a href="/">Home</a> · <a href="/privacy">Privacy</a> · <a href="/about">About</a> · Produced by <a href="https://zoignon.com">Zoignon Studio</a></p>
+  </footer>
+</body>
+</html>
