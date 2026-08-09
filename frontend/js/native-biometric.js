@@ -47,7 +47,9 @@ export async function biometricEnroll(dekBytes) {
 /**
  * Release the DEK after a biometric prompt. Returns a Uint8Array.
  * Throws with .code === 'CANCELLED' (user backed out), 'INVALIDATED' (device biometrics
- * changed; the enrollment self-deleted), 'NOT_ENROLLED', or the fallback 'ERROR'.
+ * changed; the enrollment self-deleted), 'NOT_ENROLLED', 'KEYSTORE_UNAVAILABLE' (the device
+ * keystore could not be consulted — the enrollment is intact, this is retryable and must NOT be
+ * treated as "not enrolled"), or the fallback 'ERROR'.
  */
 export async function biometricUnlock() {
     const p = plugin();

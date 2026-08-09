@@ -61,6 +61,12 @@ public class BiometricVaultPlugin extends Plugin {
     private static final String ANDROID_KEYSTORE = "AndroidKeyStore";
     private static final int GCM_TAG_BITS = 128;
 
+    // aliasState() results. UNKNOWN means the Keystore could not be consulted at all, which must
+    // never be treated as ABSENT (see aliasState).
+    private static final int ALIAS_PRESENT = 1;
+    private static final int ALIAS_ABSENT = 0;
+    private static final int ALIAS_UNKNOWN = -1;
+
     private SharedPreferences prefs() {
         return getContext().getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE);
     }
@@ -87,8 +93,21 @@ public class BiometricVaultPlugin extends Plugin {
 
     @PluginMethod
     public void isEnrolled(PluginCall call) {
+        boolean hasBlob = prefs().contains(PREF_CT);
+        int state = hasBlob ? aliasState(activeAlias()) : ALIAS_ABSENT;
+        if (hasBlob && state == ALIAS_ABSENT) {
+            // Self-heal the orphan here too, not only in unlock(). This is the call app.js makes on
+            // startup, and it is the one that decides whether the unlock button is even offered --
+            // so if only unlock() swept, an orphaned wrapped DEK would never be reachable and would
+            // linger on disk forever. UNKNOWN deliberately does not land here (see aliasState).
+            deleteEnrollment();
+            hasBlob = false;
+        }
         JSObject ret = new JSObject();
-        ret.put("enrolled", prefs().contains(PREF_CT) && keystoreHasKey(activeAlias()));
+        // UNKNOWN reports enrolled: the honest answer is "we believe so but could not verify", and
+        // reporting false would push the user toward a needless re-enroll. unlock() surfaces the
+        // real, retryable error if they act on it.
+        ret.put("enrolled", hasBlob && state != ALIAS_ABSENT);
         call.resolve(ret);
     }
 
@@ -159,22 +178,33 @@ public class BiometricVaultPlugin extends Plugin {
         String ivB64 = prefs().getString(PREF_IV, null);
         String ctB64 = prefs().getString(PREF_CT, null);
         String alias = activeAlias();
-        boolean hasBlob = ivB64 != null && ctB64 != null;
-        if (!hasBlob || !keystoreHasKey(alias)) {
-            if (hasBlob) {
-                // Orphaned: the wrapped-DEK blob survives but the Keystore key is gone
-                // (lockscreen reset, device restore). Clear it so isEnrolled()/unlock() agree
-                // there is nothing usable left, instead of leaving stale ciphertext behind.
-                deleteEnrollment();
-            }
+        if (ivB64 == null || ctB64 == null) {
+            call.reject("Not enrolled", "NOT_ENROLLED");
+            return;
+        }
+        int state = aliasState(alias);
+        if (state == ALIAS_UNKNOWN) {
+            // We could not ask the Keystore, which is NOT the same as "the key is gone". Same
+            // rule as the vault read path (#165): never let a failed check trigger the
+            // destructive branch. Surface a retryable error and leave the enrollment alone.
+            call.reject("The device keystore is temporarily unavailable. Use your password for now.",
+                    "KEYSTORE_UNAVAILABLE");
+            return;
+        }
+        if (state == ALIAS_ABSENT) {
+            // Orphaned: the wrapped-DEK blob survives but the Keystore key is definitively gone
+            // (lockscreen reset, device restore). Clear it so isEnrolled()/unlock() agree there is
+            // nothing usable left, instead of leaving a stale wrapped DEK on disk forever.
+            deleteEnrollment();
             call.reject("Not enrolled", "NOT_ENROLLED");
             return;
         }
         try {
             SecretKey key = loadKeystoreKey(alias);
             if (key == null) {
-                // containsAlias() said yes but the key isn't actually retrievable -- treat the
-                // same as "gone" rather than let a null key NPE further down.
+                // The alias exists but holds no retrievable secret key. Unlike an exception (which
+                // aliasState() reports as UNKNOWN), a null return is a definitive answer: the entry
+                // is unusable and only re-enrollment can fix it, so clearing is safe here.
                 deleteEnrollment();
                 call.reject("Not enrolled", "NOT_ENROLLED");
                 return;
@@ -296,13 +326,19 @@ public class BiometricVaultPlugin extends Plugin {
         return (SecretKey) ks.getKey(alias, null);
     }
 
-    private boolean keystoreHasKey(String alias) {
+    /**
+     * Tri-state Keystore lookup. Collapsing "I could not ask the Keystore" into "the key is gone"
+     * is the same mistake #165 fixed on the vault read path: the "gone" answer is the one that
+     * triggers a destructive branch (deleteEnrollment()), so a transient KeyStore load failure
+     * would silently destroy a perfectly good enrollment. Callers must handle UNKNOWN explicitly.
+     */
+    private int aliasState(String alias) {
         try {
             KeyStore ks = KeyStore.getInstance(ANDROID_KEYSTORE);
             ks.load(null);
-            return ks.containsAlias(alias);
+            return ks.containsAlias(alias) ? ALIAS_PRESENT : ALIAS_ABSENT;
         } catch (Exception e) {
-            return false;
+            return ALIAS_UNKNOWN;
         }
     }
 

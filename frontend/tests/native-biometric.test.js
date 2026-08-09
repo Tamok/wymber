@@ -154,6 +154,14 @@ describe('error-code contract from biometricUnlock (what app.js branches on)', (
         await expect(biometricUnlock()).rejects.toMatchObject({ code: 'NOT_ENROLLED' });
     });
 
+    it('propagates KEYSTORE_UNAVAILABLE distinctly from NOT_ENROLLED (#166 review)', async () => {
+        // The native side reports this when it could not consult the Keystore at all. It must stay
+        // its own code: app.js only hides the unlock button for INVALIDATED/NOT_ENROLLED, and the
+        // enrollment is still intact here, so collapsing it into those would be wrong.
+        installNativeShell(withUnlockRejecting('Keystore unavailable', 'KEYSTORE_UNAVAILABLE'));
+        await expect(biometricUnlock()).rejects.toMatchObject({ code: 'KEYSTORE_UNAVAILABLE' });
+    });
+
     it('falls back to ERROR when the native rejection carries no code at all', async () => {
         installNativeShell(withUnlockRejecting('Something went wrong'));
         await expect(biometricUnlock()).rejects.toMatchObject({ code: 'ERROR' });
