@@ -1,12 +1,20 @@
+# ADR-0003 Layer 1, the landing origin (wymber.app).
+#
+# script-src 'none' is deliberate: the landing ships zero <script> tags and loads zero external
+# resources (no CDN, no fonts, no iframes, no forms), so it needs none. Adding any script to the
+# landing means revisiting this policy first.
+#
+# Integrity-Policy is ENFORCED here (not report-only): safe, because there are no scripts to
+# accidentally block. The app origin (dist/_headers, written by scripts/build-pages.mjs) ships
+# the same directive report-only until mindmap.js's Cytoscape <script> element carries an
+# `integrity` attribute (see frontend/js/build-info.js's integrityFor helper).
+#
+# Comments live on their own unindented lines, above the rule: Cloudflare Pages treats a line as
+# a comment only when it starts with #, so an indented # inside a block risks being parsed as a
+# malformed header rather than ignored.
 /*
   X-Frame-Options: DENY
-  # ADR-0003 Layer 1. script-src 'none' is deliberate: the landing ships zero <script> tags and
-  # loads zero external resources (no CDN, no fonts, no iframes, no forms), so it needs none.
-  # Adding any script to the landing means revisiting this policy first.
   Content-Security-Policy: default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'none'; script-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'
-  # Enforced (not report-only): safe here because there are no scripts to accidentally block, and
-  # the app origin (dist/_headers) ships this same directive report-only until mindmap.js's
-  # Cytoscape <script> element carries an `integrity` attribute (see frontend/js/build-info.js).
   Integrity-Policy: blocked-destinations=(script)
   X-Content-Type-Options: nosniff
   Permissions-Policy: camera=(), microphone=(), geolocation=()
