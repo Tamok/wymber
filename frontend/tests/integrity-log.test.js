@@ -373,6 +373,132 @@ describe('signLog(): duplicate refusal, --force, and --dry-run', () => {
     });
 });
 
+describe('verifier CLI: the out-of-band path (--log + --manifest + --key)', () => {
+    // The tests above exercise verifyLog() as a library. These drive the actual CLI over files in
+    // a tempdir, which is the shape that matters in practice: a stranger downloads the log from
+    // wymber.app and the manifest from web.wymber.app, fetches the key from a third place, and
+    // points this script at all three. Without --log that check is impossible (you could only ever
+    // verify the copy committed next to the verifier), so it is covered here end to end.
+
+    /** Sign a manifest into a fresh tempdir log, returning the paths and the published public key. */
+    function signedFixture({ commit = 'feed001' } = {}) {
+        const { privateKey, publicKey } = generateKeyPairSync('ed25519');
+        const manifestPath = writeInTemp(join(tmp, 'integrity-manifest.json'), JSON.stringify({ commit, assets: { '/app.js': 'sha384-abc' } }));
+        const logPath = join(tmp, 'integrity-log.jsonl');
+        assertInTempDir(logPath);
+        signLog({ manifestPath, logPath, privateKey, now: () => new Date('2026-08-09T12:00:00Z') });
+        const pubPath = writeInTemp(join(tmp, 'key.pub.pem'), publicKey.export({ type: 'spki', format: 'pem' }));
+        return { manifestPath, logPath, pubPath, publicKey };
+    }
+
+    function runCli(args) {
+        try {
+            return { status: 0, output: execFileSync(process.execPath, [integrityLogScript, ...args], { cwd: root, encoding: 'utf8', stdio: 'pipe' }) };
+        } catch (err) {
+            return { status: err.status, output: (err.stdout || '') + (err.stderr || '') };
+        }
+    }
+
+    it('verifies a signed manifest end to end and exits 0 under --require-signed', () => {
+        const { manifestPath, logPath, pubPath } = signedFixture();
+        const { status, output } = runCli(['--log', logPath, '--manifest', manifestPath, '--key', pubPath, '--require-signed']);
+        expect(status).toBe(0);
+        expect(output).toMatch(/signature OK/);
+        expect(output).toMatch(/covers .*integrity-manifest\.json/);
+    });
+
+    it('TAMPERED MANIFEST: one changed byte in the manifest is caught, and fails --require-signed', () => {
+        const { manifestPath, logPath, pubPath } = signedFixture();
+        // The manifest is swapped for one that lists a malicious asset, exactly the attack this
+        // whole layer exists to make evidence-producing. The signature over the OLD manifest is
+        // still perfectly valid, which is the point: what breaks is the binding between the signed
+        // manifestHash and the bytes actually being served.
+        writeInTemp(manifestPath, JSON.stringify({ commit: 'feed001', assets: { '/app.js': 'sha384-EVIL' } }));
+
+        const { status, output } = runCli(['--log', logPath, '--manifest', manifestPath, '--key', pubPath, '--require-signed']);
+        expect(status).not.toBe(0);
+        expect(output).toMatch(/no record's manifestHash matches/);
+        expect(output).toMatch(/VERIFICATION FAILED/);
+    });
+
+    it('a tampered manifest is reported but does NOT fail without --require-signed (signing gates nothing)', () => {
+        const { manifestPath, logPath, pubPath } = signedFixture();
+        writeInTemp(manifestPath, JSON.stringify({ commit: 'feed001', assets: { '/app.js': 'sha384-EVIL' } }));
+
+        const { status, output } = runCli(['--log', logPath, '--manifest', manifestPath, '--key', pubPath]);
+        expect(status).toBe(0); // reported, not enforced: nothing in this repo gates on signedness
+        expect(output).toMatch(/no record's manifestHash matches/);
+    });
+
+    it('a wrong key fails through the CLI', () => {
+        const { manifestPath, logPath } = signedFixture();
+        const otherPub = generateKeyPairSync('ed25519').publicKey;
+        const wrongPubPath = writeInTemp(join(tmp, 'wrong.pub.pem'), otherPub.export({ type: 'spki', format: 'pem' }));
+
+        const { status, output } = runCli(['--log', logPath, '--manifest', manifestPath, '--key', wrongPubPath]);
+        expect(status).not.toBe(0);
+        expect(output).toMatch(/KEY-ID MISMATCH/);
+    });
+
+    it('accepts an inline base64 SPKI key as well as a PEM file', () => {
+        const { manifestPath, logPath, publicKey } = signedFixture();
+        const inlineSpki = publicKey.export({ type: 'spki', format: 'der' }).toString('base64');
+        const { status, output } = runCli(['--log', logPath, '--manifest', manifestPath, '--key', inlineSpki, '--require-signed']);
+        expect(status).toBe(0);
+        expect(output).toMatch(/signature OK/);
+    });
+
+    it('a rewritten earlier line fails through the CLI, naming the broken line', () => {
+        const { privateKey } = generateKeyPairSync('ed25519');
+        const manifestPath = writeInTemp(join(tmp, 'integrity-manifest.json'), JSON.stringify({ commit: 'aaa1111' }));
+        const logPath = join(tmp, 'integrity-log.jsonl');
+        assertInTempDir(logPath);
+        signLog({ manifestPath, logPath, privateKey, now: () => new Date('2026-08-09T12:00:00Z') });
+        writeInTemp(manifestPath, JSON.stringify({ commit: 'bbb2222' }));
+        signLog({ manifestPath, logPath, privateKey, now: () => new Date('2026-08-09T13:00:00Z') });
+
+        // Rewrite history: drop line 1 for a re-signed variant, leave line 2 pointing at the old one.
+        const lines = readFileSync(logPath, 'utf8').split('\n').filter(Boolean);
+        const rewrittenFirst = JSON.parse(lines[0]);
+        rewrittenFirst.commit = 'rewrite';
+        writeInTemp(logPath, JSON.stringify(rewrittenFirst) + '\n' + lines[1] + '\n');
+
+        const { status, output } = runCli(['--log', logPath]);
+        expect(status).not.toBe(0);
+        expect(output).toMatch(/line 2: CHAIN BROKEN/);
+    });
+
+    it('--log pointing at a nonexistent file is an error, not a silently empty log', () => {
+        const { status, output } = runCli(['--log', join(tmp, 'nope.jsonl')]);
+        expect(status).not.toBe(0);
+        expect(output).toMatch(/no log file at/);
+    });
+
+    it('--help prints usage and exits 0', () => {
+        const { status, output } = runCli(['--help']);
+        expect(status).toBe(0);
+        expect(output).toMatch(/--require-signed/);
+    });
+});
+
+describe('signLog(): refuses to append to a log missing its trailing newline', () => {
+    it('would corrupt the last record, so it throws before writing anything', () => {
+        const { privateKey } = generateKeyPairSync('ed25519');
+        const manifestPath = writeInTemp(join(tmp, 'integrity-manifest.json'), JSON.stringify({ commit: 'nonl001' }));
+        const logPath = join(tmp, 'integrity-log.jsonl');
+        assertInTempDir(logPath);
+        signLog({ manifestPath, logPath, privateKey });
+
+        // Strip the trailing newline, as a careless hand-edit would.
+        const truncated = readFileSync(logPath, 'utf8').replace(/\n$/, '');
+        writeInTemp(logPath, truncated);
+
+        writeInTemp(manifestPath, JSON.stringify({ commit: 'nonl002' }));
+        expect(() => signLog({ manifestPath, logPath, privateKey })).toThrow(/does not end with a newline/);
+        expect(readFileSync(logPath, 'utf8')).toBe(truncated); // nothing was written
+    });
+});
+
 describe('guard: no tracked source file contains a private-key PEM header', () => {
     it('10. scripts/, landing/, and frontend/ contain no "BEGIN ... PRIVATE KEY" text', () => {
         const tracked = execFileSync('git', ['ls-files', 'scripts', 'landing', 'frontend'], { cwd: root, encoding: 'utf8' })

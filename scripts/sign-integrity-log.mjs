@@ -129,6 +129,15 @@ export function signLog({ manifestPath, logPath, privateKey, manifestUrl = '/int
     // validly-chained record on top of a log that isn't trustworthy to begin with.
     const entries = parseLog(existingText);
 
+    // Refuse a non-empty log that does not end in a newline, BEFORE writing anything. Appending to
+    // such a file would splice the new record onto the tail of the last one, producing a line that
+    // is neither record and corrupting the log. The post-append checks below would catch that (the
+    // re-verify would fail to parse), but only after the damage was on disk, leaving the operator
+    // to repair a file that is supposed to be append-only. Cheaper and safer to refuse up front.
+    if (existingText.length > 0 && !existingText.endsWith('\n')) {
+        throw new Error(`${logPath} does not end with a newline, so appending would corrupt its last record. Inspect it by hand; do not fix it by rewriting existing lines (this log is append-only, and a rewrite breaks every prev pointer after it).`);
+    }
+
     const last = entries.length ? entries[entries.length - 1] : null;
     if (last && last.record.manifestHash === manifestHash && last.record.keyId === keyId && !force) {
         throw new Error(`the newest record (line ${last.line}) already signs this exact manifest with this key (keyId ${keyId}); nothing changed since. Pass --force to sign again anyway.`);

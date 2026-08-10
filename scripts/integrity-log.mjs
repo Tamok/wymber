@@ -320,9 +320,32 @@ export function verifyLog(text, { publicKey = null } = {}) {
 }
 
 // ------------------------------------------------------------------------------------------------
-// CLI: `node scripts/integrity-log.mjs [--key <path-or-inline-spki>] [--manifest <path>]
-//       [--require-signed]`
+// CLI: `node scripts/integrity-log.mjs [--log <path>] [--key <path-or-inline-spki>]
+//       [--manifest <path>] [--require-signed]`
+//
+// `--log` defaults to this repo's committed landing/integrity-log.jsonl, which is the convenient
+// case (and what CI runs), but it is the WEAK one: a log checked out of the same repo as the
+// verifier only tells you the repo is internally consistent. The check this file actually exists
+// for is the out-of-band one, where every input comes from somewhere different:
+//
+//   curl -o log.jsonl      https://wymber.app/integrity-log.jsonl          # the landing origin
+//   curl -o manifest.json  https://web.wymber.app/integrity-manifest.json  # the app origin
+//   dig +short TXT wymber-integrity._domainkey.wymber.app                  # the key, third source
+//   node scripts/integrity-log.mjs --log log.jsonl --manifest manifest.json --key <the key>
+//
+// That is why --log is a flag rather than a hardcoded path: without it a stranger could only ever
+// verify the copy sitting next to the verifier, which proves the least of any of these.
 // ------------------------------------------------------------------------------------------------
+
+const USAGE = `Usage: node scripts/integrity-log.mjs [options]
+
+  --log <path>       transparency log to verify (default: landing/integrity-log.jsonl)
+  --key <path|b64>   Ed25519 public key, PEM file, or inline/file base64 SPKI. Without it,
+                     only structure and the hash chain are checked, never signatures.
+  --manifest <path>  also report whether any record covers this manifest file's exact bytes
+  --require-signed   exit non-zero unless --manifest is covered by a record with a valid
+                     signature from --key (off by default: signing gates nothing)
+  --help             this message`;
 
 /**
  * Load a public key from a `--key` argument, which may be: a path to a PEM public key file, a
@@ -345,20 +368,34 @@ function loadPublicKeyArg(value) {
 }
 
 function parseArgs(argv) {
-    const args = { key: null, manifest: null, requireSigned: false };
+    const args = { log: null, key: null, manifest: null, requireSigned: false, help: false };
     for (let i = 0; i < argv.length; i++) {
         const a = argv[i];
-        if (a === '--key') args.key = argv[++i];
+        if (a === '--log') args.log = argv[++i];
+        else if (a === '--key') args.key = argv[++i];
         else if (a === '--manifest') args.manifest = argv[++i];
         else if (a === '--require-signed') args.requireSigned = true;
-        else throw new Error(`unrecognised argument: ${a}`);
+        else if (a === '--help' || a === '-h') args.help = true;
+        else throw new Error(`unrecognised argument: ${a}\n\n${USAGE}`);
     }
     return args;
 }
 
 function main(argv) {
     const args = parseArgs(argv);
-    const text = existsSync(DEFAULT_LOG_PATH) ? readFileSync(DEFAULT_LOG_PATH, 'utf8') : '';
+    if (args.help) {
+        console.log(USAGE);
+        return;
+    }
+    const logPath = args.log ?? DEFAULT_LOG_PATH;
+    // A missing --log is an error (the caller named a file that isn't there); a missing DEFAULT
+    // log is just an unsigned repo, which is a valid state and reads as an empty log.
+    if (args.log && !existsSync(logPath)) {
+        console.error(`[integrity-log] no log file at ${logPath}`);
+        process.exitCode = 1;
+        return;
+    }
+    const text = existsSync(logPath) ? readFileSync(logPath, 'utf8') : '';
 
     let publicKey = null;
     if (args.key) {
@@ -373,7 +410,7 @@ function main(argv) {
 
     const result = verifyLog(text, { publicKey });
 
-    console.log(`[integrity-log] verifying ${DEFAULT_LOG_PATH}`);
+    console.log(`[integrity-log] verifying ${logPath}`);
     if (result.parseError) {
         console.error(`[integrity-log] FAILED TO PARSE: ${result.parseError}`);
     } else {
