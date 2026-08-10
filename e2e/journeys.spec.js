@@ -67,7 +67,8 @@ test.describe('Journey: first run, end to end', () => {
         await page.click('#analyze-btn');
         await expect(page.locator('#analyze-modal')).toBeVisible({ timeout: 5000 });
         // The real sentence, not a bare "3": a loose digit match would pass on any stray number.
-        await expect(page.locator('#analyze-content')).toContainText('3 nodes and 1 connections');
+        // "dots" is the user-facing word for a node throughout the UI.
+        await expect(page.locator('#analyze-content')).toContainText('3 dots and 1 connections');
         await expect(page.locator('#analyze-content')).toContainText('Event');
         await expect(page.locator('#analyze-content')).toContainText('Body');
         await expect(page.locator('#analyze-content')).toContainText('Coping');
@@ -204,7 +205,7 @@ test.describe('Journey: export contains what the user actually made', () => {
         const textContent = await fs.readFile(textPath, 'utf-8');
         expect(textContent).toContain(titleA);
         expect(textContent).toContain(titleB);
-        expect(textContent).toContain('Total nodes: 2');
+        expect(textContent).toContain('Total dots: 2');
         expect(textContent).toContain('Total connections: 1');
     });
 });

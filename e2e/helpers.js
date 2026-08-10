@@ -87,10 +87,22 @@ export async function linkNodes(page, titleA, titleB) {
     await page.locator('.map-outline-node', { hasText: titleB }).first().click();
 }
 
-/** Open a node's detail drawer from the outline twin. */
+/**
+ * Open a node's detail drawer from the outline twin.
+ *
+ * Waits for the drawer to be populated, not merely open. The `open` class lands before the
+ * fields are filled in, so a test that typed straight away had its input overwritten by the
+ * populate and then saved the ORIGINAL value back. That surfaced as an edit vanishing across a
+ * reload, which reads like a persistence bug and is really just a race in the test.
+ */
 export async function openNodeDetailFromOutline(page, title) {
     await page.locator('.map-outline-node', { hasText: title }).first().click();
     await expect(page.locator('#node-detail')).toHaveClass(/open/);
+    await expect(page.locator('#detail-title')).toHaveValue(title, { timeout: 5000 });
+    // app.js focuses #detail-title on a 60ms timeout, so the values being present is not yet
+    // proof the drawer has finished setting itself up. Waiting for that focus to land is the
+    // signal that it has, and it stops a keystroke from being swallowed by the tail of setup.
+    await expect(page.locator('#detail-title')).toBeFocused({ timeout: 5000 });
 }
 
 /** Unlink a node's first connection via its detail drawer (matches the flow in

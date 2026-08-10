@@ -98,9 +98,9 @@ don't have to re-verify it by eye.
 - [ ] The non-therapy disclaimer is visible without hunting for it, on both viewports.
       *(Automated: `e2e/safety.spec.js`.)*
 - [ ] The crisis modal's call/text links read clear and immediate, not clinical.
-      *(Automated for presence: `e2e/safety.spec.js`, `e2e/mindmap.spec.js`. Colour contrast on
-      this modal has a known, documented `test.fixme` in `e2e/keyboard.spec.js`: see that file's
-      comment before re-checking it by hand.)*
+      *(Automated: `e2e/safety.spec.js`, `e2e/mindmap.spec.js` for presence, and
+      `e2e/keyboard.spec.js` gates its colour contrast. That contrast was genuinely failing AA
+      until #180's design tokens landed, so the gate is there to keep it from slipping back.)*
 - [ ] The grounding modal's breathing guide is genuinely calming to look at (colour, motion,
       pacing), not just present.
 
@@ -125,9 +125,9 @@ don't have to re-verify it by eye.
       not a fresh pass. **Fully automated**: tab order reachability, `Enter`/`Space` activation,
       focus-visible rings, the outline's `aria-pressed`/`aria-label` contract, and Escape-closes-
       every-modal, all in `e2e/keyboard.spec.js`; serious/critical axe-core violations across
-      every modal and screen, in `e2e/a11y.spec.js` and `e2e/keyboard.spec.js` (two known,
-      documented `test.fixme` colour-contrast findings live in `e2e/keyboard.spec.js`; don't
-      re-file them).
+      every modal and screen, in `e2e/a11y.spec.js` and `e2e/keyboard.spec.js`. Three focus-
+      restoration `test.fixme`s remain there for real, still-open app bugs (see "Known issues");
+      don't re-file them.
 - [ ] What automation **cannot** judge, and still needs a real pass with a real screen reader
       (NVDA / VoiceOver / TalkBack) occasionally, not every run: whether the announcement order
       makes emotional sense reading through a whole task (not just that *an* announcement fired),
@@ -149,10 +149,17 @@ don't have to re-verify it by eye.
 
 ## Known issues (found by this tour, not fixed by it)
 
-Two real, reproducible issues surfaced while building this checklist. They are recorded here
+Real, reproducible issues that surfaced while building this checklist. They are recorded here
 rather than worked around in the app, per this task's scope; re-verify they're still (or no
 longer) present next time you run the tour, and file/update an issue if they aren't already
-tracked.
+tracked. Each one that can be expressed as a test has a `test.fixme` pinning it, so a fix shows
+up as a test that starts passing instead of going unnoticed.
+
+Beyond the two below, three focus-restoration bugs are pinned in `e2e/keyboard.spec.js`: opening
+the map doesn't move focus into the map region (`app.js` focuses `#mindmap`, which has no
+tabindex, rather than the `role="application"` `#mindmap-container`), and Escape-closing either
+the node modal or the detail drawer drops focus to `<body>` instead of returning it to the
+control that opened it. In a trauma-informed UI, losing your place is not a small thing.
 
 1. **Nodes can overlap and become illegible when the map has more than one disjoint pair.**
    `frontend/js/mindmap.js` runs `cose` with `animate: false, idealEdgeLength: 110,

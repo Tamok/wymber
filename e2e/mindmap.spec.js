@@ -196,6 +196,10 @@ test.describe('Mind Map Operations', () => {
         const drawer = page.locator('#node-detail');
         await expect(drawer).toHaveClass(/open/);
         await expect(page.locator('#detail-title')).toHaveValue('A gentle morning');
+        // app.js focuses #detail-title on a 60ms timeout. Typing before that lands lets the tail
+        // of the drawer's setup swallow the keystroke, which showed up as an occasional "keyword
+        // tag not found" here. Waiting for the focus makes the setup observably finished.
+        await expect(page.locator('#detail-title')).toBeFocused({ timeout: 5000 });
 
         // Write a story and add a keyword, then save.
         await page.fill('#detail-story', 'I noticed the light and felt okay for a moment.');
@@ -220,6 +224,8 @@ test.describe('Mind Map Operations', () => {
         const giveKeyword = async (title, kw) => {
             await page.locator('.map-outline-node', { hasText: title }).first().click();
             await expect(page.locator('#node-detail')).toHaveClass(/open/);
+            // Same reason as above: wait for the drawer's deferred focus before typing.
+            await expect(page.locator('#detail-title')).toBeFocused({ timeout: 5000 });
             await page.fill('#detail-keyword-input', kw);
             await page.locator('#detail-keyword-input').press('Enter');
             await page.click('#detail-save');
