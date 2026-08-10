@@ -143,8 +143,18 @@ export async function importMap(data, api) {
  * other export uses (#176: the recovery sheet's own anchor-click download silently did nothing
  * inside the Capacitor WebView, so a mobile user could tick "I've saved my recovery code" while
  * holding no file at all). Wording kept verbatim — it's deliberate, trauma-informed copy.
+ *
+ * Refuses an empty code rather than delivering a file without one. This guard should never fire
+ * (the sheet only opens with a freshly generated code), but the failure it prevents is the same
+ * one #176 is about: a user ends up holding a file they trust and a code they don't have. On this
+ * screen a visible error is always better than a plausible-looking empty file.
+ *
+ * @returns {Promise<boolean>} true when delivered, false when a native share sheet was dismissed.
  */
-export function downloadRecoveryCode(code) {
+export async function downloadRecoveryCode(code) {
+    if (!code || !String(code).trim()) {
+        throw new Error('There is no recovery code to save.');
+    }
     const text = 'Wymber recovery code\n\n'
         + 'Keep this somewhere safe. It is the only way back into your space if you\n'
         + 'forget your password. We cannot recover it for you.\n\n'

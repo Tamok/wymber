@@ -14,14 +14,18 @@
 // wiring is covered lightly here via direct code inspection/manual trace and more heavily by
 // the e2e recovery-sheet journeys; the native delivery path — the actual bug — is fully
 // covered below at the export.js layer.
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, afterAll } from 'vitest';
 import { Blob as NodeBlob } from 'node:buffer';
 import { downloadRecoveryCode } from '../js/export.js';
 
 // jsdom's own Blob polyfill (the default test environment here) doesn't implement
 // `.text()`, which downloadBlob()'s native branch relies on. Swap in Node's real Blob
-// (which does) for this file only; document/URL/anchor DOM APIs are untouched.
+// (which does) for this file only; document/URL/anchor DOM APIs are untouched. Real
+// browsers and the Capacitor WebView both implement Blob.text(), so this stands in for
+// the production behaviour rather than papering over a gap in it.
+const jsdomBlob = globalThis.Blob;
 globalThis.Blob = NodeBlob;
+afterAll(() => { globalThis.Blob = jsdomBlob; });
 
 const RECOVERY_CODE = 'WYMB-7F2Q-9K3X-RECOVER';
 
@@ -131,6 +135,33 @@ describe('downloadRecoveryCode: dismissal', () => {
         installNativeShell(fs, share);
 
         await expect(downloadRecoveryCode(RECOVERY_CODE)).resolves.toBe(false);
+    });
+});
+
+describe('downloadRecoveryCode: refuses to deliver a file with no code in it', () => {
+    // The guard exists because the alternative is the exact failure #176 is about, one step
+    // further along: a file that looks like a saved backup but carries no recovery code. On the
+    // one screen shown once, a visible error beats a plausible-looking empty file every time.
+    it.each([['empty string', ''], ['undefined', undefined], ['whitespace only', '   \n ']])(
+        'rejects a %s code instead of staging a codeless file',
+        async (_label, badCode) => {
+            const fs = makeFs();
+            const share = makeShare();
+            installNativeShell(fs, share);
+
+            await expect(downloadRecoveryCode(badCode)).rejects.toThrow(/no recovery code/i);
+            // Nothing was written and nothing was shared: the caller gets an error to surface,
+            // not a success it would wrongly report as a saved backup.
+            expect(fs.writeFile).not.toHaveBeenCalled();
+            expect(share.share).not.toHaveBeenCalled();
+        }
+    );
+
+    it('rejects rather than throwing synchronously, so `await` in a try/catch always catches it', async () => {
+        installNativeShell(makeFs(), makeShare());
+        const returned = downloadRecoveryCode('');
+        expect(returned).toBeInstanceOf(Promise);
+        await expect(returned).rejects.toThrow();
     });
 });
 
