@@ -106,6 +106,44 @@ describe('mixed-KDF vaults (one entry upgraded, the other left on the old KDF)',
     });
 });
 
+describe('the version gate also catches a non-baseline VAULT-LEVEL kdf (the likeliest Argon2id wiring)', () => {
+    // Manager review: the stamp must not key off per-entry overrides alone. Whoever wires
+    // Argon2id will most naturally switch the default in createVault, which leaves NO per-entry
+    // override anywhere. If that vault were still stamped version 1, an old build would read
+    // vault.kdf.iterations, run PBKDF2 against an Argon2id-wrapped entry, fail the GCM tag, and
+    // report "Incorrect password" — telling a user their password is wrong when their data is
+    // fine and the app is simply out of date. On a vault with no reset path that is the worst
+    // failure this module can produce, so it gets its own test.
+    it('re-stamps a vault-level non-baseline KDF to version 2 even with no per-entry override', async () => {
+        // Build the envelope a "just change the default" build would write: both entries wrapped
+        // under a vault-level TEST-KDF, and NO per-entry descriptors anywhere. Constructed through
+        // the module's own exported surface, then the descriptors are promoted to the vault level.
+        const { vault, recoveryCode } = await createVault(doc(), 'pw', FAST);
+        const vaultKdf = { algo: 'TEST-KDF', pepper: 'vault-default' };
+        let v = await upgradeVaultKdfEntry(vault, 'password', 'pw', vaultKdf);
+        v = await upgradeVaultKdfEntry(v, 'recovery', recoveryCode, vaultKdf);
+        const keys = Object.fromEntries(
+            Object.entries(v.keys).map(([name, { kdf: _promoted, ...rest }]) => [name, rest])
+        );
+        // Deliberately mis-stamped as version 1 — this is exactly the state the old code would
+        // have produced and happily left alone.
+        const futureStyle = { ...v, kdf: vaultKdf, keys, version: VAULT_VERSION };
+
+        expect(futureStyle.keys.password.kdf).toBeUndefined();
+        expect(futureStyle.keys.recovery.kdf).toBeUndefined();
+        expect((await unlockVault(futureStyle, 'pw')).document.nodes[0].title).toBe('a private memory');
+
+        // Now drive a real keys-rewriting path and let the MODULE decide the stamp. It must
+        // correct the version from the vault-level algo alone. Against the pre-review code this
+        // assertion fails with 1, and that version-1 vault would reach an old build and be
+        // reported to the user as "Incorrect password".
+        const restamped = await changePassword(futureStyle, 'pw', 'new-pw');
+        expect(restamped.version).toBe(VAULT_VERSION_KDF_MIX);
+        expect(restamped.keys.password.kdf).toBeUndefined(); // still no per-entry override
+        expect((await unlockVault(restamped, 'new-pw')).document.nodes[0].title).toBe('a private memory');
+    });
+});
+
 describe('unsupported KDF', () => {
     it('unlocking an entry with an unregistered algo throws a distinct error, never "Incorrect password"', async () => {
         const { vault } = await createVault(doc(), 'pw', FAST);

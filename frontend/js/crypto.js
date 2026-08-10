@@ -175,11 +175,29 @@ async function rewrapPreservingKdf(dek, secret, existingEntry, fallbackKdf) {
     return wrapped;
 }
 
-/** True once any entry carries an explicit per-entry `kdf` (regardless of its `algo`): that is
- * the structural fact an old build can't see, so it is also what the version stamp keys off. */
-function versionForKeys(keys) {
-    const mixed = Object.values(keys).some((entry) => entry && entry.kdf);
-    return mixed ? VAULT_VERSION_KDF_MIX : VAULT_VERSION;
+/** The KDF every build before this one assumes unconditionally. Anything an old build would not
+ * derive correctly has to sit behind the version gate. */
+const BASELINE_KDF_ALGO = 'PBKDF2-SHA256';
+
+/**
+ * The version stamp for a vault, computed from what an OLD build would actually be able to derive.
+ * An old build reads `vault.kdf` unconditionally and has never heard of `entry.kdf`, so there are
+ * two independent ways a vault can become unreadable to it, and BOTH must raise the stamp:
+ *
+ *  1. Any entry carries an explicit per-entry `kdf` — regardless of its `algo`, because even a
+ *     same-algo override with different parameters (say different iterations) would be silently
+ *     mis-derived by a build that can't see the override.
+ *  2. The vault-level `kdf.algo` itself is no longer the baseline. This is the case that matters
+ *     most for whoever wires Argon2id: switching the default in `createVault` is the obvious move,
+ *     and it leaves no per-entry override anywhere. Keying the stamp only off (1) would leave such
+ *     a vault stamped version 1, and an old build would run PBKDF2 against an Argon2id-wrapped
+ *     entry, fail the GCM tag check, and tell the user "Incorrect password" — the precise
+ *     silently-wrong failure this whole gate exists to make impossible.
+ */
+function versionForVault(vaultKdf, keys) {
+    const hasEntryOverride = Object.values(keys).some((entry) => entry && entry.kdf);
+    const nonBaselineDefault = (vaultKdf?.algo ?? BASELINE_KDF_ALGO) !== BASELINE_KDF_ALGO;
+    return hasEntryOverride || nonBaselineDefault ? VAULT_VERSION_KDF_MIX : VAULT_VERSION;
 }
 
 /** The single place that installs a new `keys` object onto a vault: sets `keys`, recomputes the
@@ -188,7 +206,12 @@ function versionForKeys(keys) {
  * through here so the version stamp can never drift out of sync with the entries it describes.
  * sealDocument (a normal save) never calls this — it only replaces the payload. */
 function withKeys(vaultFields, keys) {
-    return { ...vaultFields, keys, version: versionForKeys(keys), updatedAt: new Date().toISOString() };
+    return {
+        ...vaultFields,
+        keys,
+        version: versionForVault(vaultFields.kdf, keys),
+        updatedAt: new Date().toISOString(),
+    };
 }
 
 // ----- recovery code (120-bit, Crockford base32, grouped) -----
