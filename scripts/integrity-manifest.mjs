@@ -28,6 +28,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join, relative, sep } from 'node:path';
 import { SEVERITY_NOTE, SEVERITY_ORDER, SEVERITY_TIERS, classifyAssets } from './asset-severity.mjs';
+import { writeVerifyEmbed } from './verify-embed.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -123,4 +124,12 @@ if (isMain) {
     const manifest = writeManifest(join(root, 'dist'), { commit: resolveCommitLocal(), publish });
     console.log(`[integrity-manifest] wrote ${Object.keys(manifest.assets).length} asset hashes (commit ${manifest.commit})`
         + (publish ? ', refreshed landing/integrity-manifest.json' : ''));
+    if (publish) {
+        // The embedded copy in landing/verify.html's comparator tool is a written-down copy of
+        // the same file just refreshed above, on purpose (ADR-0003 Layer 5; the landing has no
+        // build step and connect-src is 'none', so there is nowhere to fetch it from at runtime).
+        // Refresh it here too, in the same publish step, so the two can never drift apart.
+        writeVerifyEmbed();
+        console.log('[integrity-manifest] refreshed the embedded manifest in landing/verify.html');
+    }
 }

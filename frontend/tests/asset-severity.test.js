@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { readFileSync, openSync, closeSync, unlinkSync } from 'node:fs';
+import { readFileSync, existsSync, openSync, closeSync, unlinkSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -49,8 +49,16 @@ function withBuildLock(fn) {
     }
 }
 
-function buildDist() {
+// Build only if there is nothing to read yet. csp.test.js and integrity-manifest.test.js each
+// force a fresh build in the same run, so dist/ is current by the time this file needs it, and a
+// third concurrent build buys nothing: it only adds contention. That matters because
+// build-pages.mjs resolves the build stamp with `git rev-parse` and silently falls back to 'dev'
+// if that call fails for any reason, so piling concurrent git invocations on the same repo turns
+// into an intermittent, confusing failure in a DIFFERENT test file (csp.test.js's build-stamp
+// assertion), which is exactly what happened while this suite was being added.
+function ensureDist() {
     withBuildLock(() => {
+        if (existsSync(join(dist, 'integrity-manifest.json'))) return;
         execFileSync(process.execPath, [join(root, 'scripts', 'build-pages.mjs')], { cwd: root, stdio: 'pipe' });
     });
 }
@@ -58,7 +66,7 @@ function buildDist() {
 let manifest;
 
 beforeAll(() => {
-    buildDist();
+    ensureDist();
     manifest = JSON.parse(readFileSync(join(dist, 'integrity-manifest.json'), 'utf8'));
 }, 30000);
 
