@@ -9,7 +9,7 @@
  * VERSION is derived from a content hash of the cached shell by scripts/sw-version.mjs (run in
  * the pre-commit hook), so it bumps automatically when the shell changes. Don't hand-edit it.
  */
-const VERSION = 'wymber-shell-3d70f415297f';
+const VERSION = 'wymber-shell-6799a99427d8';
 
 const CORE = [
     '/',
