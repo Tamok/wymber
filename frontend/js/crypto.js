@@ -30,8 +30,10 @@ export const VAULT_FORMAT = 'wymber-vault';
 // (a vault with at least one non-default per-entry KDF) is `VAULT_VERSION_KDF_MIX`, below.
 export const VAULT_VERSION = 1;
 
-// Stamped instead of VAULT_VERSION the moment any key entry carries an explicit `kdf` descriptor
-// (see `versionForKeys`) — including one whose `algo` happens to still be the default, because
+// Stamped instead of VAULT_VERSION the moment any key entry carries an explicit `kdf` descriptor,
+// or the vault-level `kdf.algo` itself is no longer the baseline (see `versionForVault`, and
+// docs/adr/0008 for the rule) — including an override whose `algo` happens to still be the
+// default, because
 // what matters for compatibility is the *shape*: an old build reads `vault.kdf.iterations`
 // unconditionally and has no idea `entry.kdf` exists, so any entry that overrides it must be
 // hidden from that old build rather than silently mis-derived. `parseVault` accepts up through
