@@ -27,3 +27,10 @@
 
 /.well-known/security.txt
   Content-Type: text/plain; charset=utf-8
+
+# Cloudflare Pages has no MIME mapping for .jsonl, so without this the transparency log
+# (ADR-0007) downloads as application/octet-stream instead of displaying. Verification is
+# unaffected either way, but a person clicking the link from /verify should be able to read
+# it in the browser, which is the entire point of publishing it.
+/integrity-log.jsonl
+  Content-Type: text/plain; charset=utf-8
