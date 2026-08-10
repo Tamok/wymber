@@ -14,3 +14,20 @@
 # computes. Pinning eol=lf here fixes it at the source rather than making each consumer
 # normalize.
 *.mjs text eol=lf
+
+# Every file type that ends up byte-for-byte in dist/ must also be LF everywhere, for a
+# stronger reason than tooling convenience: the integrity manifest hashes the bytes that
+# get served, and build-pages.mjs copies these straight through. With CRLF in a Windows
+# working tree and LF on Linux CI, the same commit produces two different sets of hashes.
+#
+# That makes ADR-0003's central claim false. "Anyone can confirm wymber.app serves exactly
+# the source in the repo" cannot survive the answer depending on which OS ran the build.
+# Caught when frontend/tests/verify-tool.test.js passed locally and failed on CI with the
+# same commit, on dist/robots.txt.
+*.js   text eol=lf
+*.css  text eol=lf
+*.html text eol=lf
+*.json text eol=lf
+*.txt  text eol=lf
+*.svg  text eol=lf
+*.webmanifest text eol=lf
