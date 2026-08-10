@@ -197,17 +197,46 @@ const BASELINE_KDF_ALGO = 'PBKDF2-SHA256';
  *     silently-wrong failure this whole gate exists to make impossible.
  */
 function versionForVault(vaultKdf, keys) {
-    const hasEntryOverride = Object.values(keys).some((entry) => entry && entry.kdf);
+    const hasEntryOverride = Object.entries(keys).some(([name, entry]) => {
+        // `passkey` is deliberately excluded here, EXPLICITLY by name, not because it happens
+        // not to carry a `kdf` field today. An old build never looks up `vault.keys.passkey` at
+        // all — it only ever reads `keys.password` / `keys.recovery` — so a passkey entry is
+        // invisible and harmless to it, and such a vault still opens perfectly by password there.
+        // Raising the version stamp for a passkey entry would turn an additive convenience into a
+        // lockout: a user who enrols a passkey on this build could no longer open their vault on
+        // an older build or a second device, even with their correct password. See
+        // docs/adr/0003 Layer 3 and frontend/tests/crypto-passkey.test.js.
+        if (name === 'passkey') return false;
+        return entry && entry.kdf;
+    });
     const nonBaselineDefault = (vaultKdf?.algo ?? BASELINE_KDF_ALGO) !== BASELINE_KDF_ALGO;
     return hasEntryOverride || nonBaselineDefault ? VAULT_VERSION_KDF_MIX : VAULT_VERSION;
 }
 
+/** Refuse to install a `keys` object with no `password` entry. Passkeys (and any other unlock
+ * method added later) are additive only, never a replacement for the password root: the password
+ * is the one unlock method every build, every fixture, and the forgot-password flow all assume
+ * exists. This is deliberately a hard invariant of `withKeys`, the single funnel every
+ * keys-rewriting function goes through, rather than something each caller has to remember. */
+function assertHasPasswordEntry(keys) {
+    if (!keys?.password) {
+        const err = new Error(
+            'Refusing to produce a vault with no password entry: passkeys and any other unlock ' +
+            'method are additive only, never a replacement for the password root.'
+        );
+        err.code = 'ERR_NO_PASSWORD_ENTRY';
+        throw err;
+    }
+}
+
 /** The single place that installs a new `keys` object onto a vault: sets `keys`, recomputes the
  * version stamp from what `keys` actually contains, and bumps `updatedAt`. Every function that
- * rewrites `keys` (createVault, changePassword, resetPassword, upgradeVaultKdfEntry) funnels
- * through here so the version stamp can never drift out of sync with the entries it describes.
+ * rewrites `keys` (createVault, changePassword, resetPassword, upgradeVaultKdfEntry, enrollPasskey)
+ * funnels through here so the version stamp can never drift out of sync with the entries it
+ * describes, and so the "always has a password entry" invariant is enforced in one place.
  * sealDocument (a normal save) never calls this — it only replaces the payload. */
 function withKeys(vaultFields, keys) {
+    assertHasPasswordEntry(keys);
     return {
         ...vaultFields,
         keys,
@@ -385,6 +414,289 @@ export async function upgradeVaultKdfEntry(vault, method, secret, target) {
     wrapped.kdf = target; // always explicit: an upgraded entry never falls back to vault.kdf
     const keys = { ...vault.keys, [method]: wrapped };
     return withKeys(vault, keys);
+}
+
+// ----- passkey unlock (WebAuthn PRF, issue #113, ADR-0003 Layer 3) -----
+//
+// A passkey is an ADDITIONAL wrapped key under `vault.keys.passkey`, alongside `password` and
+// `recovery` — never a replacement for either (`assertHasPasswordEntry`, above, refuses to write
+// a vault without a password entry). Precisely what a passkey does and does not protect here (see
+// docs/adr/0003 Layer 3 and docs/adr/0006's "Adjacent, not evaluated as a recovery method:
+// passkeys / WebAuthn"):
+//
+//  - It releases a WRAPPING KEY (a KEK), not the DEK itself and not a recovery root. Losing the
+//    device/authenticator that holds the passkey does not lose the vault: password and recovery
+//    remain the portable ways in, the same framing native-biometric.js already uses for its
+//    device-local "key-release model."
+//  - It protects against a PHISHED USER: a passkey registered to this origin cannot be used, or
+//    even asked to run its ceremony, by a clone hosted on a different origin — the browser
+//    enforces that, this module does not reimplement it. That origin binding is the entire value
+//    of Layer 3.
+//  - It does NOT protect a stolen `.wymber` file whose password is weak. The file is the whole
+//    secret; anyone holding it who also has (or guesses) the password can still open it. A
+//    passkey narrows the phishing surface, it does not change what a stolen file plus a weak
+//    password can do.
+//
+// The WebAuthn `prf` extension is REQUIRED, not merely preferred, and enrollment REFUSES outright
+// if it isn't available (`PRF_UNSUPPORTED`). A bare WebAuthn assertion by itself proves only that
+// a ceremony happened; nothing stops a relying party from treating "the assertion succeeded" as
+// good enough, wrapping nothing new, and just unlocking. On a vault that IS the entire secret
+// (there is no server session to also check), that would be client-side theatre: anyone who
+// obtained the `.wymber` file could bypass the "passkey" step outright by skipping straight past
+// wherever the app checks it, because nothing about the ciphertext would actually depend on the
+// passkey. Deriving the wrapping key from the `prf` extension's output — key material only that
+// specific passkey can release — is what makes the check real instead of decorative.
+//
+// The actual AES-GCM key is HKDF-SHA256 over the raw PRF output (never used directly as an AES
+// key), with a random per-entry salt and a fixed `info` string for domain separation. The PRF
+// output and the unwrapped DEK are treated as radioactive: zeroed (`.fill(0)`) in a `finally` the
+// moment they're no longer needed, mirroring the discipline `app.js` already applies around
+// `native-biometric.js`'s DEK handling.
+//
+// `credentialId` and `rpId` are recorded on the entry so unlock can re-run the ceremony against
+// the same credential; origin binding itself is enforced by the browser, not reimplemented here.
+//
+// Split in two for testability: the pure wrap/unwrap core (`wrapDekUnderRawSecret` /
+// `unwrapDekWithRawSecret`) is plain WebCrypto with no browser globals, so it runs and is tested
+// directly under Node (this file stays `@vitest-environment node`, several suites depend on that).
+// The `navigator.credentials` ceremony lives in separate, explicitly-invoked functions
+// (`enrollPasskey`, `unlockVaultWithPasskey`) that nothing calls yet — nothing browser-only runs
+// at module load, and both guard for `navigator.credentials` being absent.
+//
+// Deliberately unwired: there is no UI here, no call site in app.js/local-repo.js, and no way yet
+// to persist a passkey-enrolled vault from the app. That's out of this module's scope.
+
+const PASSKEY_HKDF_INFO = enc.encode('wymber-passkey-wrap-v1');
+
+/** Thrown by the passkey ceremony functions. `code` mirrors native-biometric.js's convention:
+ * `NOT_SUPPORTED` (no WebAuthn/PRF in this browser), `CANCELLED` (user backed out of the
+ * ceremony), `PRF_UNSUPPORTED` (the authenticator ran but didn't return a PRF result — enrollment
+ * always refuses rather than silently downgrading), `NOT_ENROLLED` (no passkey entry to unlock
+ * with). */
+export class PasskeyError extends Error {
+    constructor(message, code) {
+        super(message);
+        this.name = 'PasskeyError';
+        this.code = code;
+    }
+}
+
+/** Derive an AES-GCM KEK from 32 raw secret bytes (a WebAuthn PRF output) via HKDF-SHA256. Pure
+ * WebCrypto, no browser globals — runs identically in Node and the browser. */
+async function deriveKekFromRawSecret(rawSecretBytes, saltBytes) {
+    const baseKey = await subtle.importKey('raw', rawSecretBytes, 'HKDF', false, ['deriveBits']);
+    const bits = await subtle.deriveBits(
+        { name: 'HKDF', hash: 'SHA-256', salt: saltBytes, info: PASSKEY_HKDF_INFO },
+        baseKey,
+        256
+    );
+    return importAesKey(new Uint8Array(bits));
+}
+
+/** Wrap `dekBytes` under 32 raw secret bytes (e.g. a WebAuthn PRF output). The pure, Node-testable
+ * core of passkey enrollment — no browser API involved. Returns `{ salt, nonce, ct }`. */
+export async function wrapDekUnderRawSecret(dekBytes, rawSecretBytes) {
+    const salt = randomBytes(16);
+    const kek = await deriveKekFromRawSecret(rawSecretBytes, salt);
+    const wrapped = await aesEncrypt(kek, dekBytes);
+    return { salt: toB64(salt), ...wrapped };
+}
+
+/** Unwrap a `wrapDekUnderRawSecret` entry given the same raw secret bytes. Throws on a wrong
+ * secret via GCM's authentication check (never a silent wrong answer), same discipline as every
+ * other unwrap path in this module. */
+export async function unwrapDekWithRawSecret(entry, rawSecretBytes) {
+    const kek = await deriveKekFromRawSecret(rawSecretBytes, fromB64(entry.salt));
+    try {
+        return await aesDecrypt(kek, entry);
+    } catch (err) {
+        throw translateUnwrapError(err, 'This passkey no longer unlocks this vault.');
+    }
+}
+
+function credentialsApi() {
+    return globalThis.navigator?.credentials ?? null;
+}
+
+/** True only when this environment actually exposes a usable `navigator.credentials`. Does NOT
+ * prove PRF support — that can only be learned by actually running the ceremony (browsers don't
+ * offer a static "does this authenticator support PRF" query), which is why `enrollPasskey`
+ * refuses rather than trusting a capability probe. */
+export function passkeySupported() {
+    const credentials = credentialsApi();
+    return !!credentials && typeof credentials.create === 'function' && typeof credentials.get === 'function';
+}
+
+function requireCredentialsApi() {
+    const credentials = credentialsApi();
+    if (!credentials || typeof credentials.create !== 'function' || typeof credentials.get !== 'function') {
+        throw new PasskeyError('Passkeys are not available in this browser.', 'NOT_SUPPORTED');
+    }
+    return credentials;
+}
+
+/** Read the PRF output from a WebAuthn credential/assertion's extension results, or `null` if the
+ * authenticator didn't return one (unsupported, or the ceremony didn't ask correctly). */
+function readPrfResult(credentialOrAssertion) {
+    const results = credentialOrAssertion?.getClientExtensionResults?.();
+    return results?.prf?.results?.first ?? null;
+}
+
+/**
+ * Enroll a passkey as an additional unlock method. Runs a real `navigator.credentials.create()`
+ * ceremony requesting the `prf` extension and then, if that browser didn't already evaluate the
+ * salt at creation time (most don't — they return only `prf.enabled`), a follow-up `get()` to
+ * actually obtain the PRF value, derives a KEK from it via HKDF, and wraps the DEK under it. Only
+ * after both have been tried is a missing PRF result treated as "this authenticator can't do PRF".
+ * Requires the `password` entry to
+ * already exist on `vault` (enforced by `withKeys` → `assertHasPasswordEntry`) and never touches
+ * `password` or `recovery`.
+ *
+ * Refuses with `PasskeyError { code: 'PRF_UNSUPPORTED' }` if the authenticator/browser does not
+ * support the PRF extension — this module will NOT fall back to a non-PRF scheme, because that
+ * would mean the "passkey" step no longer actually gates anything (see the module comment above).
+ *
+ * `dekBytes` is treated as radioactive: callers must not reuse it after calling this function; it
+ * is zeroed (`.fill(0)`) in a `finally` regardless of success or failure, mirroring
+ * `unwrapDekRaw` callers' existing convention elsewhere in this codebase.
+ *
+ * `opts`: `{ rpId, rpName, userId, userName, userDisplayName, challenge }`, all optional with
+ * sane defaults, mainly present so tests can inject deterministic values and a stubbed
+ * `navigator.credentials` doesn't need real ones.
+ */
+export async function enrollPasskey(vault, dekBytes, opts = {}) {
+    if (!vault.keys?.password) {
+        throw new PasskeyError('Cannot enroll a passkey on a vault with no password entry.', 'ERR_NO_PASSWORD_ENTRY');
+    }
+    const credentials = requireCredentialsApi();
+    const rpId = opts.rpId ?? globalThis.location?.hostname ?? 'localhost';
+    const rpName = opts.rpName ?? 'Wymber';
+    const userId = opts.userId ?? randomBytes(16);
+    const userName = opts.userName ?? 'wymber-vault';
+    const userDisplayName = opts.userDisplayName ?? 'Wymber vault';
+    const challenge = opts.challenge ?? randomBytes(32);
+    const prfSalt = randomBytes(32);
+
+    let prfBytes = null;
+    try {
+        let creation;
+        try {
+            creation = await credentials.create({
+                publicKey: {
+                    rp: { id: rpId, name: rpName },
+                    user: { id: userId, name: userName, displayName: userDisplayName },
+                    challenge,
+                    pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+                    authenticatorSelection: { residentKey: 'preferred', userVerification: 'required' },
+                    extensions: { prf: { eval: { first: prfSalt } } },
+                },
+            });
+        } catch (err) {
+            throw new PasskeyError(err?.message || 'Passkey creation was cancelled.', 'CANCELLED');
+        }
+        if (!creation) throw new PasskeyError('Passkey creation was cancelled.', 'CANCELLED');
+
+        const credentialIdBytes = new Uint8Array(creation.rawId);
+
+        // Getting the PRF value takes up to two ceremonies, and which one yields it is a browser
+        // difference, not an error. Most browsers report only `prf.enabled` at creation and do NOT
+        // evaluate `eval` there, so a missing result here is the NORMAL case on real hardware — it
+        // must not be read as "this authenticator has no PRF", which would refuse enrollment on
+        // exactly the devices that do support it. Some browsers do evaluate at creation; when they
+        // do, we already have the value and skip the extra prompt.
+        const fromCreation = readPrfResult(creation);
+        if (fromCreation) {
+            prfBytes = new Uint8Array(fromCreation);
+        } else {
+            let assertion;
+            try {
+                assertion = await credentials.get({
+                    publicKey: {
+                        rpId,
+                        challenge: randomBytes(32),
+                        allowCredentials: [{ id: credentialIdBytes, type: 'public-key' }],
+                        userVerification: 'required',
+                        extensions: { prf: { eval: { first: prfSalt } } },
+                    },
+                });
+            } catch (err) {
+                throw new PasskeyError(err?.message || 'Passkey enrollment was cancelled.', 'CANCELLED');
+            }
+            const evaluated = assertion ? readPrfResult(assertion) : null;
+            if (evaluated) prfBytes = new Uint8Array(evaluated);
+        }
+
+        // Only now, having actually tried to evaluate it, is "no PRF" a real answer.
+        if (!prfBytes) {
+            throw new PasskeyError(
+                "This device's passkey doesn't support the PRF extension, which passkey unlock " +
+                'requires. Passkey unlock was not enabled; your password and recovery code are unaffected.',
+                'PRF_UNSUPPORTED'
+            );
+        }
+        const wrapped = await wrapDekUnderRawSecret(dekBytes, prfBytes);
+        const entry = {
+            ...wrapped,
+            credentialId: toB64(credentialIdBytes),
+            rpId,
+            prfSalt: toB64(prfSalt),
+        };
+        return withKeys(vault, { ...vault.keys, passkey: entry });
+    } finally {
+        // Zeroed on every exit, including a cancelled or failed ceremony — the previous shape left
+        // dekBytes un-zeroed whenever create() threw.
+        if (prfBytes) prfBytes.fill(0);
+        dekBytes.fill(0);
+    }
+}
+
+/**
+ * Unlock a vault via its enrolled passkey. Re-runs the WebAuthn ceremony (`get()`) against the
+ * recorded `credentialId`/`rpId`, evaluates the same `prf` salt used at enrollment, re-derives the
+ * KEK via HKDF, and unwraps the DEK. Throws `PasskeyError { code: 'NOT_ENROLLED' }` if the vault
+ * has no passkey entry, `{ code: 'CANCELLED' }` if the ceremony didn't complete, or
+ * `{ code: 'PRF_UNSUPPORTED' }` if the authenticator didn't return a PRF result this time (a
+ * changed browser/device, most likely). A wrong/stale unwrap (tampering, or a credential that no
+ * longer matches) fails via GCM's authentication check, propagated as-is.
+ */
+export async function unlockVaultWithPasskey(vault) {
+    const entry = vault.keys?.passkey;
+    if (!entry) throw new PasskeyError('This vault has no passkey enrolled.', 'NOT_ENROLLED');
+    const credentials = requireCredentialsApi();
+    const prfSalt = fromB64(entry.prfSalt);
+    const credentialId = fromB64(entry.credentialId);
+
+    let assertion;
+    try {
+        assertion = await credentials.get({
+            publicKey: {
+                rpId: entry.rpId,
+                challenge: randomBytes(32),
+                allowCredentials: [{ id: credentialId, type: 'public-key' }],
+                userVerification: 'required',
+                extensions: { prf: { eval: { first: prfSalt } } },
+            },
+        });
+    } catch (err) {
+        throw new PasskeyError(err?.message || 'Passkey unlock was cancelled.', 'CANCELLED');
+    }
+    if (!assertion) throw new PasskeyError('Passkey unlock was cancelled.', 'CANCELLED');
+
+    const prfResult = readPrfResult(assertion);
+    if (!prfResult) {
+        throw new PasskeyError("This passkey didn't return the expected unlock key.", 'PRF_UNSUPPORTED');
+    }
+    const prfBytes = new Uint8Array(prfResult);
+    let dek;
+    try {
+        dek = await unwrapDekWithRawSecret(entry, prfBytes);
+        const dekKey = await importAesKey(dek);
+        const documentObj = JSON.parse(dec.decode(await aesDecrypt(dekKey, vault.payload)));
+        return { document: documentObj, dekKey };
+    } finally {
+        prfBytes.fill(0);
+        if (dek) dek.fill(0);
+    }
 }
 
 /** Serialize a vault to a string for export / file storage, and back. */
