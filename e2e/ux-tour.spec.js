@@ -183,23 +183,11 @@ for (const vp of VIEWPORTS) {
             await page.keyboard.press('Escape');
             await expect(page.locator('#tutorial-modal')).toBeHidden({ timeout: 3000 });
 
-            // 14. What's new.
-            // Real, reproducible mobile UX bug the tour caught (not a script issue, not fixed
-            // here, out of scope for this task, and the app must not change): styles.css's own
-            // comment above the fixed `.safety-bar` admits "which can wrap to two rows on
-            // narrow screens", and compensates with a flat `body { padding-bottom: 4rem }`. At
-            // 390px that reserve isn't enough: the wrapped bar's actual height exceeds it, so
-            // the bar (observed: its `.safety-disclaimer` text, then `#grounding-btn`)
-            // physically sits on top of the footer and intercepts the tap on `#whats-new-btn`.
-            // Confirmed at the browser level, not just Playwright's pre-click actionability
-            // check: even `page.click(..., { force: true })` still resolved to the overlapping
-            // element (the changelog modal never opened), because force only skips Playwright's
-            // guard, not real hit-testing at that coordinate, i.e. a real thumb tap here is
-            // caught by the safety bar too. A direct DOM `.click()` (bypassing hit-testing
-            // entirely, unlike a simulated pointer event) is used below only so the tour can
-            // still capture what the What's-new screen looks like; it does not represent how a
-            // real mobile user can reach it today. See docs/ux-emulation-checklist.md.
-            await page.evaluate(() => document.getElementById('whats-new-btn').click());
+            // 14. What's new. Used to need a direct DOM `.click()` here, bypassing real
+            // hit-testing: the fixed safety bar wrapped to two rows at 390px and physically
+            // covered this button (#184, fixed — see the dedicated regression test in
+            // "Mobile layout regressions" below). A real click works now.
+            await page.click('#whats-new-btn');
             await expect(page.locator('#changelog-modal')).toBeVisible({ timeout: 5000 });
             await shoot(page, testInfo, vp.name, n.next(), 'whats-new');
             await page.keyboard.press('Escape');
@@ -241,22 +229,22 @@ test.describe('UX tour: theme sweep (map screen)', () => {
     });
 });
 
-// The tour above documents the mobile footer overlap in a comment and still gets its
-// screenshot by bypassing hit-testing. That keeps the tour green, which means nothing would
-// ever tell us the bug got fixed, or that it got worse. This is the assertion that bites:
-// a real tap, at a real phone width, on a control the app puts in front of the user.
+// A screenshot tour alone would not have caught the footer overlap (#184): a shot only proves
+// the pixels rendered, not that a real tap lands where it looks like it should. This is the
+// assertion that bites: a real tap, at a real phone width, on a control the app puts in front
+// of the user.
 test.describe('Mobile layout regressions', () => {
     test.use({ viewport: { width: 390, height: 844 } });
 
-    test.fixme(
-        'the footer "What\'s new" link is tappable at phone width (blocked by the fixed safety bar)',
+    test(
+        'the footer "What\'s new" link is tappable at phone width (regression guard for the fixed safety bar overlap)',
         async ({ page }) => {
-            // styles.css: `.safety-bar` is `position: fixed; bottom: 0; flex-wrap: wrap`, and the
-            // page compensates with a flat `body { padding-bottom: 4rem }`. At 390px the bar wraps
-            // to two rows, grows past 4rem, and covers the footer, so this tap lands on the safety
-            // bar instead of the button. Fix is in frontend/css/styles.css (not this stream's to
-            // make): reserve the bar's real height, e.g. a dynamic offset or a taller reserve at
-            // narrow widths. When that lands, drop the .fixme and this becomes the guard.
+            // styles.css: `.safety-bar` is `position: fixed; flex-wrap: wrap`, so it wraps to two
+            // rows at 390px. body used to compensate with a flat `padding-bottom: 4rem`, which the
+            // wrapped bar grows past, covering the footer so this tap landed on the safety bar
+            // instead of the button (#184). Fixed by tracking the bar's real height in
+            // --safety-bar-height (app.js's observeSafetyBarHeight, a ResizeObserver) and clearing
+            // exactly that much instead of a flat guess.
             await createVaultAndOpenMap(page);
             await page.click('#whats-new-btn', { timeout: 5000 });
             await expect(page.locator('#changelog-modal')).toBeVisible({ timeout: 5000 });

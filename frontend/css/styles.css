@@ -1558,12 +1558,16 @@ kbd {
 }
 
 /* ===== Safety affordances (persistent) ===== */
-/* Clear the fixed bottom safety bar (which can wrap to two rows on narrow screens), so the
-   last of the page content is never tucked underneath it. max() with env() is a no-op on the
-   web build (insets are 0 there) and only grows the clearance on a device with a home-indicator
-   safe area (#162); it never needs to grow much since the inset is well under 4rem. */
+/* Clear the fixed bottom safety bar, so the last of the page content is never tucked
+   underneath it. A flat 4rem guess used to stand in here, but the bar wraps to two (or more)
+   rows on narrow screens and at large text-zoom (WCAG 1.4.10 reflow), so a fixed number always
+   falls short at some width. --safety-bar-height is kept in sync with the bar's real,
+   possibly-wrapped height by a ResizeObserver in app.js (observeSafetyBarHeight); the 4rem
+   fallback only covers the instant before that observer's first callback runs. The safe-area
+   inset is added on top since it also lifts the bar itself (see .safety-bar's `bottom` below) —
+   clearance needs to cover both (#184, #162). */
 body {
-    padding-bottom: max(4rem, env(safe-area-inset-bottom));
+    padding-bottom: calc(var(--safety-bar-height, 4rem) + env(safe-area-inset-bottom));
 }
 
 .safety-bar {
