@@ -544,9 +544,11 @@ function readPrfResult(credentialOrAssertion) {
 
 /**
  * Enroll a passkey as an additional unlock method. Runs a real `navigator.credentials.create()`
- * ceremony requesting the `prf` extension, then a fresh `get()` to actually evaluate it (creation
- * alone only reports whether PRF is *supported*, not its value for a chosen salt), derives a KEK
- * from the PRF output via HKDF, and wraps the DEK under it. Requires the `password` entry to
+ * ceremony requesting the `prf` extension and then, if that browser didn't already evaluate the
+ * salt at creation time (most don't — they return only `prf.enabled`), a follow-up `get()` to
+ * actually obtain the PRF value, derives a KEK from it via HKDF, and wraps the DEK under it. Only
+ * after both have been tried is a missing PRF result treated as "this authenticator can't do PRF".
+ * Requires the `password` entry to
  * already exist on `vault` (enforced by `withKeys` → `assertHasPasswordEntry`) and never touches
  * `password` or `recovery`.
  *
@@ -575,26 +577,56 @@ export async function enrollPasskey(vault, dekBytes, opts = {}) {
     const challenge = opts.challenge ?? randomBytes(32);
     const prfSalt = randomBytes(32);
 
-    let creation;
+    let prfBytes = null;
     try {
-        creation = await credentials.create({
-            publicKey: {
-                rp: { id: rpId, name: rpName },
-                user: { id: userId, name: userName, displayName: userDisplayName },
-                challenge,
-                pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
-                authenticatorSelection: { residentKey: 'preferred', userVerification: 'required' },
-                extensions: { prf: { eval: { first: prfSalt } } },
-            },
-        });
-    } catch (err) {
-        throw new PasskeyError(err?.message || 'Passkey creation was cancelled.', 'CANCELLED');
-    }
-    if (!creation) throw new PasskeyError('Passkey creation was cancelled.', 'CANCELLED');
+        let creation;
+        try {
+            creation = await credentials.create({
+                publicKey: {
+                    rp: { id: rpId, name: rpName },
+                    user: { id: userId, name: userName, displayName: userDisplayName },
+                    challenge,
+                    pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+                    authenticatorSelection: { residentKey: 'preferred', userVerification: 'required' },
+                    extensions: { prf: { eval: { first: prfSalt } } },
+                },
+            });
+        } catch (err) {
+            throw new PasskeyError(err?.message || 'Passkey creation was cancelled.', 'CANCELLED');
+        }
+        if (!creation) throw new PasskeyError('Passkey creation was cancelled.', 'CANCELLED');
 
-    const prfResult = readPrfResult(creation);
-    const prfBytes = prfResult ? new Uint8Array(prfResult) : null;
-    try {
+        const credentialIdBytes = new Uint8Array(creation.rawId);
+
+        // Getting the PRF value takes up to two ceremonies, and which one yields it is a browser
+        // difference, not an error. Most browsers report only `prf.enabled` at creation and do NOT
+        // evaluate `eval` there, so a missing result here is the NORMAL case on real hardware — it
+        // must not be read as "this authenticator has no PRF", which would refuse enrollment on
+        // exactly the devices that do support it. Some browsers do evaluate at creation; when they
+        // do, we already have the value and skip the extra prompt.
+        const fromCreation = readPrfResult(creation);
+        if (fromCreation) {
+            prfBytes = new Uint8Array(fromCreation);
+        } else {
+            let assertion;
+            try {
+                assertion = await credentials.get({
+                    publicKey: {
+                        rpId,
+                        challenge: randomBytes(32),
+                        allowCredentials: [{ id: credentialIdBytes, type: 'public-key' }],
+                        userVerification: 'required',
+                        extensions: { prf: { eval: { first: prfSalt } } },
+                    },
+                });
+            } catch (err) {
+                throw new PasskeyError(err?.message || 'Passkey enrollment was cancelled.', 'CANCELLED');
+            }
+            const evaluated = assertion ? readPrfResult(assertion) : null;
+            if (evaluated) prfBytes = new Uint8Array(evaluated);
+        }
+
+        // Only now, having actually tried to evaluate it, is "no PRF" a real answer.
         if (!prfBytes) {
             throw new PasskeyError(
                 "This device's passkey doesn't support the PRF extension, which passkey unlock " +
@@ -605,12 +637,14 @@ export async function enrollPasskey(vault, dekBytes, opts = {}) {
         const wrapped = await wrapDekUnderRawSecret(dekBytes, prfBytes);
         const entry = {
             ...wrapped,
-            credentialId: toB64(new Uint8Array(creation.rawId)),
+            credentialId: toB64(credentialIdBytes),
             rpId,
             prfSalt: toB64(prfSalt),
         };
         return withKeys(vault, { ...vault.keys, passkey: entry });
     } finally {
+        // Zeroed on every exit, including a cancelled or failed ceremony — the previous shape left
+        // dekBytes un-zeroed whenever create() threw.
         if (prfBytes) prfBytes.fill(0);
         dekBytes.fill(0);
     }
