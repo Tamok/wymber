@@ -139,6 +139,21 @@ export async function importMap(data, api) {
 }
 
 /**
+ * Deliver the recovery code as a plain-text file, through the same downloadBlob() seam every
+ * other export uses (#176: the recovery sheet's own anchor-click download silently did nothing
+ * inside the Capacitor WebView, so a mobile user could tick "I've saved my recovery code" while
+ * holding no file at all). Wording kept verbatim — it's deliberate, trauma-informed copy.
+ */
+export function downloadRecoveryCode(code) {
+    const text = 'Wymber recovery code\n\n'
+        + 'Keep this somewhere safe. It is the only way back into your space if you\n'
+        + 'forget your password. We cannot recover it for you.\n\n'
+        + `${code}\n`;
+    const blob = new Blob([text], { type: 'text/plain' });
+    return downloadBlob(blob, 'wymber-recovery-code.txt');
+}
+
+/**
  * Deliver a file to the user. Web: anchor download (sync, fire-and-forget). Native shell:
  * the anchor path silently does NOTHING in the WebView, so route through the OS share
  * sheet instead (#147). Resolves true when delivered, false when the user dismissed the

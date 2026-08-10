@@ -8,7 +8,7 @@ import { TrauMindMap, keyboardHostFor } from './mindmap.js';
 import { validateNodeData, passwordStrength, shouldNudgeBackup } from './utils.js';
 import { analyzeMap, renderAnalysis } from './analyze.js';
 import { suggestLinks } from './suggest.js';
-import { exportAsJSON, exportAsText, importMap, exportVaultFile, importVaultFile } from './export.js';
+import { exportAsJSON, exportAsText, importMap, exportVaultFile, importVaultFile, downloadRecoveryCode } from './export.js';
 import { Tutorial } from './tutorial.js';
 import { CHANGELOG } from './changelog.js';
 
@@ -450,20 +450,20 @@ class WymberApp {
         this.showError('', false);
     }
 
-    downloadRecovery() {
+    async downloadRecovery() {
         const code = this.currentRecoveryCode || '';
-        const text = 'Wymber recovery code\n\n'
-            + 'Keep this somewhere safe. It is the only way back into your space if you\n'
-            + 'forget your password. We cannot recover it for you.\n\n'
-            + `${code}\n`;
-        const blob = new Blob([text], { type: 'text/plain' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'wymber-recovery-code.txt';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(a.href);
+        try {
+            const delivered = await downloadRecoveryCode(code);
+            if (delivered) {
+                this.showNotification('Recovery code saved', 'success');
+            }
+            // delivered === false: the user backed out of the native share sheet themselves.
+            // No success toast (that would be the one lie this screen must never tell) and no
+            // scary error either, mirroring doExportVault()'s treatment of a dismissed share.
+        } catch (error) {
+            console.error('Recovery code download failed:', error);
+            this.showNotification("We couldn't save that file. Please use Copy, or write your recovery code down.", 'error');
+        }
     }
 
     copyRecovery() {
