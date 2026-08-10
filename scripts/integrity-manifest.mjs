@@ -27,6 +27,8 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join, relative, sep } from 'node:path';
+import { SEVERITY_NOTE, SEVERITY_ORDER, SEVERITY_TIERS, classifyAssets } from './asset-severity.mjs';
+import { writeVerifyEmbed } from './verify-embed.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -67,14 +69,20 @@ export function writeManifest(distDir, { commit, publish = false }) {
         .filter((p) => !EXCLUDE.has(p))
         .sort();
 
+    const assetPaths = relPaths.map((rel) => '/' + rel);
+    // Throws (naming every unclassified path at once) rather than shipping a manifest with a
+    // gap: a file with no severity tier must be impossible to publish, not silently "low".
+    const severities = classifyAssets(assetPaths);
+
     const assets = {};
     for (const rel of relPaths) {
+        const path = '/' + rel;
         const bytes = readFileSync(join(distDir, ...rel.split('/')));
-        assets['/' + rel] = sriHash(bytes);
+        assets[path] = { hash: sriHash(bytes), severity: severities[path] };
     }
 
     const manifest = {
-        schema: 1,
+        schema: 2,
         algorithm: 'sha384',
         commit,
         note: "SHA-384 hashes (SRI format: 'sha384-' + base64 digest) of every file served at " +
@@ -82,7 +90,10 @@ export function writeManifest(distDir, { commit, publish = false }) {
             "this file's own \"commit\" field above. Compare against the same file published " +
             'from wymber.app (a different origin) to check the deployed app matches the ' +
             'published source. A match is tamper-evidence for the official deploy; it is not ' +
-            'proof the origin itself is honest (see docs/adr/0003-client-integrity-and-anti-phishing.md).',
+            'proof the origin itself is honest (see docs/adr/0003-client-integrity-and-anti-phishing.md). ' +
+            "Each asset also carries a severity tier; see the \"severity\" block below for what the " +
+            'tiers mean and what they do not claim.',
+        severity: { note: SEVERITY_NOTE, order: SEVERITY_ORDER, tiers: SEVERITY_TIERS },
         assets,
     };
 
@@ -113,4 +124,12 @@ if (isMain) {
     const manifest = writeManifest(join(root, 'dist'), { commit: resolveCommitLocal(), publish });
     console.log(`[integrity-manifest] wrote ${Object.keys(manifest.assets).length} asset hashes (commit ${manifest.commit})`
         + (publish ? ', refreshed landing/integrity-manifest.json' : ''));
+    if (publish) {
+        // The embedded copy in landing/verify.html's comparator tool is a written-down copy of
+        // the same file just refreshed above, on purpose (ADR-0003 Layer 5; the landing has no
+        // build step and connect-src is 'none', so there is nowhere to fetch it from at runtime).
+        // Refresh it here too, in the same publish step, so the two can never drift apart.
+        writeVerifyEmbed();
+        console.log('[integrity-manifest] refreshed the embedded manifest in landing/verify.html');
+    }
 }

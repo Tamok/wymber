@@ -28,6 +28,50 @@
     }
     .article-callout p { margin: 0; color: var(--ink); }
     .article-note { border-left: 3px solid var(--line); padding-left: 14px; font-size: 0.92rem; }
+
+    /* The comparator tool (#verify-tool): consumes only the existing tokens, no new colours.
+       State is carried by words and text weight, never colour alone (--accent fails AA as text,
+       see the manager's contrast notes; it stays a border/focus colour only). */
+    #verify-tool { margin: 8px 0 40px; }
+    .verify-dropzone {
+      border: 1.5px dashed var(--line); border-radius: var(--radius);
+      padding: 18px 20px; margin: 16px 0; background: var(--surface);
+    }
+    .verify-dropzone.is-dragover { border-color: var(--accent); }
+    .verify-field { margin: 16px 0; }
+    .verify-field label { display: block; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
+    #verify-tool textarea {
+      width: 100%; font-family: ui-monospace, monospace; font-size: 0.85rem;
+      border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 14px;
+      background: var(--surface); color: var(--ink); resize: vertical;
+    }
+    #verify-tool input[type="file"] { max-width: 100%; }
+    #verify-tool input[type="file"]:focus-visible,
+    #verify-tool textarea:focus-visible,
+    #verify-tool button:focus-visible {
+      outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 6px;
+    }
+    #verify-progress { color: var(--ink-soft); min-height: 1.2em; margin: 12px 0; }
+    .verify-summary {
+      border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: var(--radius);
+      padding: 16px 20px; margin: 16px 0; background: var(--surface);
+    }
+    .verify-summary p { color: var(--ink); margin: 0 0 8px; }
+    .verify-summary p:last-child { margin-bottom: 0; }
+    .verify-tier-group { margin: 20px 0; }
+    .verify-tier-group h3 { font-size: 1.05rem; margin: 0 0 4px; color: var(--ink); }
+    .verify-tier-meaning { font-size: 0.9rem; margin: 0 0 10px; color: var(--ink-soft); }
+    .verify-row-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+    .verify-row {
+      display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+      border-bottom: 1px solid var(--line); padding: 5px 0; font-size: 0.92rem;
+    }
+    .verify-row-path { font-family: ui-monospace, monospace; word-break: break-all; color: var(--ink-soft); }
+    .verify-row-status { flex: none; color: var(--ink-soft); }
+    /* Only "differs" and "unexpected" get full-strength ink; "matches" and "missing" stay quiet,
+       so a partial check does not read as dozens of alarms. State is always in the word too,
+       never in weight alone. */
+    .verify-row.is-diff .verify-row-path, .verify-row.is-diff .verify-row-status { color: var(--ink); font-weight: 600; }
   </style>
   <script type="application/ld+json">
   {
@@ -105,6 +149,682 @@
           has been altered on its own: if someone changed a file served from just one of them, the
           two manifests would stop matching.</li>
     </ol>
+
+    <section id="verify-tool" hidden>
+      <h2>Check a copy you already have</h2>
+      <p>Nothing you choose below is uploaded anywhere. Your browser reads the files, hashes them
+         with the Web Crypto API, and compares the result to the list published on this page.
+         This page makes no network requests at all: not before you start, not while it works,
+         and not after.</p>
+      <p>There's no option to paste a web address instead. A tool that checks a site by fetching
+         it from its own server can be shown one version while everyone else is served another,
+         because the addresses that kind of check calls from are knowable ahead of time. It would
+         then return a calm, confident pass on exactly the situation it exists to catch. The
+         honest version of that check has to run in your own browser, against the bytes your own
+         browser actually received: that's a bigger piece of work, tracked as
+         <a href="https://github.com/Tamok/wymber/issues/115" target="_blank" rel="noopener">issue #115</a>.</p>
+      <p>This compares a copy of the app at <strong>web.wymber.app</strong>, the address people
+         actually unlock at. <strong>wymber.app</strong>, where you are right now, only hosts this
+         page and the list it checks against.</p>
+      <p>One difference is expected rather than worrying: the list here is a release snapshot, so
+         it can trail the app by a commit or two. Every build stamps which commit it came from
+         into <code>index.html</code> and <code>build-info.js</code>, so a copy built from a
+         different commit will show those two as differing even when nothing is wrong. Check the
+         commit each one names before reading anything into it.</p>
+      <p><strong>Every file below is marked with how alarmed to be, not whether to ignore
+         it.</strong> <span id="verify-severity-note"></span></p>
+
+      <div class="verify-dropzone" id="verify-dropzone">
+        <p>Drop files or a whole folder here, or use the buttons below. Nothing you drop is sent
+           anywhere.</p>
+        <div class="verify-field">
+          <label for="verify-file-input">Choose files to check</label>
+          <input type="file" id="verify-file-input" multiple>
+          <p>Picked one at a time, files are matched by their name, so <code>app.js</code> is
+             checked against the published <code>app.js</code>. Choosing a whole folder is more
+             thorough, because then the folders each file sits in are matched too.</p>
+        </div>
+        <div class="verify-field">
+          <label for="verify-folder-input">Choose a whole folder to check</label>
+          <input type="file" id="verify-folder-input" webkitdirectory>
+        </div>
+      </div>
+
+      <div class="verify-field">
+        <label for="verify-paste-input">Or paste a manifest JSON to compare against the one
+           published here</label>
+        <textarea id="verify-paste-input" rows="6" spellcheck="false"></textarea>
+        <p><button type="button" class="btn btn-ghost" id="verify-paste-button">Compare pasted manifest</button></p>
+      </div>
+
+      <p id="verify-progress" aria-live="polite"></p>
+      <div id="verify-results" aria-live="polite"></div>
+
+      <script type="application/json" id="wymber-published-manifest">
+        {
+          "schema": 2,
+          "algorithm": "sha384",
+          "commit": "c7afea4",
+          "note": "SHA-384 hashes (SRI format: 'sha384-' + base64 digest) of every file served at web.wymber.app, generated from and describing the build of the commit named in this file's own \"commit\" field above. Compare against the same file published from wymber.app (a different origin) to check the deployed app matches the published source. A match is tamper-evidence for the official deploy; it is not proof the origin itself is honest (see docs/adr/0003-client-integrity-and-anti-phishing.md). Each asset also carries a severity tier; see the \"severity\" block below for what the tiers mean and what they do not claim.",
+          "severity": {
+            "note": "Severity is triage, not permission. It answers \"how alarmed should I be, and what should I look at first\", nothing more. Every file here is served under Subresource Integrity and a strict Content-Security-Policy, so any unexpected difference means the deploy is not what was published, whatever its tier. \"Differs, low severity\" is still \"differs\". Low does not mean harmless. A stylesheet cannot read your vault, but it can restyle the page to fake an unlock prompt, hide a warning, or make a storage error look like a fresh start, so that someone creates a new vault over their real one. It cannot take your data; it can persuade you to hand it over. Every file under /static/js/ and /static/libs/ runs as script in the app's own origin, so a swapped one could in principle do what any other module can. These tiers rank where to look first, by how directly the published file touches keys or the decrypted map. They are not a statement that a lower tier is safe to differ.",
+            "order": [
+              "critical",
+              "high",
+              "moderate",
+              "low"
+            ],
+            "tiers": {
+              "critical": {
+                "label": "Critical",
+                "meaning": "A change here could reach your password, your recovery code, or the key that unlocks your map, or decide what code runs at all."
+              },
+              "high": {
+                "label": "High",
+                "meaning": "A change here could reach your whole decrypted map, or is one of the ways a copy of it can leave your device."
+              },
+              "moderate": {
+                "label": "Moderate",
+                "meaning": "A change here cannot reach your map or your key, but it can change what the app tells you or asks of you while you use it."
+              },
+              "low": {
+                "label": "Low",
+                "meaning": "A change here cannot read your map. It can still change what you see, and what you see is how you decide whether to trust this page."
+              }
+            }
+          },
+          "assets": {
+            "/.well-known/security.txt": {
+              "hash": "sha384-EnRY551BMhqbTu2f5arrOn1K3BkpNXrlxm81aRjsu83oRhRiVpP0MC8c8UhVl/Bf",
+              "severity": "low"
+            },
+            "/404.html": {
+              "hash": "sha384-I8lDqOVXw+OBpzgXCEFE1Bv2YcWpLqqfRwqUOrG+VONFr/NxtAQHZ0zUGSZ2P7D+",
+              "severity": "moderate"
+            },
+            "/index.html": {
+              "hash": "sha384-8WGmZQe09NKSRpQ28Z8/T+GOcJa7jWSzFsCSLxZxp9ymRuxi+4MXjx1suJx6BwsE",
+              "severity": "critical"
+            },
+            "/manifest.webmanifest": {
+              "hash": "sha384-fCaEBDAqHXfUi9dig6O+sZX0hJbqMQ4Gh0bWtfrR4pXt1Tz49FFk0BjO4ng7sxyC",
+              "severity": "low"
+            },
+            "/robots.txt": {
+              "hash": "sha384-lR9eSoSp4lrxKES7qz/3D+XbAU13snvsOCH9LhxiHXHDfSsVbl92sQ68hFtNWcDl",
+              "severity": "low"
+            },
+            "/static/css/styles.css": {
+              "hash": "sha384-zJpdp+Nfd9thnd2GaDJnN8XHyu0OjZtUNFK0AIAuzuMzXxU8v7SWNKxS5eM8pLl0",
+              "severity": "low"
+            },
+            "/static/favicon.svg": {
+              "hash": "sha384-oqeK0I2T8nsWg8TJAfwlpTdp55bLCkitqCa2F2LPp8fDO1zSUJhDpHwK3poa9/6d",
+              "severity": "low"
+            },
+            "/static/icons/apple-touch-icon.png": {
+              "hash": "sha384-qKQfmIQHKiY5mJGNuiiasds27iA3W7AsSjn6J6f215LXOFj34yUWvcRGtRNhMnJX",
+              "severity": "low"
+            },
+            "/static/icons/icon-192.png": {
+              "hash": "sha384-otKVbXezQyM3slfzI1LkMMQKoc5YPdN1VfmQKFFpFoSScx1ioImAp6jalQpHD44H",
+              "severity": "low"
+            },
+            "/static/icons/icon-512.png": {
+              "hash": "sha384-Kd76qa95Sh3y7gwdoaRqZKmcZAHExHQaJQ5NlYBUzhfORlsSxclyPjOIN/D6Yr7N",
+              "severity": "low"
+            },
+            "/static/js/analyze.js": {
+              "hash": "sha384-EFmPFM5oksaSPUxQH+KRtff38Dgi++4lhR0h3cM8fwasLYbtTbY6zNTTC5dxQOlU",
+              "severity": "high"
+            },
+            "/static/js/app.js": {
+              "hash": "sha384-CkP8YpiZQFFqxSAYbP2PweGaM1rOrJDpStD4iPeUE1oqaiQnxWX5FzVXmmyqzfaj",
+              "severity": "critical"
+            },
+            "/static/js/build-info.js": {
+              "hash": "sha384-AqR2Leo/kvtNfGN8sjizV7XFuG8sRM76HGrdA7jWuKZ0QnMmmgB6XisK0wxS5/AJ",
+              "severity": "moderate"
+            },
+            "/static/js/changelog.js": {
+              "hash": "sha384-qtYaCSA72LqtTilSe/Wk++y2iX/inKPyA54K9I9Yw41+6WYe2jN0QrJhWwVppLHb",
+              "severity": "moderate"
+            },
+            "/static/js/config.js": {
+              "hash": "sha384-Zz9WF9HIuUO920ZOcktkPsqLOEq+I0r5QAOspmMYXWWZ8GCGVjyhsBWtQqlYMTAN",
+              "severity": "moderate"
+            },
+            "/static/js/crypto.js": {
+              "hash": "sha384-kpLOebjYJirgZNQf84BTsZjf837xkg2OrutWEa3yMQcLGxh5gc7KrcrjGw72/CiH",
+              "severity": "critical"
+            },
+            "/static/js/export.js": {
+              "hash": "sha384-FNna+pzhg708CYT0H+OAv8MD1lcnh5kq0yBsFlKo/4nPMe6n9RSZmqp4dV3zP5xj",
+              "severity": "high"
+            },
+            "/static/js/local-repo.js": {
+              "hash": "sha384-vkxz+bizDlcDsMjXByGn2tSTomvOozkvYJ6dGX9M/tiYgY4GpArG2K2IBr70vOVP",
+              "severity": "critical"
+            },
+            "/static/js/mindmap.js": {
+              "hash": "sha384-EkxErwD0buvAHs02TOFW530o+1uW5bTSUTa4579ueN7UKdL8Ws/n5acDyZ/D+J7E",
+              "severity": "high"
+            },
+            "/static/js/native-biometric.js": {
+              "hash": "sha384-F3b3J94RO8ocIJOEStmbNXCHKzVUM0G2kfCYjRPiXU8DusNV6As1AjrgdtgfJLd2",
+              "severity": "critical"
+            },
+            "/static/js/native-persistence.js": {
+              "hash": "sha384-8ax/X9hc46Lo/deZLIpw9igLEj6flllD0y9KMksfpbKZRIAeJxMHUITomd+Rwx+1",
+              "severity": "critical"
+            },
+            "/static/js/native-share.js": {
+              "hash": "sha384-lRHo/Oh9xSI9AOEtnsbrwMA6JDTTZXKAqhqXYUbwe7ekoHAkb4MlG+JR77LW53Bg",
+              "severity": "high"
+            },
+            "/static/js/persistence.js": {
+              "hash": "sha384-hfaPZ5FE/y2fcVYhhoIUETA7J+Qzcv3PshWziHQNvW4RcHn62Wy+7q30rSchZfct",
+              "severity": "critical"
+            },
+            "/static/js/suggest.js": {
+              "hash": "sha384-eOmxixmfQ1wCHysuQmVI1Mf8YoBdN+vh03Mo9KXf5dYtJsPwkNiOi+F5JyVgoWeM",
+              "severity": "high"
+            },
+            "/static/js/tutorial.js": {
+              "hash": "sha384-PGNkqnazrIzs5nESC9dFwP3Fw7ej/zdOwcadeHqV1CMuCR6fnPNv5I6oNnEKUsvY",
+              "severity": "moderate"
+            },
+            "/static/js/utils.js": {
+              "hash": "sha384-EvDitsFfYHa0KTPL7F11AWLpwqDJla6xCxjBTIth3OcS4M0IwNPfUUVGCd7/BZem",
+              "severity": "critical"
+            },
+            "/static/js/vault-store.js": {
+              "hash": "sha384-1t0mWUcYA96hD2MI/36Wt6cnrAhbilud4vfX8vPKyVphZz21fNLEyTC95rnn73Y+",
+              "severity": "high"
+            },
+            "/static/libs/cytoscape.min.js": {
+              "hash": "sha384-l9MDH+UaOY0AzU2AacPpt/QfDvJo3Js7vqdX4Pcc9lOgtKkLLiFoF4he8ru3mEh0",
+              "severity": "high"
+            },
+            "/static/og-image.png": {
+              "hash": "sha384-WoHoq37KROUTsCjVkM5Uh4VIsPMnE58W2pttaZUbeoN2Q9ALBjnCEHNtlif2W5MM",
+              "severity": "low"
+            },
+            "/sw.js": {
+              "hash": "sha384-poLrLp0AXFzerGnCdVd//hi44AS2GOt8DgPhfP2BRpe9V/l4vTPDLoPoyKGfg+JA",
+              "severity": "critical"
+            }
+          }
+        }
+      </script>
+    </section>
+
+    <script>
+      (function () {
+        'use strict';
+
+        var FALLBACK_ORDER = ['critical', 'high', 'moderate', 'low'];
+        var UNCLASSIFIED_TIER = {
+          label: 'Not rated',
+          meaning: 'This manifest was published before severity ratings existed, so this file ' +
+            'has no tier here. Treat any difference the same as any other: it means the copy is ' +
+            'not what was published.'
+        };
+        var STATUS_WORDS = { match: 'matches', differs: 'differs', missing: 'missing', unexpected: 'unexpected' };
+
+        function readEmbeddedManifest() {
+          var el = document.getElementById('wymber-published-manifest');
+          if (!el) return null;
+          try {
+            return JSON.parse(el.textContent);
+          } catch (err) {
+            return null;
+          }
+        }
+
+        // Normalize either manifest schema shape into one small interface. Schema 2 assets are
+        // { hash, severity }; schema 1 assets are a bare 'sha384-...' string with no severity at
+        // all (a person may paste an older manifest captured from web.wymber.app before it
+        // redeploys). Those are reported as tier 'unclassified' rather than guessed at or thrown.
+        function readManifest(parsed) {
+          var rawAssets = (parsed && parsed.assets) || {};
+          var keys = Object.keys(rawAssets);
+          var hashes = {};
+          var severities = {};
+          var anyUnclassified = false;
+          keys.forEach(function (key) {
+            var entry = rawAssets[key];
+            if (entry && typeof entry === 'object') {
+              hashes[key] = entry.hash;
+              severities[key] = entry.severity || 'unclassified';
+              if (!entry.severity) anyUnclassified = true;
+            } else {
+              hashes[key] = entry;
+              severities[key] = 'unclassified';
+              anyUnclassified = true;
+            }
+          });
+          var order = (parsed && parsed.severity && Array.isArray(parsed.severity.order) && parsed.severity.order.length)
+            ? parsed.severity.order.slice()
+            : FALLBACK_ORDER.slice();
+          if (anyUnclassified && order.indexOf('unclassified') === -1) order.push('unclassified');
+          var tiers = {};
+          var sourceTiers = (parsed && parsed.severity && parsed.severity.tiers) || {};
+          Object.keys(sourceTiers).forEach(function (t) { tiers[t] = sourceTiers[t]; });
+          if (anyUnclassified && !tiers.unclassified) tiers.unclassified = UNCLASSIFIED_TIER;
+          var note = (parsed && parsed.severity && parsed.severity.note) || '';
+          return {
+            severityOf: function (path) { return severities[path]; },
+            hashOf: function (path) { return hashes[path]; },
+            keys: keys,
+            tiers: tiers,
+            order: order,
+            note: note
+          };
+        }
+
+        // Manifest keys indexed by their last segment, but ONLY where that name is unique across
+        // the whole published list. A name shared by two entries maps to null, so it stays
+        // ambiguous and gets reported rather than guessed at.
+        function uniqueBasenameIndex(manifestKeys) {
+          var index = {};
+          manifestKeys.forEach(function (key) {
+            var name = key.slice(key.lastIndexOf('/') + 1);
+            index[name] = Object.prototype.hasOwnProperty.call(index, name) ? null : key;
+          });
+          return index;
+        }
+
+        // dist/static/js/app.js, my-copy/static/js/app.js and static/js/app.js all resolve to
+        // /static/js/app.js: try every suffix of the path, longest remainder first, against the
+        // manifest's own keys. No match anywhere in the chain means null, never a guess.
+        //
+        // The bare-name fallback exists because of how browsers actually hand files over. A file
+        // picked one at a time has no webkitRelativePath at all, so all the page ever sees is
+        // "app.js", which matches no key on its own and would make the file picker (the most
+        // obvious control here) look broken. It applies ONLY when there is no folder part to go
+        // on, and only for a name that belongs to exactly one entry: a folder that happens to
+        // contain an unrelated app.js must not be quietly matched against the published one.
+        function normalizePath(rawPath, manifestKeys) {
+          var keys = manifestKeys instanceof Set ? Array.from(manifestKeys) : manifestKeys;
+          var keySet = manifestKeys instanceof Set ? manifestKeys : new Set(manifestKeys);
+          var segments = String(rawPath).replace(/\\/g, '/').split('/').filter(function (s) { return s.length > 0; });
+          for (var i = 0; i < segments.length; i++) {
+            var candidate = '/' + segments.slice(i).join('/');
+            if (keySet.has(candidate)) return candidate;
+          }
+          if (segments.length === 1) {
+            var byName = uniqueBasenameIndex(keys)[segments[0]];
+            if (byName) return byName;
+          }
+          return null;
+        }
+
+        function bufferToBase64(buf) {
+          var bytes = new Uint8Array(buf);
+          var binary = '';
+          for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+          return btoa(binary);
+        }
+
+        // 'sha384-' + base64(SHA-384 digest), the same SRI shape the published manifest uses, so
+        // a hash computed here can be compared to one straight from the manifest with no reshaping.
+        function sriFromBuffer(buf) {
+          return crypto.subtle.digest('SHA-384', buf).then(function (digest) {
+            return 'sha384-' + bufferToBase64(digest);
+          });
+        }
+
+        var embeddedManifestParsed = readEmbeddedManifest();
+        var publishedManifest = readManifest(embeddedManifestParsed || { assets: {} });
+        var TIER_ORDER = (embeddedManifestParsed && embeddedManifestParsed.severity &&
+          Array.isArray(embeddedManifestParsed.severity.order) && embeddedManifestParsed.severity.order.length)
+          ? embeddedManifestParsed.severity.order.slice()
+          : FALLBACK_ORDER.slice();
+
+        // For every manifest key: match, differs, or missing. Plus unexpected, for anything
+        // provided that normalizePath couldn't place anywhere in the published list.
+        function compare(checkedFiles, manifest) {
+          var keys = manifest.keys;
+          var provided = {};
+          var unexpected = [];
+          checkedFiles.forEach(function (file) {
+            var key = normalizePath(file.path, keys);
+            if (key === null || Object.prototype.hasOwnProperty.call(provided, key)) {
+              // Two files resolving to the same published entry (say an app.js from each of two
+              // folders) is not something to silently drop one half of: the first is checked, the
+              // second is reported so the person can see it was there.
+              unexpected.push(file);
+            } else {
+              provided[key] = file;
+            }
+          });
+          var results = keys.map(function (key) {
+            var severity = manifest.severityOf(key);
+            if (!Object.prototype.hasOwnProperty.call(provided, key)) {
+              return { path: key, severity: severity, status: 'missing' };
+            }
+            var file = provided[key];
+            var status = file.hash === manifest.hashOf(key) ? 'match' : 'differs';
+            return { path: key, severity: severity, status: status, providedPath: file.path };
+          });
+          unexpected.forEach(function (file) {
+            results.push({ path: file.path, severity: null, status: 'unexpected' });
+          });
+          return results;
+        }
+
+        // The summary line never shows a pass for a low-severity-only difference: everythingMatched
+        // is true only when there are zero differs, zero missing and zero unexpected, whatever tier
+        // they land in. Severity only decides worstTier, which is about where to look first, not
+        // whether the overall answer is a pass.
+        function summarize(results) {
+          var counts = { match: 0, differs: 0, missing: 0, unexpected: 0 };
+          var differing = [];
+          results.forEach(function (r) {
+            counts[r.status] = (counts[r.status] || 0) + 1;
+            if (r.status !== 'match') differing.push(r);
+          });
+          var worstTier = null;
+          for (var i = 0; i < TIER_ORDER.length; i++) {
+            var tier = TIER_ORDER[i];
+            if (differing.some(function (r) { return r.severity === tier; })) { worstTier = tier; break; }
+          }
+          var everythingMatched = counts.differs === 0 && counts.missing === 0 && counts.unexpected === 0;
+          return { counts: counts, differing: differing, worstTier: worstTier, everythingMatched: everythingMatched };
+        }
+
+        // Which of four honest things to say, kept out of the DOM code so it can be tested.
+        //
+        // The distinction that matters: "missing" on its own is NOT evidence of tampering. Someone
+        // who picks three files has three checked files and the rest unchecked, and telling them
+        // "this copy is not what was published" would be crying wolf on the most ordinary use of
+        // this tool. A file that DIFFERS, or one present that the published list never named, is a
+        // different thing entirely, and stays a plain "not what was published" whatever tier it
+        // lands in: that rule is the whole point and severity never softens it.
+        function summaryState(summary, totalCount) {
+          var counts = summary.counts;
+          var checked = counts.match + counts.differs;
+          if (checked === 0) return 'none-recognised';
+          if (counts.differs > 0 || counts.unexpected > 0) return 'differs';
+          if (checked < totalCount) return 'partial';
+          return 'clean';
+        }
+
+        // ---- DOM wiring: only when the tool's container is actually on the page ----
+        var container = document.getElementById('verify-tool');
+        if (container) {
+          var progressEl = document.getElementById('verify-progress');
+          var resultsEl = document.getElementById('verify-results');
+          var noteEl = document.getElementById('verify-severity-note');
+          var dropzone = document.getElementById('verify-dropzone');
+          var fileInput = document.getElementById('verify-file-input');
+          var folderInput = document.getElementById('verify-folder-input');
+          var pasteInput = document.getElementById('verify-paste-input');
+          var pasteButton = document.getElementById('verify-paste-button');
+
+          if (noteEl) noteEl.textContent = publishedManifest.note;
+
+          function setProgress(text) {
+            if (progressEl) progressEl.textContent = text;
+          }
+
+          function relativePathOf(file) {
+            return file.webkitRelativePath || file.__verifyRelativePath || file.name;
+          }
+
+          function tierLabel(tier) {
+            if (tier === 'unexpected') return 'Not in the published list';
+            var info = publishedManifest.tiers[tier];
+            return info ? info.label : tier;
+          }
+
+          function tierMeaning(tier) {
+            if (tier === 'unexpected') {
+              return 'Files you provided that do not correspond to anything in the published list.';
+            }
+            var info = publishedManifest.tiers[tier];
+            return info ? info.meaning : '';
+          }
+
+          function renderTierGroup(tier, rows) {
+            var group = document.createElement('div');
+            group.className = 'verify-tier-group';
+            var heading = document.createElement('h3');
+            heading.textContent = tierLabel(tier) + ' (' + rows.length + ')';
+            group.appendChild(heading);
+            var meaning = document.createElement('p');
+            meaning.className = 'verify-tier-meaning';
+            meaning.textContent = tierMeaning(tier);
+            group.appendChild(meaning);
+            var list = document.createElement('ul');
+            list.className = 'verify-row-list';
+            rows.forEach(function (row) {
+              var li = document.createElement('li');
+              // Full-strength text is reserved for the two states that actually mean something is
+              // wrong. "Missing" usually just means a file was not part of what was handed over,
+              // and on a partial check there are dozens of those: emphasising them would drown
+              // the one row that matters in rows that matter less.
+              var strongState = row.status === 'differs' || row.status === 'unexpected';
+              li.className = 'verify-row ' + (strongState ? 'is-diff' : 'is-quiet');
+              var path = document.createElement('span');
+              path.className = 'verify-row-path';
+              path.textContent = row.path;
+              var status = document.createElement('span');
+              status.className = 'verify-row-status';
+              status.textContent = STATUS_WORDS[row.status];
+              li.appendChild(path);
+              li.appendChild(status);
+              list.appendChild(li);
+            });
+            group.appendChild(list);
+            return group;
+          }
+
+          // Absent files get an honest label: someone who picked three files has three checked
+          // files and the rest unchecked, not 27 things gone missing.
+          var HEADLINES = {
+            'none-recognised': 'None of those files are in the published list.',
+            differs: 'This copy is not what was published.',
+            partial: 'Everything you checked matched.',
+            clean: 'Everything matched.'
+          };
+          var DETAILS = {
+            'none-recognised': 'Nothing you gave lines up with a file the published list names. ' +
+              'That usually means the folder was one level off: point this at the folder that ' +
+              'holds index.html and the static folder, not at the folder above it.',
+            differs: 'At least one file differs from the published list, or was not on it at ' +
+              'all. That is true whatever severity is involved: a low-severity difference is ' +
+              'still a difference, not a pass.',
+            partial: 'Nothing you gave differed from the published list. This was a partial ' +
+              'check, so it is not an all-clear for the whole copy: the files you did not ' +
+              'provide are listed below as missing, meaning they were not part of what you ' +
+              'checked, not that anything is known to be wrong with them.',
+            clean: 'Every file the published list names was checked here, and its hash matched. ' +
+              'That means this copy matches the published list, checked locally in your own ' +
+              'browser. It is not proof the published list itself is honest, see "what this ' +
+              'does not prove" further up this page.'
+          };
+
+          function renderResults(results) {
+            var summary = summarize(results);
+            var totalCount = publishedManifest.keys.length;
+            // Counted from the results, not from how many files were handed over: a file that
+            // matches nothing in the published list was not a check of anything, so counting it
+            // would overstate the coverage this run actually achieved.
+            var checkedCount = summary.counts.match + summary.counts.differs;
+            var state = summaryState(summary, totalCount);
+            resultsEl.innerHTML = '';
+            setProgress('');
+
+            var summaryBox = document.createElement('div');
+            summaryBox.className = 'verify-summary';
+
+            var headline = document.createElement('p');
+            var strong = document.createElement('strong');
+            strong.textContent = HEADLINES[state];
+            headline.appendChild(strong);
+            summaryBox.appendChild(headline);
+
+            var detail = document.createElement('p');
+            detail.textContent = DETAILS[state];
+            summaryBox.appendChild(detail);
+
+            var coverage = document.createElement('p');
+            coverage.textContent = checkedCount < totalCount
+              ? checkedCount + ' of ' + totalCount + ' files in the published list were checked. ' +
+                'The rest are listed as missing below because they were not part of what you ' +
+                'checked, not because anything is known to be wrong with them.'
+              : 'All ' + totalCount + ' files in the published list were checked.';
+            summaryBox.appendChild(coverage);
+
+            resultsEl.appendChild(summaryBox);
+
+            var bySeverity = {};
+            results.forEach(function (r) {
+              var tier = r.status === 'unexpected' ? 'unexpected' : (r.severity || 'unclassified');
+              if (!bySeverity[tier]) bySeverity[tier] = [];
+              bySeverity[tier].push(r);
+            });
+
+            var order = TIER_ORDER.concat(['unclassified', 'unexpected'].filter(function (t) {
+              return TIER_ORDER.indexOf(t) === -1;
+            }));
+            order.forEach(function (tier) {
+              var rows = bySeverity[tier];
+              if (rows && rows.length) resultsEl.appendChild(renderTierGroup(tier, rows));
+            });
+          }
+
+          function runFileComparison(files) {
+            if (!files.length) return;
+            setProgress('Reading and hashing ' + files.length + ' file' + (files.length === 1 ? '' : 's') + ' in your browser...');
+            var checkedFiles = [];
+            var chain = Promise.resolve();
+            files.forEach(function (file) {
+              chain = chain.then(function () {
+                return file.arrayBuffer();
+              }).then(function (buf) {
+                return sriFromBuffer(buf);
+              }).then(function (hash) {
+                checkedFiles.push({ path: relativePathOf(file), hash: hash });
+              });
+            });
+            chain.then(function () {
+              renderResults(compare(checkedFiles, publishedManifest));
+            }).catch(function () {
+              setProgress('Something went wrong reading those files. Nothing was sent anywhere; you can try again.');
+            });
+          }
+
+          function runPasteComparison(text) {
+            var parsed;
+            try {
+              parsed = JSON.parse(text);
+            } catch (err) {
+              setProgress('That did not parse as JSON. Paste the full contents of an integrity-manifest.json file.');
+              return;
+            }
+            var pasted = readManifest(parsed);
+            var checkedFiles = pasted.keys.map(function (key) {
+              return { path: key, hash: pasted.hashOf(key) };
+            });
+            renderResults(compare(checkedFiles, publishedManifest));
+          }
+
+          function walkEntry(entry, files, path) {
+            return new Promise(function (resolve, reject) {
+              if (entry.isFile) {
+                entry.file(function (file) {
+                  file.__verifyRelativePath = path + entry.name;
+                  files.push(file);
+                  resolve();
+                }, reject);
+              } else if (entry.isDirectory) {
+                var reader = entry.createReader();
+                var collected = [];
+                (function readNext() {
+                  reader.readEntries(function (batch) {
+                    if (!batch.length) {
+                      Promise.all(collected.map(function (child) {
+                        return walkEntry(child, files, path + entry.name + '/');
+                      })).then(resolve, reject);
+                      return;
+                    }
+                    collected = collected.concat(batch);
+                    readNext();
+                  }, reject);
+                })();
+              } else {
+                resolve();
+              }
+            });
+          }
+
+          function filesFromDataTransfer(dataTransfer) {
+            var items = dataTransfer.items ? Array.prototype.slice.call(dataTransfer.items) : [];
+            var entries = items
+              .filter(function (item) { return item.kind === 'file' && typeof item.webkitGetAsEntry === 'function'; })
+              .map(function (item) { return item.webkitGetAsEntry(); })
+              .filter(Boolean);
+            if (!entries.length) {
+              return Promise.resolve(Array.prototype.slice.call(dataTransfer.files || []));
+            }
+            var files = [];
+            return Promise.all(entries.map(function (entry) { return walkEntry(entry, files, ''); })).then(function () {
+              return files;
+            });
+          }
+
+          if (fileInput) {
+            fileInput.addEventListener('change', function () {
+              runFileComparison(Array.prototype.slice.call(fileInput.files || []));
+            });
+          }
+          if (folderInput) {
+            folderInput.addEventListener('change', function () {
+              runFileComparison(Array.prototype.slice.call(folderInput.files || []));
+            });
+          }
+          if (pasteButton && pasteInput) {
+            pasteButton.addEventListener('click', function () {
+              runPasteComparison(pasteInput.value);
+            });
+          }
+          if (dropzone) {
+            // The drop zone is a bonus for a mouse: it adds no tabbable element of its own and no
+            // click-to-open handler. Keyboard reachability comes from the real <input> elements
+            // already inside it, which Tab and Enter/Space already operate correctly.
+            dropzone.addEventListener('dragover', function (e) {
+              e.preventDefault();
+              dropzone.classList.add('is-dragover');
+            });
+            dropzone.addEventListener('dragleave', function () {
+              dropzone.classList.remove('is-dragover');
+            });
+            dropzone.addEventListener('drop', function (e) {
+              e.preventDefault();
+              dropzone.classList.remove('is-dragover');
+              filesFromDataTransfer(e.dataTransfer).then(function (files) {
+                runFileComparison(files);
+              });
+            });
+          }
+
+          container.hidden = false;
+        }
+
+        globalThis.WymberVerify = {
+          TIER_ORDER: TIER_ORDER,
+          sriFromBuffer: sriFromBuffer,
+          normalizePath: normalizePath,
+          readManifest: readManifest,
+          compare: compare,
+          summarize: summarize,
+          summaryState: summaryState
+        };
+      })();
+    </script>
 
     <h2>Reproduce the build yourself</h2>
     <p>If you're comfortable with a terminal, you can build the exact commit named in the stamp

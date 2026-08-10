@@ -278,16 +278,29 @@ describe.skipIf(!browserAvailable && !process.env.CI)('dist/ boots clean under i
     const PORT = 8097;
     let server;
     let browser;
+    let servedDist;
 
     beforeAll(async () => {
-        runBuild(); // dist/ from the describe block above may have been rebuilt by another file/test
-        server = await serveDist(dist, PORT);
+        // Build, then serve a SNAPSHOT of dist/, not dist/ itself. The build lock keeps two builds
+        // from overlapping, but it does not stop a build in another worker from overlapping this
+        // server, which reads from disk on every request. build-pages.mjs copies files into dist/
+        // and stamps them afterwards, so mid-rebuild there is a real window where dist/index.html
+        // holds the unstamped 'dev' placeholder. A page load landing in that window failed the
+        // build-stamp assertion below with a confusing "expected 'dev' not to be 'dev'". Copying
+        // first makes the bytes under test immune to whatever another worker does next.
+        withBuildLock(() => {
+            execFileSync(process.execPath, [join(root, 'scripts', 'build-pages.mjs')], { cwd: root, stdio: 'pipe' });
+            servedDist = mkdtempSync(join(tmpdir(), 'wymber-dist-serve-'));
+            cpSync(dist, servedDist, { recursive: true });
+        });
+        server = await serveDist(servedDist, PORT);
         browser = await chromium.launch();
     }, 60000);
 
     afterAll(async () => {
         if (browser) await browser.close();
         if (server) await closeServer(server);
+        if (servedDist) rmSync(servedDist, { recursive: true, force: true });
     }, 30000);
 
     it('the login box renders, the stylesheet applies, and the build stamp is set, with zero errors', async () => {
@@ -327,7 +340,7 @@ describe.skipIf(!browserAvailable && !process.env.CI)('dist/ boots clean under i
         const tamperPort = PORT + 1;
         let tamperServer;
         try {
-            cpSync(dist, tmpDist, { recursive: true });
+            cpSync(servedDist, tmpDist, { recursive: true }); // the snapshot, for the same reason beforeAll took one
             const configPath = join(tmpDist, 'static', 'js', 'config.js');
             const original = readFileSync(configPath, 'utf8');
             writeFileSync(configPath, original + '\n// tampered for the negative CSP/SRI test\n');

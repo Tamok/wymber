@@ -138,17 +138,22 @@ describe('import-map integrity', () => {
 
 describe('dist/integrity-manifest.json', () => {
     it('parses and has the expected top-level shape', () => {
-        expect(manifest.schema).toBe(1);
+        expect(manifest.schema).toBe(2);
         expect(manifest.algorithm).toBe('sha384');
         expect(typeof manifest.commit).toBe('string');
         expect(typeof manifest.note).toBe('string');
         expect(typeof manifest.assets).toBe('object');
+        expect(typeof manifest.severity).toBe('object');
+        expect(typeof manifest.severity.note).toBe('string');
+        expect(Array.isArray(manifest.severity.order)).toBe(true);
+        expect(typeof manifest.severity.tiers).toBe('object');
     });
 
-    it('every asset hash matches the sha384-<base64> shape', () => {
-        for (const [url, hash] of Object.entries(manifest.assets)) {
+    it('every asset carries a hash matching the sha384-<base64> shape and a known severity tier', () => {
+        for (const [url, entry] of Object.entries(manifest.assets)) {
             expect(url.startsWith('/'), `asset key should start with /: ${url}`).toBe(true);
-            expect(hash, `bad hash shape for ${url}`).toMatch(/^sha384-[A-Za-z0-9+/]+=*$/);
+            expect(entry.hash, `bad hash shape for ${url}`).toMatch(/^sha384-[A-Za-z0-9+/]+=*$/);
+            expect(manifest.severity.order, `unknown severity for ${url}`).toContain(entry.severity);
         }
     });
 
@@ -165,7 +170,7 @@ describe('dist/integrity-manifest.json', () => {
 
     it("/index.html's hash matches the HTML actually written (post SRI + import-map injection)", () => {
         const actual = sriHash(readFileSync(join(dist, 'index.html')));
-        expect(manifest.assets['/index.html']).toBe(actual);
+        expect(manifest.assets['/index.html'].hash).toBe(actual);
     });
 });
 

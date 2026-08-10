@@ -1,38 +1,155 @@
 {
-  "schema": 1,
+  "schema": 2,
   "algorithm": "sha384",
-  "commit": "fc77bc9",
-  "note": "SHA-384 hashes (SRI format: 'sha384-' + base64 digest) of every file served at web.wymber.app, generated from and describing the build of the commit named in this file's own \"commit\" field above. Compare against the same file published from wymber.app (a different origin) to check the deployed app matches the published source. A match is tamper-evidence for the official deploy; it is not proof the origin itself is honest (see docs/adr/0003-client-integrity-and-anti-phishing.md).",
+  "commit": "c7afea4",
+  "note": "SHA-384 hashes (SRI format: 'sha384-' + base64 digest) of every file served at web.wymber.app, generated from and describing the build of the commit named in this file's own \"commit\" field above. Compare against the same file published from wymber.app (a different origin) to check the deployed app matches the published source. A match is tamper-evidence for the official deploy; it is not proof the origin itself is honest (see docs/adr/0003-client-integrity-and-anti-phishing.md). Each asset also carries a severity tier; see the \"severity\" block below for what the tiers mean and what they do not claim.",
+  "severity": {
+    "note": "Severity is triage, not permission. It answers \"how alarmed should I be, and what should I look at first\", nothing more. Every file here is served under Subresource Integrity and a strict Content-Security-Policy, so any unexpected difference means the deploy is not what was published, whatever its tier. \"Differs, low severity\" is still \"differs\". Low does not mean harmless. A stylesheet cannot read your vault, but it can restyle the page to fake an unlock prompt, hide a warning, or make a storage error look like a fresh start, so that someone creates a new vault over their real one. It cannot take your data; it can persuade you to hand it over. Every file under /static/js/ and /static/libs/ runs as script in the app's own origin, so a swapped one could in principle do what any other module can. These tiers rank where to look first, by how directly the published file touches keys or the decrypted map. They are not a statement that a lower tier is safe to differ.",
+    "order": [
+      "critical",
+      "high",
+      "moderate",
+      "low"
+    ],
+    "tiers": {
+      "critical": {
+        "label": "Critical",
+        "meaning": "A change here could reach your password, your recovery code, or the key that unlocks your map, or decide what code runs at all."
+      },
+      "high": {
+        "label": "High",
+        "meaning": "A change here could reach your whole decrypted map, or is one of the ways a copy of it can leave your device."
+      },
+      "moderate": {
+        "label": "Moderate",
+        "meaning": "A change here cannot reach your map or your key, but it can change what the app tells you or asks of you while you use it."
+      },
+      "low": {
+        "label": "Low",
+        "meaning": "A change here cannot read your map. It can still change what you see, and what you see is how you decide whether to trust this page."
+      }
+    }
+  },
   "assets": {
-    "/.well-known/security.txt": "sha384-dyuIOH8fxJxRifaxuA20yd100QtF+T63EllGUMymOZhe9s9hO28JwGHSxyKDCWBt",
-    "/404.html": "sha384-f+i+p1c+EE50KA9fjacOQN+fuDPdKwBpaNsA0/7OD1Eq5yLY4T5Ps1rBcWL45rmQ",
-    "/index.html": "sha384-BY+1qbzomUvB1BzGu1Qw2LuwxYsVcRfmEBtU9TDdTLPOGzEK4eFCm7YapL6H7hYQ",
-    "/manifest.webmanifest": "sha384-x4+rtQka0kPNCoT0jNZGvlJPrSbcz1+zBsvWYQCamhsuYWFqERdgKNbOB46NkVZ6",
-    "/robots.txt": "sha384-GDBs+3OLN9IJU+dpkYT1ti7XVbkXQI/BZNeaEa99LugK/bWFKHgRmPayfpYhHmBk",
-    "/static/css/styles.css": "sha384-5wC7t7lT/HAXXOqUKELK11Nh5045K/PzQDaRG4NmZvrYVlTr2pE7OeVJZTsPwSme",
-    "/static/favicon.svg": "sha384-BiiwYEbuF/g3/ohSnVAiu9f5HHHYC+lEmzYI/AkZXS3bw2qqBLzsfOPwc0amgwSv",
-    "/static/icons/apple-touch-icon.png": "sha384-qKQfmIQHKiY5mJGNuiiasds27iA3W7AsSjn6J6f215LXOFj34yUWvcRGtRNhMnJX",
-    "/static/icons/icon-192.png": "sha384-otKVbXezQyM3slfzI1LkMMQKoc5YPdN1VfmQKFFpFoSScx1ioImAp6jalQpHD44H",
-    "/static/icons/icon-512.png": "sha384-Kd76qa95Sh3y7gwdoaRqZKmcZAHExHQaJQ5NlYBUzhfORlsSxclyPjOIN/D6Yr7N",
-    "/static/js/analyze.js": "sha384-Qpk4LMu8Bpwc2uLrwyvPf+GA/CSFobnsmLpiLFwGT+QJAqrEaBHZ469l6G7tDMS5",
-    "/static/js/app.js": "sha384-DgAr+18bC+edk3QSakO4pHB8JkTkzKeeW33Iuf7X1/FiMK/qBPkE/mTZHQ+LCbgb",
-    "/static/js/build-info.js": "sha384-c1WF2vCmxBItRjB1hSB4whelsdA/N0DFBD1Csoi9Tf8kHqM+8iGMYsk6HZGZGACX",
-    "/static/js/changelog.js": "sha384-zcNrazEK3kgC/B7tJ0SDZYme18/11Dgv9a7ZR1DgwHKcSsetBsD7NsRKnDWorXoi",
-    "/static/js/config.js": "sha384-HAdA1VXKbAkRd2kMKxDi0oGlg+yoxhGo2obS94LgYfRYQjCWJD9sI2wjBwTD3rK+",
-    "/static/js/crypto.js": "sha384-20S57oeUsVUrENt/SRA7XeE6JAzzwm2JHlptXX8iY63H6jHcBPla73bNQVBMI9Ig",
-    "/static/js/export.js": "sha384-MEqli/HWOy9E1vTX+z71rjR/cuXWjKF72gTN23/+BySnzfogwYiyegYo8736mKEi",
-    "/static/js/local-repo.js": "sha384-jrgIIryeb0iooaam+t0iFneCtzeMeU2pk7aP+p0xZfxP04Ihevw7wP7oYxaOzjmq",
-    "/static/js/mindmap.js": "sha384-tF7tO90nnpC/efymF7b+CHedV/s4BRI1sfzOXYi4znAUWPl/+6ZSHK3l/lemnZvi",
-    "/static/js/native-biometric.js": "sha384-gX5cw861cdNDcAdV/CSuZ8GerN7h2Dfq6+J+SpRBkYXCRXGINSlD7AdSd97fgsTk",
-    "/static/js/native-persistence.js": "sha384-4nMcL/hPajtTQLr3XzhwTc2HhBt1NKrv1/al334uWWjT697UqEPoWmZrdcbrbI19",
-    "/static/js/native-share.js": "sha384-lPq19tCDoSbgumNLHCyHtOldAA5j48Fme06gaKMBZKIAt7OuHwJqTcuW6VXUrd/T",
-    "/static/js/persistence.js": "sha384-g1QMqayijpzcTuemSQOSQs3KzxzBHVdLzD3dWOA5CQCWZ7IvLy5Tk2IOfOPDoQwq",
-    "/static/js/suggest.js": "sha384-IDWpNPGmU2fmvd7bgwIAzo009cqRPZKZpvCatuxa3t9mz5zRwm0jQonjGMeU8FYS",
-    "/static/js/tutorial.js": "sha384-PqlU01tQehnmw2FoPiRNkrnhk1nnIlPRiDwoZ/k5703yRcVxHTk178rgDU0/VfSI",
-    "/static/js/utils.js": "sha384-F6FHOjpFVC6UiX3mXljwMbJLOjlZjQAdGRFyUug6PpAjsnUIcz3nD2YwMah3bdCI",
-    "/static/js/vault-store.js": "sha384-bBN7FExB8Xuqg4Jz5yw98HyInwqvTp+WYe2OAlJ7OJfqw+1OGootIoMSJfx1VTRt",
-    "/static/libs/cytoscape.min.js": "sha384-8s/2YUtkpAR/y8GTh868tyVON+CweQIaFKj6fRnz3DCJ4We80TU0ppdreSK6z2Ed",
-    "/static/og-image.png": "sha384-WoHoq37KROUTsCjVkM5Uh4VIsPMnE58W2pttaZUbeoN2Q9ALBjnCEHNtlif2W5MM",
-    "/sw.js": "sha384-WH3QJH4WfXWGoD4ycYfSHdzIZSpa6YcuId37BN6eE3sXxU6GOVgM25WRSAWbNleN"
+    "/.well-known/security.txt": {
+      "hash": "sha384-EnRY551BMhqbTu2f5arrOn1K3BkpNXrlxm81aRjsu83oRhRiVpP0MC8c8UhVl/Bf",
+      "severity": "low"
+    },
+    "/404.html": {
+      "hash": "sha384-I8lDqOVXw+OBpzgXCEFE1Bv2YcWpLqqfRwqUOrG+VONFr/NxtAQHZ0zUGSZ2P7D+",
+      "severity": "moderate"
+    },
+    "/index.html": {
+      "hash": "sha384-8WGmZQe09NKSRpQ28Z8/T+GOcJa7jWSzFsCSLxZxp9ymRuxi+4MXjx1suJx6BwsE",
+      "severity": "critical"
+    },
+    "/manifest.webmanifest": {
+      "hash": "sha384-fCaEBDAqHXfUi9dig6O+sZX0hJbqMQ4Gh0bWtfrR4pXt1Tz49FFk0BjO4ng7sxyC",
+      "severity": "low"
+    },
+    "/robots.txt": {
+      "hash": "sha384-lR9eSoSp4lrxKES7qz/3D+XbAU13snvsOCH9LhxiHXHDfSsVbl92sQ68hFtNWcDl",
+      "severity": "low"
+    },
+    "/static/css/styles.css": {
+      "hash": "sha384-zJpdp+Nfd9thnd2GaDJnN8XHyu0OjZtUNFK0AIAuzuMzXxU8v7SWNKxS5eM8pLl0",
+      "severity": "low"
+    },
+    "/static/favicon.svg": {
+      "hash": "sha384-oqeK0I2T8nsWg8TJAfwlpTdp55bLCkitqCa2F2LPp8fDO1zSUJhDpHwK3poa9/6d",
+      "severity": "low"
+    },
+    "/static/icons/apple-touch-icon.png": {
+      "hash": "sha384-qKQfmIQHKiY5mJGNuiiasds27iA3W7AsSjn6J6f215LXOFj34yUWvcRGtRNhMnJX",
+      "severity": "low"
+    },
+    "/static/icons/icon-192.png": {
+      "hash": "sha384-otKVbXezQyM3slfzI1LkMMQKoc5YPdN1VfmQKFFpFoSScx1ioImAp6jalQpHD44H",
+      "severity": "low"
+    },
+    "/static/icons/icon-512.png": {
+      "hash": "sha384-Kd76qa95Sh3y7gwdoaRqZKmcZAHExHQaJQ5NlYBUzhfORlsSxclyPjOIN/D6Yr7N",
+      "severity": "low"
+    },
+    "/static/js/analyze.js": {
+      "hash": "sha384-EFmPFM5oksaSPUxQH+KRtff38Dgi++4lhR0h3cM8fwasLYbtTbY6zNTTC5dxQOlU",
+      "severity": "high"
+    },
+    "/static/js/app.js": {
+      "hash": "sha384-CkP8YpiZQFFqxSAYbP2PweGaM1rOrJDpStD4iPeUE1oqaiQnxWX5FzVXmmyqzfaj",
+      "severity": "critical"
+    },
+    "/static/js/build-info.js": {
+      "hash": "sha384-AqR2Leo/kvtNfGN8sjizV7XFuG8sRM76HGrdA7jWuKZ0QnMmmgB6XisK0wxS5/AJ",
+      "severity": "moderate"
+    },
+    "/static/js/changelog.js": {
+      "hash": "sha384-qtYaCSA72LqtTilSe/Wk++y2iX/inKPyA54K9I9Yw41+6WYe2jN0QrJhWwVppLHb",
+      "severity": "moderate"
+    },
+    "/static/js/config.js": {
+      "hash": "sha384-Zz9WF9HIuUO920ZOcktkPsqLOEq+I0r5QAOspmMYXWWZ8GCGVjyhsBWtQqlYMTAN",
+      "severity": "moderate"
+    },
+    "/static/js/crypto.js": {
+      "hash": "sha384-kpLOebjYJirgZNQf84BTsZjf837xkg2OrutWEa3yMQcLGxh5gc7KrcrjGw72/CiH",
+      "severity": "critical"
+    },
+    "/static/js/export.js": {
+      "hash": "sha384-FNna+pzhg708CYT0H+OAv8MD1lcnh5kq0yBsFlKo/4nPMe6n9RSZmqp4dV3zP5xj",
+      "severity": "high"
+    },
+    "/static/js/local-repo.js": {
+      "hash": "sha384-vkxz+bizDlcDsMjXByGn2tSTomvOozkvYJ6dGX9M/tiYgY4GpArG2K2IBr70vOVP",
+      "severity": "critical"
+    },
+    "/static/js/mindmap.js": {
+      "hash": "sha384-EkxErwD0buvAHs02TOFW530o+1uW5bTSUTa4579ueN7UKdL8Ws/n5acDyZ/D+J7E",
+      "severity": "high"
+    },
+    "/static/js/native-biometric.js": {
+      "hash": "sha384-F3b3J94RO8ocIJOEStmbNXCHKzVUM0G2kfCYjRPiXU8DusNV6As1AjrgdtgfJLd2",
+      "severity": "critical"
+    },
+    "/static/js/native-persistence.js": {
+      "hash": "sha384-8ax/X9hc46Lo/deZLIpw9igLEj6flllD0y9KMksfpbKZRIAeJxMHUITomd+Rwx+1",
+      "severity": "critical"
+    },
+    "/static/js/native-share.js": {
+      "hash": "sha384-lRHo/Oh9xSI9AOEtnsbrwMA6JDTTZXKAqhqXYUbwe7ekoHAkb4MlG+JR77LW53Bg",
+      "severity": "high"
+    },
+    "/static/js/persistence.js": {
+      "hash": "sha384-hfaPZ5FE/y2fcVYhhoIUETA7J+Qzcv3PshWziHQNvW4RcHn62Wy+7q30rSchZfct",
+      "severity": "critical"
+    },
+    "/static/js/suggest.js": {
+      "hash": "sha384-eOmxixmfQ1wCHysuQmVI1Mf8YoBdN+vh03Mo9KXf5dYtJsPwkNiOi+F5JyVgoWeM",
+      "severity": "high"
+    },
+    "/static/js/tutorial.js": {
+      "hash": "sha384-PGNkqnazrIzs5nESC9dFwP3Fw7ej/zdOwcadeHqV1CMuCR6fnPNv5I6oNnEKUsvY",
+      "severity": "moderate"
+    },
+    "/static/js/utils.js": {
+      "hash": "sha384-EvDitsFfYHa0KTPL7F11AWLpwqDJla6xCxjBTIth3OcS4M0IwNPfUUVGCd7/BZem",
+      "severity": "critical"
+    },
+    "/static/js/vault-store.js": {
+      "hash": "sha384-1t0mWUcYA96hD2MI/36Wt6cnrAhbilud4vfX8vPKyVphZz21fNLEyTC95rnn73Y+",
+      "severity": "high"
+    },
+    "/static/libs/cytoscape.min.js": {
+      "hash": "sha384-l9MDH+UaOY0AzU2AacPpt/QfDvJo3Js7vqdX4Pcc9lOgtKkLLiFoF4he8ru3mEh0",
+      "severity": "high"
+    },
+    "/static/og-image.png": {
+      "hash": "sha384-WoHoq37KROUTsCjVkM5Uh4VIsPMnE58W2pttaZUbeoN2Q9ALBjnCEHNtlif2W5MM",
+      "severity": "low"
+    },
+    "/sw.js": {
+      "hash": "sha384-poLrLp0AXFzerGnCdVd//hi44AS2GOt8DgPhfP2BRpe9V/l4vTPDLoPoyKGfg+JA",
+      "severity": "critical"
+    }
   }
 }
