@@ -7,8 +7,7 @@ import { createVaultAndOpenMap, addNode } from './helpers.js';
 // point is keyboard reachability, not just end-state assertions.
 
 /** Press Tab until document.activeElement.id matches, bounded so a broken tab order fails
- * fast instead of hanging. Doesn't assume a particular starting focus (the app's own state
- * after opening the map is inconsistent; see the fixme tests below), so it starts wherever
+ * fast instead of hanging. Doesn't assume a particular starting focus, so it starts wherever
  * the page already is. */
 async function tabToId(page, id, maxSteps = 30) {
     for (let i = 0; i < maxSteps; i++) {
@@ -87,9 +86,9 @@ test.describe('Keyboard-only operation (ADR-0004)', () => {
 
     test('every primary control is reachable by Tab and shows a focus ring', async ({ page }) => {
         await createVaultAndOpenMap(page);
-        // Opening the map currently leaves focus in an inconsistent spot rather than moving it
-        // into the map region (see the dedicated fixme test below), so one settling Tab press
-        // gets us into ordinary page content before walking real tab stops.
+        // Opening the map moves focus into the map region itself (see the dedicated test below),
+        // not into ordinary page content, so one settling Tab press gets us onto a real tab stop
+        // before walking the named set below.
         await page.keyboard.press('Tab');
 
         // Each of the app's primary controls is reached by real Tab presses and must show a
@@ -118,34 +117,30 @@ test.describe('Keyboard-only operation (ADR-0004)', () => {
         expect(ringless, 'every primary control should carry a visible focus ring').toEqual([]);
     });
 
-    test.fixme(
+    test(
         'opening the map moves keyboard focus into the map region',
         async ({ page }) => {
-            // ADR-0004 pillar 2: "Opening a surface moves focus into it." app.js's initMindMap()
-            // calls `container.focus()` where `container = document.getElementById('mindmap')`
-            // (the bare Cytoscape canvas host div, which has no tabindex and so is not
-            // focusable, making the call a silent no-op) instead of `#mindmap-container` (the
-            // wrapper with role="application" tabindex="0" that ADR-0004 describes as the
-            // focusable map region). Expected: focus lands on #mindmap-container after the map
-            // opens. Actual: focus is left on whatever happened to be focused before (observed
-            // nondeterministically as the now-hidden #open-map-btn, or document.body).
+            // ADR-0004 pillar 2: "Opening a surface moves focus into it." initMindMap() already
+            // focused the right element (keyboardHostFor(container), i.e. #mindmap-container, the
+            // role="application" wrapper — #mindmap itself has no tabindex and is not focusable),
+            // but openMapFromSoftStart() hid #soft-start *before* awaiting initMindMap(), so this
+            // test's wait for #soft-start to disappear resolved before the focus() call had run,
+            // observing focus still on #open-map-btn (#184). Fixed by hiding soft-start only after
+            // initMindMap() settles.
             await createVaultAndOpenMap(page);
             const activeId = await page.evaluate(() => document.activeElement?.id);
             expect(activeId).toBe('mindmap-container');
         }
     );
 
-    test.fixme(
+    test(
         'closing the node modal with Escape returns focus to the button that opened it',
         async ({ page }) => {
-            // ADR-0004 pillar 2 promises Escape "returns focus to a sensible anchor." Nothing in
-            // app.js's closeAllOverlays() moves focus anywhere; it only sets `display: none` on
-            // every .modal. Since the node-modal's first field is genuinely focused on open
-            // (showNodeModal()'s setTimeout), closing it is a real test of restoration, and it
-            // fails: observed behaviour is inconsistent across runs (the still-focused, now
-            // hidden radio input, or a silent drop to document.body), never the opener button.
-            // Expected: focus returns to #add-node-btn. Actual: focus is left wherever it was
-            // inside the now-hidden modal, or lost to <body>.
+            // ADR-0004 pillar 2 promises Escape "returns focus to a sensible anchor." showNodeModal()
+            // now records document.activeElement (the opener) as this.nodeModalOpener, and
+            // closeAllOverlays() refocuses it once every modal is hidden, instead of leaving focus
+            // wherever it happened to sit inside the now-hidden modal or dropping it to <body>
+            // (#184).
             await createVaultAndOpenMap(page);
             await page.click('#add-node-btn');
             await expect(page.locator('#node-modal')).toBeVisible();
@@ -157,15 +152,14 @@ test.describe('Keyboard-only operation (ADR-0004)', () => {
         }
     );
 
-    test.fixme(
+    test(
         'closing the node detail drawer with Escape returns focus to the outline button that opened it',
         async ({ page }) => {
-            // Same ADR-0004 promise, for the detail drawer. openNodeDetail() focuses
-            // #detail-title on open, but closeNodeDetail() (called from the drawer's own Escape
-            // handler) only toggles `.open`/`inert`; nothing restores focus. Marking the drawer
-            // `inert` while it holds focus forces the browser to drop focus to <body>.
-            // Expected: focus returns to the .map-outline-node button that opened the drawer.
-            // Actual: focus lands on <body>.
+            // Same ADR-0004 promise, for the detail drawer. openNodeDetail() now records the
+            // triggering element as this.detailOpener on the closed->open transition, and
+            // closeNodeDetail() (called from the drawer's own Escape handler) refocuses it after
+            // setting `inert` — which itself force-blurs to <body> the instant it's set, since the
+            // drawer still holds focus at that point (#184).
             await createVaultAndOpenMap(page);
             await addNode(page, 'event', 'Focus restoration check');
             const outlineButton = page.locator('.map-outline-node', { hasText: 'Focus restoration check' }).first();

@@ -26,6 +26,8 @@ class WymberApp {
         this.mindMap = null;
         this.detailNodeId = null; // node open in the detail drawer (#108)
         this.detailKeywords = []; // working copy of that node's keywords
+        this.nodeModalOpener = null; // element to refocus when the node modal closes (#184)
+        this.detailOpener = null; // element to refocus when the detail drawer closes (#184)
         this.suggestions = []; // current link suggestions (discovery engine)
         this.dismissedSuggestions = new Set(); // pair keys the user said "not now" to this session
         this.authPanel = 'create';
@@ -141,6 +143,21 @@ class WymberApp {
         document.getElementById('close-grounding-btn')?.addEventListener('click', () => this.closeGrounding());
 
         this.addPasswordToggles();
+        this.observeSafetyBarHeight();
+    }
+
+    /** Keep --safety-bar-height in sync with the fixed safety bar's real, possibly-wrapped
+        height, so body's bottom padding (styles.css) always clears it. The bar wraps to extra
+        rows at narrow widths and at large text-zoom, so a flat guess falls short at some size;
+        a ResizeObserver reacts to both without a manual resize listener (#184). */
+    observeSafetyBarHeight() {
+        const bar = document.getElementById('safety-bar');
+        if (!bar || typeof ResizeObserver === 'undefined') return;
+        const sync = () => {
+            document.documentElement.style.setProperty('--safety-bar-height', `${bar.offsetHeight}px`);
+        };
+        new ResizeObserver(sync).observe(bar);
+        sync();
     }
 
     /** Add a show/hide eye toggle to every password field (covers future ones automatically). */
@@ -186,11 +203,20 @@ class WymberApp {
     /** What Escape does: close every open overlay (modals, the detail drawer, the nudge) and
         stop the breathing timer. Safe to call when nothing is open. */
     closeAllOverlays() {
+        const nodeModal = document.getElementById('node-modal');
+        const nodeModalWasOpen = nodeModal && nodeModal.style.display !== 'none' && nodeModal.style.display !== '';
         document.querySelectorAll('.modal').forEach((m) => { m.style.display = 'none'; });
         this.stopBreathing();
         this.pendingRestoreFile = null;
         this.closeNodeDetail();
         document.querySelectorAll('.notification-nudge').forEach((n) => n.remove());
+        // Restore focus to whatever opened the node modal (ADR-0004 pillar 2), rather than
+        // leaving it stranded on the now-hidden field it last held.
+        const opener = this.nodeModalOpener;
+        this.nodeModalOpener = null;
+        if (nodeModalWasOpen && opener && document.body.contains(opener) && typeof opener.focus === 'function') {
+            opener.focus();
+        }
     }
 
     showAuthPanel(name) {
@@ -714,8 +740,6 @@ class WymberApp {
 
     async openMapFromSoftStart() {
         this.teardownSoftStartPrompts(); // leaving the soft start drops the held password + any nudge
-        const ss = document.getElementById('soft-start');
-        if (ss) ss.style.display = 'none';
         try {
             await this.initMindMap();
             // Offer the walkthrough once, after the map is up. The flag lives in the vault
@@ -729,6 +753,13 @@ class WymberApp {
         } catch (error) {
             console.error('Error initializing mind map:', error);
             this.updateSaveIndicator('Could not load your map', 'error');
+        } finally {
+            // Hidden only once initMindMap has settled, so the map's own focus() call (issue
+            // #184) has already landed before this returns. Hiding soft-start first (the
+            // original order) let the caller observe #soft-start as hidden while focus was
+            // still sitting on #open-map-btn, a race the E2E suite caught.
+            const ss = document.getElementById('soft-start');
+            if (ss) ss.style.display = 'none';
         }
     }
 
@@ -823,6 +854,8 @@ class WymberApp {
     // detail drawer (#108). `presetType` pre-selects a type (used by the pairing nudge).
     showNodeModal(presetType = null) {
         const modal = document.getElementById('node-modal');
+        // Escape restores focus here rather than dropping it to <body> (ADR-0004 pillar 2).
+        this.nodeModalOpener = document.activeElement;
         document.getElementById('modal-title').textContent = 'Add to your map';
         this.renderTypeChips();
         document.querySelectorAll('#node-type-chips input[name="node-type"]')
@@ -918,6 +951,14 @@ class WymberApp {
     async openNodeDetail(node) {
         const id = typeof node === 'object' && node !== null ? node.id : node;
         if (id == null) return;
+
+        // Remember who opened the drawer (ADR-0004 pillar 2: Escape returns focus to a
+        // sensible anchor), but only on the closed->open transition. Selecting a different
+        // node while the drawer is already open must not overwrite this with an element
+        // that's inside the drawer itself.
+        if (!document.getElementById('node-detail')?.classList.contains('open')) {
+            this.detailOpener = document.activeElement;
+        }
 
         // Persist whatever is already open first, so switching nodes never drops edits.
         if (this.detailNodeId != null && this.detailNodeId !== id) {
@@ -1120,6 +1161,14 @@ class WymberApp {
         drawer.inert = true;
         this.detailNodeId = null;
         this.detailKeywords = [];
+        // inert drops focus to <body> the instant it's set (it holds focus until here); restore
+        // it to whoever opened the drawer instead of leaving a keyboard user stranded at the top
+        // of the document (ADR-0004 pillar 2).
+        const opener = this.detailOpener;
+        this.detailOpener = null;
+        if (opener && document.body.contains(opener) && typeof opener.focus === 'function') {
+            opener.focus();
+        }
     }
 
     async saveNodeDetail() {
