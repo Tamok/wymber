@@ -160,11 +160,16 @@ form the attacker controls.
 
 The structural fix, per ADR-0003, is origin-bound authentication: passkeys/WebAuthn, which
 a browser will not release for a different origin than the one they were registered to.
-That is **not implemented today** — there is no `navigator.credentials` call anywhere in
-the frontend. Password and recovery code, the two unlock methods that exist now, are both
-portable strings a user can be tricked into typing anywhere. The only defense at the
-moment is the standing reminder to unlock only at the real, trusted origin, which is a
-human-vigilance control, not a technical one.
+That is **not available to users today.** A foundation exists in the codebase (#113 added
+WebAuthn PRF enrolment and unlock functions, so `navigator.credentials` is now called from
+`frontend/js/`), but nothing surfaces it: no enrolment UI, no unlock UI, no persistence. No
+user can register a passkey, and no vault has one as an unlock method. Read this section as
+a description of the shipped product, not of the repository.
+
+Password and recovery code, the two unlock methods users actually have, are both portable
+strings a person can be tricked into typing anywhere. The only defense at the moment is the
+standing reminder to unlock only at the real, trusted origin, which is a human-vigilance
+control, not a technical one.
 
 ## 6. A curious insider, or the project maintainers themselves
 
@@ -303,10 +308,11 @@ Contacts are published in `landing/.well-known/security.txt`:
 ## Future posture: sync and AI (unbuilt)
 
 Neither cloud sync nor any AI/LLM feature exists in the codebase today (no sync
-implementation, no `navigator.credentials`/WebAuthn, and no AI/LLM call of any kind was
-found anywhere in `frontend/` or `backend/`). This section describes, in future tense
-only, how the adversary picture above would need to expand if either ships, and should not
-be read as a description of anything currently running.
+implementation, and no AI/LLM call of any kind was found anywhere in `frontend/` or
+`backend/`). WebAuthn is the one item that has moved: unreachable functions exist (#113),
+nothing reaches them, and section 5 covers what that does and does not mean. This section
+describes, in future tense only, how the adversary picture above would need to expand if
+either ships, and should not be read as a description of anything currently running.
 
 **Sync**, if built as designed in ADR-0001, would be a zero-knowledge blob store: the
 server would hold only the same sealed ciphertext that already sits on-device, and would
