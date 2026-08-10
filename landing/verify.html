@@ -118,6 +118,26 @@ node scripts/build-pages.mjs</code></pre>
        it against the manifest published from either origin above. A match means the files being
        served are exactly the audited source at that commit.</p>
 
+    <h2>A signed, append-only log (not active yet)</h2>
+    <p>There's also a mechanism for the person who runs Wymber to sign each published manifest
+       with a private key only they hold, and record that signature in an append-only,
+       tamper-evident log alongside the manifest itself. We're documenting it here honestly, in
+       advance: <strong>as of this writing, no signing key has been published, and the log is
+       empty.</strong> Nothing described below is active yet. When it is, this page will say so
+       plainly, and this paragraph will change.</p>
+    <p>Once a key exists, checking a release will look like this. Download the log from this site
+       and the manifest from the app's origin, the same cross-origin idea as the hash comparison
+       above, then verify them together with the same script that's already in the repository:</p>
+    <pre class="code-block"><code>curl -o integrity-log.jsonl https://wymber.app/integrity-log.jsonl
+curl -o integrity-manifest.json https://web.wymber.app/integrity-manifest.json
+node scripts/integrity-log.mjs --log integrity-log.jsonl --manifest integrity-manifest.json --key &lt;the published key&gt;</code></pre>
+    <p>The published key itself is meant to come from more than one place independent of this
+       site, so that trusting it doesn't just mean trusting wymber.app a second time. A DNS
+       record and this page's own repository are the two planned sources; details will land here
+       once a real key exists. Full reasoning, including the parts we chose not to build yet and
+       why, is in
+       <a href="https://github.com/Tamok/wymber/blob/main/docs/adr/0007-manifest-signing-and-transparency-log.md" target="_blank" rel="noopener">ADR-0007</a>.</p>
+
     <h2>What this does not prove</h2>
     <p>Being honest about the limits matters as much as the checks themselves:</p>
     <ul>
@@ -130,6 +150,11 @@ node scripts/build-pages.mjs</code></pre>
       <li>If the build pipeline that produces both manifests were itself compromised, both
           origins would agree with each other and both would still be wrong. Agreement rules out
           one origin being tampered with alone; it isn't proof of the whole pipeline.</li>
+      <li>A signed log, once it exists, will not stop a compromised site from serving different
+          files to one targeted person in the moment it happens. What it changes is what happens
+          afterward: it makes that act provable, later, by someone else, rather than impossible.</li>
+      <li>A compromised release process would sign whatever it was told to build. A valid
+          signature says the keyholder endorsed a file, not that the file is safe.</li>
     </ul>
     <p>Work already underway points toward stronger, out-of-band ways to check this, without
        promising dates: unlocking with a passkey, which is bound to this site's address and simply
