@@ -1,6 +1,6 @@
 # ADR-0007: Sign the integrity manifest, keep it informational, keep the log third-party-anchored
 
-- Status: Proposed (2026-08-09), pending owner review
+- Status: Accepted (2026-08-09)
 - Decider: [@tamok](https://github.com/tamok)
 
 ## Context
@@ -115,11 +115,33 @@ reverify check, and by outside evidence, not by any mechanism that stops the rep
 from rewriting it. That is a materially different, weaker claim than a log hosted by a party who
 cannot rewrite it at all.
 
-## Key custody: an open question for the owner
+## Key custody: decided
 
-This ADR proposes options and does not choose among them. The tradeoffs below are real and the
-owner is the only person positioned to weigh them against how this key will actually be used and
-protected day to day.
+Two decisions were taken on 2026-08-09, both before any production key exists.
+
+**Storage: the maintainer's password manager**, as an encrypted attachment or note. Chosen for
+operational realism over theoretical strength: a key that is awkward to reach is a key that
+tempts a shortcut on release day, and the shortcut is always worse than the storage choice it
+avoided. The honest cost, recorded here rather than glossed: **the signing key is exactly as
+safe as that password manager and its unlock method.** A compromise of the manager is a
+compromise of the key, with no second factor between them. If the manager supports a hardware
+second factor, use it; if the project's release cadence ever becomes frequent enough for a
+dedicated token to be worth the friction, revisit this line.
+
+**Rotation and retirement: a retirement record appended to the log itself**, in the same
+hash-chained format, naming the key being retired. The log therefore becomes its own
+append-only history of which key was trusted between which records. Chosen because it adds no
+infrastructure, is self-describing, and a verifier already reading the log gets it for free
+rather than having to know to consult a separate list. A published retired-keys list remains a
+compatible future addition for verifiers holding a signature but not the log.
+
+This was settled before the first key was generated on purpose: retrofitting retirement onto a
+log that already contains entries which *look* unretired means either rewriting history, which
+the hash chain deliberately makes detectable, or bolting on an out-of-band list and hoping
+verifiers consult it.
+
+The options considered are preserved below, since a future reader deciding whether to revisit
+this needs to see what was weighed.
 
 **Where the private key lives.** Candidates, roughly in ascending cost and descending single-point-
 of-failure risk:

@@ -1,6 +1,6 @@
 # ADR-0008: How the vault envelope is allowed to change
 
-- Status: Proposed (2026-08-09), pending owner review
+- Status: Accepted (2026-08-09)
 - Decider: [@tamok](https://github.com/tamok)
 
 ## Context
