@@ -42,6 +42,13 @@ jobs:
       # npm ci does not fetch browser binaries, so install the one it needs.
       - run: npx playwright install --with-deps chromium
       - run: npx vitest run
+      # ADR-0003 Layer 2: structurally + chain-verify the committed transparency log on every
+      # push. No signing key exists in CI (and never should, see scripts/sign-integrity-log.mjs's
+      # own refusal to accept one from inside a repo checkout), so this deliberately does NOT
+      # check signatures, only that landing/integrity-log.jsonl parses and its hash chain is
+      # unbroken. It exists to catch a corrupted or hand-edited/rewritten log; it gates nothing
+      # about whether a build is signed (signing is informational only).
+      - run: node scripts/integrity-log.mjs
 
   e2e:
     name: E2E (Playwright)
