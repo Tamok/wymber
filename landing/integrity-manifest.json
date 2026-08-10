@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "algorithm": "sha384",
-  "commit": "2e63270",
+  "commit": "f2aa0c9",
   "note": "SHA-384 hashes (SRI format: 'sha384-' + base64 digest) of every file served at web.wymber.app, generated from and describing the build of the commit named in this file's own \"commit\" field above. Compare against the same file published from wymber.app (a different origin) to check the deployed app matches the published source. A match is tamper-evidence for the official deploy; it is not proof the origin itself is honest (see docs/adr/0003-client-integrity-and-anti-phishing.md). Each asset also carries a severity tier; see the \"severity\" block below for what the tiers mean and what they do not claim.",
   "severity": {
     "note": "Severity is triage, not permission. It answers \"how alarmed should I be, and what should I look at first\", nothing more. Every file here is served under Subresource Integrity and a strict Content-Security-Policy, so any unexpected difference means the deploy is not what was published, whatever its tier. \"Differs, low severity\" is still \"differs\". Low does not mean harmless. A stylesheet cannot read your vault, but it can restyle the page to fake an unlock prompt, hide a warning, or make a storage error look like a fresh start, so that someone creates a new vault over their real one. It cannot take your data; it can persuade you to hand it over. Every file under /static/js/ and /static/libs/ runs as script in the app's own origin, so a swapped one could in principle do what any other module can. These tiers rank where to look first, by how directly the published file touches keys or the decrypted map. They are not a statement that a lower tier is safe to differ.",
@@ -40,7 +40,7 @@
       "severity": "moderate"
     },
     "/index.html": {
-      "hash": "sha384-6NdrTVLQMU6EzCOvNd6ZNUsOrWn4MqbmKdJRNF4qiREKmRp/MBlZ4ffGKth/YaS+",
+      "hash": "sha384-NR/Ik2FbX9MfmwccL5m8gCZoSelhoh4FLYgNXx4JUI2xdRuUapXWPLZPPEz5SF/9",
       "severity": "critical"
     },
     "/manifest.webmanifest": {
@@ -76,11 +76,11 @@
       "severity": "high"
     },
     "/static/js/app.js": {
-      "hash": "sha384-KKcVWzRpEeWhN5rDa0fzQ60F58SEjx8x3IZSuXWUPnbAZPgwfwYeifzgV5DVxvhn",
+      "hash": "sha384-s4CYnaYxg66s9/3DqRya+MbLslTnewHAa//lIon98bkM6y2ZPDV7SB7inkQq3Ln0",
       "severity": "critical"
     },
     "/static/js/build-info.js": {
-      "hash": "sha384-RpaTAGuSxIRqpRhBKrDuGwyT8kTbyM3HP76xPDy9cvobGEPUgubl0QPEftwfcDR3",
+      "hash": "sha384-EgZqQsieFgKSHvI830VVYlbtbEvXJRZALoZy+k75OgEywRGqlmudko5wKs2Wx614",
       "severity": "moderate"
     },
     "/static/js/changelog.js": {
@@ -92,11 +92,11 @@
       "severity": "moderate"
     },
     "/static/js/crypto.js": {
-      "hash": "sha384-20S57oeUsVUrENt/SRA7XeE6JAzzwm2JHlptXX8iY63H6jHcBPla73bNQVBMI9Ig",
+      "hash": "sha384-cuyD5QPgFcQsWDkMrUm8PQhFvzRvoIdH7qVb6J7TNhBjWLZXoxesiyml4Wm5YPiQ",
       "severity": "critical"
     },
     "/static/js/export.js": {
-      "hash": "sha384-MOGO+UFkXaylHjSy1w65N1eB3OaJ5plyOZ1aFNeGo+FgQ6Ya4aNzVSfn9n/EQh5b",
+      "hash": "sha384-vT+A48Btwk22b33KRB+2e2Cfpc78eeIQtkyQBogwnJwEfQlTtN/++Md7AKSbQJKB",
       "severity": "high"
     },
     "/static/js/local-repo.js": {
@@ -148,7 +148,7 @@
       "severity": "low"
     },
     "/sw.js": {
-      "hash": "sha384-JGTJL8SdadPr0BGO+PfTJIrtixmcvoh7hSoY7CA0mPz6MbmJqA/xyTvPPKW1JIVs",
+      "hash": "sha384-acEJBhRB+hvT0fsfWurkFyPDPMj3c9NJhrjPp6PwXv0P477H9+i1Crvv7ONB5W1T",
       "severity": "critical"
     }
   }
