@@ -91,8 +91,8 @@ mode here, not overstating.
 - **Verifying a log against a key fetched from the same place as the log proves very little.**
   `scripts/integrity-log.mjs` prints this caveat itself, every time `--key` is supplied: a party
   able to rewrite `wymber.app`'s log could publish a matching key right next to it. A green result
-  from `node scripts/integrity-log.mjs --key wymber.app/pubkey.pem --log wymber.app/log.jsonl`
-  proves the site is internally self-consistent, not that the site is honest. The key has to come
+  from a run whose log *and* key were both downloaded from `wymber.app` proves the site is
+  internally self-consistent, not that the site is honest. The key has to come
   from somewhere independent for the check to mean anything (see "Publishing the public key," below).
 - **Nothing gates on any of this.** No unlock flow, no build step, no CI check fails because a
   release is unsigned. Signing is informational, full stop; see "Consequences."
@@ -298,8 +298,9 @@ above, with its weaker, but honestly-stated, property.
 - **Sign the app bundle itself, not the manifest.** The manifest already covers every shipped
   file's hash; signing the manifest transitively covers the bundle without needing a second
   signature format for, e.g., a desktop or mobile build artifact later. Revisit if a future signed
-  artifact (a Tauri desktop build, [ADR-0003] Layer 4) needs its own, differently-shaped signature;
-  not needed today.
+  artifact (a Tauri desktop build,
+  [ADR-0003](0003-client-integrity-and-anti-phishing.md) Layer 4) needs its own, differently-shaped
+  signature; not needed today.
 - **Embed a signature inside the `.wymber` file.** Already rejected by
   [ADR-0003](0003-client-integrity-and-anti-phishing.md)'s "Alternatives considered": the file is
   passive data, and an attacker re-signs their own copy with their own key just as easily as the

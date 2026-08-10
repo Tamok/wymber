@@ -330,7 +330,7 @@ export function verifyLog(text, { publicKey = null } = {}) {
 //
 //   curl -o log.jsonl      https://wymber.app/integrity-log.jsonl          # the landing origin
 //   curl -o manifest.json  https://web.wymber.app/integrity-manifest.json  # the app origin
-//   dig +short TXT wymber-integrity._domainkey.wymber.app                  # the key, third source
+//   dig +short TXT _wymber-integrity.wymber.app                            # the key, third source
 //   node scripts/integrity-log.mjs --log log.jsonl --manifest manifest.json --key <the key>
 //
 // That is why --log is a flag rather than a hardcoded path: without it a stranger could only ever
