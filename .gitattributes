@@ -1,0 +1,16 @@
+# Keep the Node scripts in scripts/ checked out with LF line endings on every platform.
+#
+# Why this exists: frontend/tests/integrity-log.test.js is the first test in this repo to
+# `import` a scripts/*.mjs module into Vitest (the older script tests shell out to `node`
+# as a subprocess instead, which is why nothing caught this before). Vite's transform
+# rejects a CRLF .mjs with "SyntaxError: Invalid or unexpected token", even though Node
+# itself parses the identical file without complaint. On Windows with core.autocrlf=true
+# (the default on a fresh clone here) git writes CRLF into the working tree, so the suite
+# would pass on Linux CI and fail on a Windows contributor's machine, for a reason that has
+# nothing to do with the code under test.
+#
+# This is the same class of trap docs/adr/0003-client-integrity-and-anti-phishing.md already
+# records for CSP hashing, where a Windows checkout's CRLF produced a hash no browser ever
+# computes. Pinning eol=lf here fixes it at the source rather than making each consumer
+# normalize.
+*.mjs text eol=lf
